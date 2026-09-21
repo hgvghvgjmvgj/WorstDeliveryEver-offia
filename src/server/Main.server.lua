@@ -1,0 +1,1 @@
+print("[WorstDeliveryEver] Server started")

@@ -1,8 +1,14 @@
-# Project place file
-/Rojovideo.rbxlx
-
-# Roblox Studio lock files
+# Roblox place/build files
+/*.rbxlx
+/*.rbxl
 /*.rbxlx.lock
 /*.rbxl.lock
-
 sourcemap.json
+
+# Local proxy dependencies/secrets
+proxy/node_modules/
+proxy/.env
+
+# Common local junk
+.DS_Store
+Thumbs.db
