@@ -712,7 +712,11 @@ local function partialCollapse(
 	})
 end
 
-local function handleGrab(player: Player, candidate: Instance)
+local function handleGrab(player: Player, candidate: any)
+	if typeof(candidate) ~= "Instance" then
+		return
+	end
+
 	local state = states[player]
 	if not state
 		or not state.Root
