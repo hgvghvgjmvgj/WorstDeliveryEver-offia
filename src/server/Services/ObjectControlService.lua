@@ -258,7 +258,7 @@ local function buildChallenge(definition)
 			challengeFolder,
 			"OuterRight",
 			Vector3.new(2, 12, 26),
-			CFrame.new(19, 6, Config.DoorCenterZ + 12)
+			CFrame.new(challenge.ExitClearanceX or 19, 6, Config.DoorCenterZ + 12)
 		)
 		makeBlocker(
 			challengeFolder,
