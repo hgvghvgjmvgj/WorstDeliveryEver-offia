@@ -64,6 +64,46 @@ return table.freeze({
 		RecoveryFeedbackCooldownSeconds = 2.25,
 	}),
 
+	Strain = table.freeze({
+		Max = 1.0,
+
+		StartWeightRatio = 0.85,
+		FullWeightRatio = 1.50,
+		StartBulkRatio = 0.90,
+		FullBulkRatio = 1.60,
+		StartBaseInstability = 0.50,
+		FullBaseInstability = 1.15,
+		StartLayer = 3,
+		FullLayer = 7,
+
+		WeightWeight = 0.30,
+		BulkWeight = 0.25,
+		BaseWeight = 0.35,
+		HeightWeight = 0.10,
+		PeakPressureWeight = 0.60,
+		CombinedPressureWeight = 0.40,
+
+		MinimumLoadSeverity = 0.10,
+		MaxAccumulationPerSecond = 0.070,
+		AccumulationExponent = 1.25,
+		ComfortDecayPerSecond = 0.035,
+
+		Moderate = 0.30,
+		High = 0.62,
+		Critical = 0.86,
+
+		SwayGenerationMultiplierAtMax = 1.55,
+		MinimumRecoveryMultiplierAtMax = 0.48,
+
+		TremorStart = 0.24,
+		TremorAmplitudeAtMax = 0.30,
+		TremorFrequency = 7.0,
+		TremorVerticalRatio = 0.65,
+
+		VisualShakeAtMax = 0.065,
+		TutorialMessageStrain = 0.12,
+	}),
+
 	Failure = table.freeze({
 		Mode = "ScaledPartialCollapse",
 		MinimumDroppedItems = 1,
