@@ -65,10 +65,23 @@ return table.freeze({
 	}),
 
 	Failure = table.freeze({
-		Mode = "PartialCollapse",
-		PartialCollapseFraction = 0.35,
+		Mode = "ScaledPartialCollapse",
 		MinimumDroppedItems = 1,
 		CollapseScatterSeconds = 0.34,
+		LostVisualLifetimeSeconds = 2.2,
+
+		MinorSeverityMax = 0.24,
+		SevereSeverityMin = 0.68,
+		NormalLossFraction = 0.30,
+		SevereLossFraction = 0.55,
+
+		RiskOvershootForMaxSeverity = 0.40,
+		BaseInstabilityForMaxSeverity = 1.15,
+		ExtraWarningSecondsForMaxSeverity = 1.20,
+
+		RiskSeverityWeight = 0.48,
+		BaseSeverityWeight = 0.32,
+		TimeSeverityWeight = 0.20,
 	}),
 
 	Stack = table.freeze({
