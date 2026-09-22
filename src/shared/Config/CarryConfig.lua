@@ -60,6 +60,8 @@ return table.freeze({
 		MinimumSwayForCollapse = 0.15,
 		SwayRiskScale = 0.80,
 		CollapseWarningSeconds = 1.05,
+		RecoveryFeedbackMinWarningSeconds = 0.38,
+		RecoveryFeedbackCooldownSeconds = 2.25,
 	}),
 
 	Failure = table.freeze({
