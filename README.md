@@ -1,69 +1,88 @@
 # ONE TRIP
 
-A Roblox game about carrying an increasingly ridiculous pile of objects and deciding whether to risk **ONE MORE** before making it back to your unload point.
+ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of objects and deciding whether to risk **ONE MORE** before making it back to your loading bay.
 
 ## Current milestone
 
-**M1.1 - Core Feel Pass / awaiting playtest validation**
+**M2 - Multiplayer Warehouse Foundation / awaiting 12-player validation**
 
-M1 proved that the basic architecture worked, but the first playtest verdict was that the core felt ugly and, more importantly, not fun enough.
+M1/M1.1 proved the carrying interaction is enjoyable enough to continue. The following behavior is treated as locked core unless multiplayer exposes a genuine technical issue:
 
-M1.1 keeps the same architecture and core mechanic. It does not add progression or content systems. It strengthens:
+- GRAB feel
+- automatic exaggerated pile presentation
+- Weight / Bulk / ShapeTag behavior
+- Base Instability + Current Sway
+- movement-driven balancing
+- recovery
+- scaled partial-collapse consequence
+- collapse-lost items being lost for that trip
+- unload feel
+- first-run STOP OR IT WILL FALL teaching behavior
 
-- pickup responsiveness
-- stack spectacle
-- item differentiation
-- movement-driven danger
-- readable recovery
-- partial-collapse presentation
-- unload payoff
-- temptation-focused test layout
+## M2 environment
 
-## Current primitive loop
+- target: 12 players
+- 216 x 216 stud warehouse graybox
+- one shared central Item Floor
+- four visible stock clusters
+- 32 normal stock positions at full restock
+- twelve perimeter loading bays
+- session-only server bay ownership
+- owner-only unload zones
+- server-authoritative first-valid-grab-wins reservation
+- item-specific 1.2-2.5 second restock timing
+- player-to-player collision remains disabled
+- carried piles remain visible to everyone
 
-Find item -> GRAB -> object flies into pile -> pile gets more ridiculous -> movement creates visible sway -> decide whether to risk another object -> recover or collapse -> reach unload -> animated test-score release -> repeat
+## Shared floor clusters
 
-## Controls
+- GENERAL
+- ELECTRONICS
+- FURNITURE
+- HEAVY
 
-- **E / mobile GRAB button** - grab nearest highlighted item
-- **Q** - drop the top carried item
-- **F3** - toggle developer carry telemetry
+These are traffic-distribution labels for testing, not final warehouse art or permanent content taxonomy.
 
-## Important prototype behavior
+## Bay behavior
 
-- The first few items should feel easy and empowering.
-- Around the middle of a run, object choice should start mattering.
-- Dangerous loads should punish sharp acceleration and turning more than careful movement.
-- Stopping drains Current Sway but never removes Base Instability.
-- Upper stack layers lag and move more dramatically than lower layers.
-- Partial Collapse remains the active failure mode.
-- This is still primitive graybox content, not production art.
+On join, the server assigns the first available bay.
+
+Each assigned player:
+
+- receives a BayIndex attribute
+- spawns/respawns at that bay facing the shared floor
+- sees their bay highlighted locally
+- sees the bay number in the prototype HUD
+- can unload only at their own bay
+
+When a player leaves, the bay becomes available again.
+
+No bay assignment is persisted.
 
 ## Still excluded
 
+- progression
+- permanent Cash economy
 - DataStores
-- progression / upgrade shop
-- final Cash economy
 - rarity
 - collections
 - events
 - monetization
-- final warehouse
+- final warehouse art
 - final UI
 - cosmetics
-- Blender assets
 - pets / rebirths / trading / combat / quests
+
+## Controls
+
+- **E / mobile GRAB** - grab nearest highlighted available item
+- **Q** - intentionally drop the top item
+- **F3** - developer carry telemetry
 
 ## Tooling
 
-Use `aftman install`, then `rojo serve`.
+Use aftman install, then rojo serve.
 
-Build with:
+Build with: rojo build -o OneTrip.rbxlx
 
-`rojo build -o OneTrip.rbxlx`
-
-See:
-
-- `docs/CORE_MECHANIC.md`
-- `docs/M1_PLAYTEST.md`
-- `docs/M1_1_PLAYTEST.md`
+See docs/M2_PLAYTEST.md for the milestone validation gate.
