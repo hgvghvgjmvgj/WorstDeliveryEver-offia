@@ -43,6 +43,7 @@ type CarryState = {
 	DangerState: string,
 	CollapseStartedAt: number?,
 	LastRecoveryFeedbackAt: number,
+	TutorialWarningsEnabled: boolean,
 	Character: Model?,
 	Humanoid: Humanoid?,
 	Root: BasePart?,
@@ -503,6 +504,7 @@ local function initializePlayer(player: Player)
 		DangerState = "Stable",
 		CollapseStartedAt = nil,
 		LastRecoveryFeedbackAt = -math.huge,
+		TutorialWarningsEnabled = true,
 		Character = nil,
 		Humanoid = nil,
 		Root = nil,
@@ -851,7 +853,9 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	then
 		if not state.CollapseStartedAt then
 			state.CollapseStartedAt = os.clock()
-			noticeRemote:FireClient(player, "OH SHIT - STOP OR CORRECT!")
+			if state.TutorialWarningsEnabled then
+				noticeRemote:FireClient(player, "STOP OR IT WILL FALL!")
+			end
 			feedbackRemote:FireClient(player, "Warning", {})
 		elseif os.clock() - state.CollapseStartedAt
 			>= CarryConfig.Danger.CollapseWarningSeconds
@@ -872,8 +876,12 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 				and sinceLastRecovery >= CarryConfig.Danger.RecoveryFeedbackCooldownSeconds
 			then
 				state.LastRecoveryFeedbackAt = os.clock()
-				noticeRemote:FireClient(player, "SAVED IT.")
-				feedbackRemote:FireClient(player, "Recovered", {})
+				if state.TutorialWarningsEnabled then
+					noticeRemote:FireClient(player, "SAVED IT.")
+				end
+				feedbackRemote:FireClient(player, "Recovered", {
+					showText = state.TutorialWarningsEnabled,
+				})
 			end
 		end
 	end
@@ -965,6 +973,10 @@ function CarryService.Unload(player: Player, unloadCFrame: CFrame?): number
 	local score = state.RunValue
 	local itemCount = #state.Items
 	state.SessionScore += score
+
+	-- The first successful delivery ends the temporary teaching phase for this
+	-- play session. From then on, players must read the pile itself.
+	state.TutorialWarningsEnabled = false
 
 	animateUnloadVisuals(
 		state,
