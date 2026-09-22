@@ -22,16 +22,21 @@ local function getCharacterPieces(player)
 	return character, humanoid, root
 end
 
-local function makeSnapshot(state, message)
-	local multiplier = 1 + math.max(0, #state.items - 1) * PrototypeConfig.TripBonusPerExtraItem
-	local possiblePayout = math.floor(state.baseReward * multiplier)
+local function getPayout(state)
+	if #state.items == 0 then
+		return 0
+	end
 
+	return math.floor(state.baseReward * PrototypeConfig.GetPayoutMultiplier(#state.items))
+end
+
+local function makeSnapshot(state, message)
 	return {
 		phase = state.phase,
 		count = #state.items,
 		weight = state.weight,
 		balance = math.floor(state.balance + 0.5),
-		possiblePayout = possiblePayout,
+		possiblePayout = getPayout(state),
 		cash = state.cash,
 		message = message,
 	}
@@ -105,10 +110,12 @@ local function resetTrip(player, message)
 	state.balance = 0
 	state.lastVelocity = Vector3.zero
 	state.lastLook = Vector3.new(0, 0, -1)
+	state.wasGrounded = true
+	state.lastHazardHit = 0
 
 	restoreMovement(player)
 	teleportToSpawn(player)
-	publish(player, message or "Take groceries. More items = more cash.")
+	publish(player, message or "Grab groceries → START TRIP → reach the front door. More = more cash + more risk.")
 end
 
 local function getCarryOffset(index)
@@ -179,6 +186,8 @@ local function takeItem(player, itemId)
 		return
 	end
 
+	local oldPayout = getPayout(state)
+
 	state.taken[itemId] = true
 	table.insert(state.items, itemId)
 	state.weight += definition.Weight
@@ -198,7 +207,15 @@ local function takeItem(player, itemId)
 
 	attachItemVisual(player, itemId, #state.items)
 	applyCarrySpeed(player)
-	publish(player, ("Added %s. Take another or hit GO."):format(definition.DisplayName))
+
+	local newPayout = getPayout(state)
+	if #state.items == 1 then
+		publish(player, ("+$%d possible. Take more for a bigger multiplier."):format(newPayout))
+	elseif #state.items >= 5 then
+		publish(player, ("FULL LOAD: $%d possible. This should be dangerous."):format(newPayout))
+	else
+		publish(player, ("Payout $%d → $%d. Take another?"):format(oldPayout, newPayout))
+	end
 end
 
 local function startTrip(player)
@@ -212,13 +229,20 @@ local function startTrip(player)
 		return
 	end
 
-	local _, _, root = getCharacterPieces(player)
+	local _, humanoid, root = getCharacterPieces(player)
 	state.phase = "Carrying"
 	state.balance = 0
 	state.lastVelocity = root and root.AssemblyLinearVelocity or Vector3.zero
 	state.lastLook = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+	state.wasGrounded = humanoid and humanoid.FloorMaterial ~= Enum.Material.Air or true
 
-	publish(player, "Get everything to the front door. Move smoothly.")
+	if state.weight <= PrototypeConfig.SafeWeight then
+		publish(player, "Light load. Get it to the front door.")
+	elseif state.weight >= PrototypeConfig.HeavyWeightThreshold then
+		publish(player, "HEAVY LOAD. Move smoothly, avoid hazards, and stop to recover.")
+	else
+		publish(player, "Watch your BALANCE. Sharp turns and obstacles hurt.")
+	end
 end
 
 local function explodeGroceries(player)
@@ -262,7 +286,7 @@ local function failTrip(player)
 
 	task.delay(PrototypeConfig.ResultDelay, function()
 		if player.Parent and playerStates[player] == state and state.phase == "Failed" then
-			resetTrip(player, "Try again. Maybe take one less... or don't.")
+			resetTrip(player, "Try again. Take less—or move smarter.")
 		end
 	end)
 end
@@ -273,8 +297,7 @@ local function completeTrip(player)
 		return
 	end
 
-	local multiplier = 1 + math.max(0, #state.items - 1) * PrototypeConfig.TripBonusPerExtraItem
-	local payout = math.floor(state.baseReward * multiplier)
+	local payout = getPayout(state)
 
 	state.cash += payout
 	state.phase = "Delivered"
@@ -286,9 +309,23 @@ local function completeTrip(player)
 
 	task.delay(PrototypeConfig.ResultDelay, function()
 		if player.Parent and playerStates[player] == state and state.phase == "Delivered" then
-			resetTrip(player, "New run. How much are you taking this time?")
+			resetTrip(player, "New run. How greedy are you feeling?")
 		end
 	end)
+end
+
+local function addBalanceSpike(player, amount, message)
+	local state = playerStates[player]
+	if not state or state.phase ~= "Carrying" then
+		return
+	end
+
+	state.balance = math.clamp(state.balance + amount, 0, PrototypeConfig.MaxBalance)
+	publish(player, message)
+
+	if state.balance >= PrototypeConfig.MaxBalance then
+		failTrip(player)
+	end
 end
 
 local function setupPlayer(player)
@@ -308,6 +345,8 @@ local function setupPlayer(player)
 		cash = existingCash,
 		lastVelocity = Vector3.zero,
 		lastLook = Vector3.new(0, 0, -1),
+		wasGrounded = true,
+		lastHazardHit = 0,
 		visuals = {},
 	}
 
@@ -340,6 +379,49 @@ local function connectWorldPrompts()
 	local goPrompt = world:WaitForChild("GoPart"):WaitForChild("InteractionPrompt")
 	goPrompt.Triggered:Connect(startTrip)
 
+	local obstacleFolder = world:WaitForChild("Obstacles")
+	for _, obstacle in obstacleFolder:GetChildren() do
+		if obstacle:IsA("BasePart") and obstacle:GetAttribute("BalanceHazard") then
+			obstacle.Touched:Connect(function(hit)
+				local character = hit:FindFirstAncestorOfClass("Model")
+				local player = character and Players:GetPlayerFromCharacter(character)
+				local state = player and playerStates[player]
+				if not state or state.phase ~= "Carrying" then
+					return
+				end
+
+				local now = os.clock()
+				if now - state.lastHazardHit < PrototypeConfig.HazardHitCooldown then
+					return
+				end
+				state.lastHazardHit = now
+
+				local spike = PrototypeConfig.HazardBaseSpike + state.weight * PrototypeConfig.HazardSpikePerWeight
+				addBalanceSpike(player, spike, ("BUMP! +%d%% balance"):format(math.floor(spike + 0.5)))
+			end)
+		end
+	end
+
+	for _, part in {world:WaitForChild("FrontStep1"), world:WaitForChild("FrontStep2")} do
+		part.Touched:Connect(function(hit)
+			local character = hit:FindFirstAncestorOfClass("Model")
+			local player = character and Players:GetPlayerFromCharacter(character)
+			local state = player and playerStates[player]
+			if not state or state.phase ~= "Carrying" then
+				return
+			end
+
+			local now = os.clock()
+			if now - state.lastHazardHit < PrototypeConfig.HazardHitCooldown then
+				return
+			end
+			state.lastHazardHit = now
+
+			local spike = 5 + state.weight * 0.75
+			addBalanceSpike(player, spike, "Careful on the steps!")
+		end)
+	end
+
 	local finish = world:WaitForChild("FinishZone")
 	finish.Touched:Connect(function(hit)
 		local character = hit:FindFirstAncestorOfClass("Model")
@@ -371,13 +453,25 @@ local function updateBalance(player, state, dt, elapsed)
 		currentLook = state.lastLook
 	end
 
+	local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
+	if state.wasGrounded and not grounded and velocity.Y > 2 then
+		local jumpSpike = PrototypeConfig.JumpBaseSpike + state.weight * PrototypeConfig.JumpSpikePerWeight
+		state.balance += jumpSpike
+		publish(player, ("JUMP! +%d%% balance"):format(math.floor(jumpSpike + 0.5)))
+	end
+	state.wasGrounded = grounded
+
 	if speed > PrototypeConfig.MovingSpeedThreshold then
-		state.balance += dt * state.weight * PrototypeConfig.MovementStrainPerWeight
+		local excessWeight = math.max(0, state.weight - PrototypeConfig.SafeWeight)
+		state.balance += dt * excessWeight * PrototypeConfig.MovementStrainPerExcessWeight
+
+		local heavyExcess = math.max(0, state.weight - PrototypeConfig.HeavyWeightThreshold)
+		state.balance += dt * heavyExcess * PrototypeConfig.HeavyMovementStrainPerExcessWeight
 
 		local dot = math.clamp(state.lastLook:Dot(currentLook), -1, 1)
 		if dot < PrototypeConfig.SharpTurnDotThreshold then
 			local turnSeverity = (1 - dot) / (1 - PrototypeConfig.SharpTurnDotThreshold)
-			state.balance += math.min(turnSeverity, 2.5) * state.weight * PrototypeConfig.TurnStrainPerWeight
+			state.balance += math.min(turnSeverity, 1.8) * state.weight * PrototypeConfig.TurnStrainPerWeight
 		end
 	else
 		state.balance -= PrototypeConfig.RecoveryPerSecond * dt
@@ -385,12 +479,15 @@ local function updateBalance(player, state, dt, elapsed)
 
 	state.balance = math.clamp(state.balance, 0, PrototypeConfig.MaxBalance)
 
-	local wobbleRatio = state.balance / PrototypeConfig.MaxBalance
+	local balanceRatio = state.balance / PrototypeConfig.MaxBalance
+	local loadRatio = math.clamp(state.weight / 13, 0, 1)
 	for index, visual in state.visuals do
 		if visual.weld and visual.weld.Parent then
 			local direction = (index % 2 == 0) and 1 or -1
-			local angle = math.sin(elapsed * 7 + index) * math.rad(1 + 8 * wobbleRatio) * direction
-			visual.weld.C0 = visual.baseOffset * CFrame.Angles(0, 0, angle)
+			local wobbleDegrees = 2 + (5 * loadRatio) + (20 * balanceRatio)
+			local zAngle = math.sin(elapsed * 8 + index) * math.rad(wobbleDegrees) * direction
+			local yAngle = math.sin(elapsed * 5.5 + index * 0.6) * math.rad(wobbleDegrees * 0.35)
+			visual.weld.C0 = visual.baseOffset * CFrame.Angles(0, yAngle, zAngle)
 		end
 	end
 
@@ -401,7 +498,7 @@ local function updateBalance(player, state, dt, elapsed)
 		failTrip(player)
 	else
 		state.publishAccumulator = (state.publishAccumulator or 0) + dt
-		if state.publishAccumulator >= 0.10 then
+		if state.publishAccumulator >= 0.08 then
 			state.publishAccumulator = 0
 			publish(player)
 		end
