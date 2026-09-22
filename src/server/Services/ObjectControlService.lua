@@ -311,11 +311,10 @@ local function applyMirroredMovement(player, state)
 
 	if delta.Magnitude > 0.001 then
 		local originalCouch = couch.CFrame
-		local originalRootCFrame = root.CFrame
 		local actualDelta = Vector3.zero
 
 		local fullCandidate = originalCouch + delta
-		if trySetCFrame(player, fullCandidate, "Jammed. Back up, rotate, or tilt.") then
+		if trySetCFrame(player, fullCandidate, "Jammed — you can move freely. Back up, sidestep, rotate, or tilt.") then
 			actualDelta = delta
 		else
 			if math.abs(delta.X) > 0.001 then
@@ -334,10 +333,9 @@ local function applyMirroredMovement(player, state)
 			end
 		end
 
-		local blockedDelta = delta - actualDelta
-		if blockedDelta.Magnitude > 0.001 then
-			root.CFrame = originalRootCFrame - blockedDelta
-		end
+		-- Important: never shove the player backward when the couch jams.
+		-- The couch simply stays where collision stopped it while the player
+		-- keeps normal movement freedom to back up, sidestep, rotate, or drop.
 	end
 
 	state.lastRootPosition = root.Position
