@@ -556,7 +556,13 @@ local function applyGrabRecoil(player: Player, state: CarryState, itemId: string
 	)
 end
 
-local function dropEntries(player: Player, state: CarryState, startIndex: number, notice: string)
+local function removeEntries(
+	player: Player,
+	state: CarryState,
+	startIndex: number,
+	notice: string,
+	lostFromCollapse: boolean
+)
 	local removed: {{ItemId: string, StartCFrame: CFrame}} = {}
 
 	for index = #state.Items, startIndex, -1 do
@@ -586,12 +592,20 @@ local function dropEntries(player: Player, state: CarryState, startIndex: number
 	state.CollapseStartedAt = nil
 
 	for index, dropped in removed do
-		itemService.SpawnDropped(
-			dropped.ItemId,
-			dropped.StartCFrame,
-			player.UserId,
-			index
-		)
+		if lostFromCollapse then
+			itemService.SpawnCollapseLoss(
+				dropped.ItemId,
+				dropped.StartCFrame,
+				index
+			)
+		else
+			itemService.SpawnDropped(
+				dropped.ItemId,
+				dropped.StartCFrame,
+				player.UserId,
+				index
+			)
+		end
 	end
 
 	if #removed > 0 then
@@ -601,26 +615,100 @@ local function dropEntries(player: Player, state: CarryState, startIndex: number
 	sendState(player, state, true)
 end
 
-local function partialCollapse(player: Player, state: CarryState)
+local function calculateCollapseSeverity(
+	state: CarryState,
+	risk: number,
+	warningDuration: number
+): number
+	local failure = CarryConfig.Failure
+	local danger = CarryConfig.Danger
+
+	local riskSeverity = math.clamp(
+		(risk - danger.CollapseRisk)
+			/ math.max(0.01, failure.RiskOvershootForMaxSeverity),
+		0,
+		1
+	)
+
+	local baseSeverity = math.clamp(
+		(state.BaseInstability - danger.MinimumBaseForCollapse)
+			/ math.max(
+				0.01,
+				failure.BaseInstabilityForMaxSeverity - danger.MinimumBaseForCollapse
+			),
+		0,
+		1
+	)
+
+	local timeSeverity = math.clamp(
+		(warningDuration - danger.CollapseWarningSeconds)
+			/ math.max(0.01, failure.ExtraWarningSecondsForMaxSeverity),
+		0,
+		1
+	)
+
+	return math.clamp(
+		riskSeverity * failure.RiskSeverityWeight
+			+ baseSeverity * failure.BaseSeverityWeight
+			+ timeSeverity * failure.TimeSeverityWeight,
+		0,
+		1
+	)
+end
+
+local function collapseLossCount(itemCount: number, severity: number): number
+	local failure = CarryConfig.Failure
+
+	if severity <= failure.MinorSeverityMax then
+		return math.min(itemCount, failure.MinimumDroppedItems)
+	end
+
+	local fraction = failure.NormalLossFraction
+	if severity >= failure.SevereSeverityMin then
+		fraction = failure.SevereLossFraction
+	else
+		local alpha = math.clamp(
+			(severity - failure.MinorSeverityMax)
+				/ math.max(0.01, failure.SevereSeverityMin - failure.MinorSeverityMax),
+			0,
+			1
+		)
+		fraction = failure.NormalLossFraction
+			+ (failure.SevereLossFraction - failure.NormalLossFraction) * alpha
+	end
+
+	return math.clamp(
+		math.max(failure.MinimumDroppedItems, math.ceil(itemCount * fraction)),
+		1,
+		itemCount
+	)
+end
+
+local function partialCollapse(
+	player: Player,
+	state: CarryState,
+	risk: number,
+	warningDuration: number
+)
 	if #state.Items == 0 then
 		return
 	end
 
-	local count = math.max(
-		CarryConfig.Failure.MinimumDroppedItems,
-		math.ceil(#state.Items * CarryConfig.Failure.PartialCollapseFraction)
-	)
-
+	local severity = calculateCollapseSeverity(state, risk, warningDuration)
+	local count = collapseLossCount(#state.Items, severity)
 	local startIndex = math.max(1, #state.Items - count + 1)
-	dropEntries(
+
+	removeEntries(
 		player,
 		state,
 		startIndex,
-		("NOOO - %d items fell!"):format(count)
+		("NOOO - %d items lost!"):format(count),
+		true
 	)
 
 	feedbackRemote:FireClient(player, "Collapse", {
 		droppedCount = count,
+		severity = severity,
 	})
 end
 
@@ -680,7 +768,7 @@ local function handleDrop(player: Player)
 		return
 	end
 
-	dropEntries(player, state, #state.Items, "Dropped the top item.")
+	removeEntries(player, state, #state.Items, "Dropped the top item.", false)
 end
 
 local function updateLayerVisuals(state: CarryState, risk: number, dt: number)
@@ -860,7 +948,8 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 		elseif os.clock() - state.CollapseStartedAt
 			>= CarryConfig.Danger.CollapseWarningSeconds
 		then
-			partialCollapse(player, state)
+			local warningDuration = os.clock() - state.CollapseStartedAt
+			partialCollapse(player, state, risk, warningDuration)
 		end
 	elseif risk <= CarryConfig.Danger.RecoveryRisk
 		or state.CurrentSway.Magnitude
