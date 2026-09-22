@@ -1,6 +1,6 @@
 # GET IT IN!
 
-A solo-first Roblox spatial puzzle about forcing absurd oversized objects through spaces that look too small for them.
+A solo-complete, social Roblox spatial puzzle about forcing absurd oversized objects through spaces that look too small for them.
 
 ## Current status
 
@@ -10,69 +10,69 @@ A solo-first Roblox spatial puzzle about forcing absurd oversized objects throug
 - M3 variety: PASS
 - M4 economy + progression: PASS
 - M5 saving + reliability: PASS
-- M6 real map + art: CURRENT TEST
+- M6 map + art: REVISION TEST
 
-## M6 — Real Map + Art
+## M6 map revision
 
-The proven puzzle loop is now presented as a colorful stylized Roblox moving-day game instead of a graybox.
+The first art pass looked good but was intentionally too small. The map is now a full neighborhood-scale foundation rather than one isolated driveway.
 
-### Environment
+### New neighborhood layout
 
-Studio-built:
-- compact suburban moving-day property
-- stylized lawn, road, sidewalk, driveway and porch
-- colorful house frontage and roof
-- readable teal door trim around every active puzzle opening
-- moving truck with cab, cargo box, ramp, wheels and branding
-- moving-box stacks
-- trees, shrubs and mailbox
-- contained side boundaries so the puzzle cannot be bypassed by walking around the house
-- warmer interior flooring
-- brighter afternoon lighting with subtle color correction/bloom
+- roughly 340 x 320 stud ground footprint
+- multiple streets and sidewalks
+- central active contract property
+- 7 surrounding house lots
+- moving-company yard / office
+- 4 future truck/player bays
+- visible contract board
+- visible $100 and $180 job districts
+- future special-job property
+- trees and landscaping across the whole neighborhood
+- tall outer border far from the active area so players cannot jump directly into the void
 
-### Furniture art
+This is still a compact Roblox map, not an open-world city. The goal is to give a multiplayer server room to breathe while keeping players close enough to see other moving jobs.
 
-Furniture still uses the exact gameplay collision silhouettes that passed the earlier milestones.
+### Money now has a world-facing purpose
 
-New visual-only pieces add:
-- couch cushions and feet
-- recognizable refrigerator doors/handles
-- sectional cushions
-- piano keyboard/lid/pedal details
+Current cash progression remains:
+- starter jobs
+- $100 unlock tier
+- $180 hard-job tier
 
-Visual-only pieces do not participate in collision, delivery checks or floor placement, so art should not secretly make puzzles harder.
+The map now communicates those tiers physically through labeled lots and the contract board.
 
-## Studio vs Blender
+The moving-company yard also reserves visible space for later money sinks:
+- truck styles
+- tools
+- company upgrades
 
-**No Blender is required for M6.**
+Those are presentation/future hooks only in M6; we are not adding power-creep upgrades before their design is tested.
 
-The current environment and furniture are deliberately built from clean Roblox Studio primitives because:
-- the map is collision/layout-heavy
-- silhouettes are still simple enough to read well
-- mobile performance matters
-- we should not spend Blender time before the complete visual direction passes in-game
+### Multiplayer preparation
 
-Use Blender later only for hero/special furniture or iconic rare objects whose silhouette genuinely benefits from custom modeling.
+M8 will still implement the actual social/multiplayer job behavior. The current server still has one active contract simulation.
+
+M6 now gives M8 somewhere to put:
+- multiple player trucks
+- simultaneous visible jobs
+- shared social space
+- contract selection
+- progression districts
+
+### Puzzle protection
+
+The active job remains contained by side fences so a player cannot carry furniture around the entire house and skip the intended route.
 
 ## M6 PASS criteria
 
-- The game reads as a real moving-day experience immediately, not a test room.
-- The truck, house and current furniture are recognizable at a glance.
-- Colors are bright/stylized without feeling preschool-like.
-- Doorways and intended routes remain visually obvious.
-- Art does not make any previously solvable puzzle harder.
-- Furniture still rotates, tilts, drops and delivers correctly.
-- The scene remains readable and smooth in the mobile emulator.
-- The environment feels compact; scenery should support the puzzle rather than distract from it.
+- Map feels large enough for a populated server rather than one player.
+- You cannot easily leave the world/void.
+- The active puzzle still reads clearly.
+- The neighborhood is not so huge that players feel isolated.
+- Cash/unlocks visibly relate to future jobs/areas.
+- Current furniture controls and save system still work.
+- Mobile performance remains smooth.
 
-## Do not worry about yet
+## Blender
 
-- final UI redesign/onboarding polish (M7)
-- sound/VFX/camera juice (M7)
-- rare/special contracts
-- social/co-op systems
-- monetization implementation
-- custom Blender hero assets
-- huge neighborhood/open world
-
-M6 is an art-direction proof, not a final content-complete map.
+Still not required for this map revision. Studio primitives remain appropriate for the neighborhood structure and collision-heavy environment.
