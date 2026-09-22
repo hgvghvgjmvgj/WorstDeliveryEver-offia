@@ -4,60 +4,43 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M2 - Multiplayer Warehouse Foundation / awaiting 12-player validation**
+**M2.1 - Carry Urgency / Strain Fix / awaiting playtest validation**
 
-M1/M1.1 proved the carrying interaction is enjoyable enough to continue. The following behavior is treated as locked core unless multiplayer exposes a genuine technical issue:
+M1/M1.1 carry feel and M2 multiplayer warehouse behavior remain locked.
 
-- GRAB feel
-- automatic exaggerated pile presentation
-- Weight / Bulk / ShapeTag behavior
-- Base Instability + Current Sway
-- movement-driven balancing
-- recovery
-- scaled partial-collapse consequence
-- collapse-lost items being lost for that trip
-- unload feel
-- first-run STOP OR IT WILL FALL teaching behavior
+M2.1 adds one internal carry concept:
 
-## M2 environment
+**Strain = how difficult it becomes to keep holding an overloaded pile together over time.**
+
+Strain is load-dependent, not a universal trip timer.
+
+- comfortable loads create effectively no Strain pressure
+- risky overloads accumulate Strain over time
+- stopping still reduces Current Sway
+- stopping does not reset or pause overload Strain
+- high Strain makes Sway recover more slowly
+- high Strain makes movement mistakes create more Sway
+- high/critical Strain creates persistent pile tremble even while stationary
+- sufficiently overloaded piles can eventually collapse if held too long
+- reducing the actual load allows Strain to decay
+- unloading/death resets the current-trip Strain
+
+There is no player-facing Strain percentage or collapse countdown.
+
+The first teaching phase may show: HEAVY LOADS GET HARDER TO HOLD.
+After the first successful delivery, normal play relies on the pile itself.
+
+## M2 environment remains unchanged
 
 - target: 12 players
 - 216 x 216 stud warehouse graybox
-- one shared central Item Floor
-- four visible stock clusters
-- 32 normal stock positions at full restock
-- twelve perimeter loading bays
-- session-only server bay ownership
+- shared Item Floor
+- four stock clusters
+- 32 normal stock positions
+- twelve session-assigned loading bays
 - owner-only unload zones
-- server-authoritative first-valid-grab-wins reservation
-- item-specific 1.2-2.5 second restock timing
-- player-to-player collision remains disabled
-- carried piles remain visible to everyone
-
-## Shared floor clusters
-
-- GENERAL
-- ELECTRONICS
-- FURNITURE
-- HEAVY
-
-These are traffic-distribution labels for testing, not final warehouse art or permanent content taxonomy.
-
-## Bay behavior
-
-On join, the server assigns the first available bay.
-
-Each assigned player:
-
-- receives a BayIndex attribute
-- spawns/respawns at that bay facing the shared floor
-- sees their bay highlighted locally
-- sees the bay number in the prototype HUD
-- can unload only at their own bay
-
-When a player leaves, the bay becomes available again.
-
-No bay assignment is persisted.
+- first-valid-server-grab wins
+- player collision disabled
 
 ## Still excluded
 
@@ -77,7 +60,7 @@ No bay assignment is persisted.
 
 - **E / mobile GRAB** - grab nearest highlighted available item
 - **Q** - intentionally drop the top item
-- **F3** - developer carry telemetry
+- **F3** - developer telemetry, including Strain and load severity
 
 ## Tooling
 
@@ -85,4 +68,4 @@ Use aftman install, then rojo serve.
 
 Build with: rojo build -o OneTrip.rbxlx
 
-See docs/M2_PLAYTEST.md for the milestone validation gate.
+See docs/M2_1_PLAYTEST.md for the Strain validation gate.
