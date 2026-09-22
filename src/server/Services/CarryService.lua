@@ -377,6 +377,13 @@ local function initializePlayer(player: Player)
 
 	states[player] = state
 
+	player:GetAttributeChangedSignal("CarryPreset"):Connect(function()
+		if states[player] == state then
+			recompute(player, state)
+			sendState(player, state, true)
+		end
+	end)
+
 	player.CharacterAdded:Connect(function(character)
 		attachCharacter(player, character)
 	end)
