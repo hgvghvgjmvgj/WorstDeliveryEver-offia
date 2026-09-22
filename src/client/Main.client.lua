@@ -1,14 +1,13 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Controllers = script:WaitForChild("Controllers")
 
-local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
-local remoteFolder = ReplicatedStorage:WaitForChild(RemoteNames.Folder)
+local InteractionController = require(Controllers:WaitForChild("InteractionController"))
+local PrototypeUIController = require(Controllers:WaitForChild("PrototypeUIController"))
+local CameraProtectionController = require(Controllers:WaitForChild("CameraProtectionController"))
 
--- M0 intentionally has no gameplay input yet. Waiting for the remote folder here
--- proves the client/server project wiring is healthy before CarryService begins.
-remoteFolder:WaitForChild(RemoteNames.RequestGrab)
-remoteFolder:WaitForChild(RemoteNames.RequestDrop)
-remoteFolder:WaitForChild(RemoteNames.CarryState)
+PrototypeUIController.Start()
+InteractionController.Start(PrototypeUIController)
+CameraProtectionController.Start()
 
-print("[ONE TRIP] client foundation loaded")
+print("[ONE TRIP] M1 client loaded")
