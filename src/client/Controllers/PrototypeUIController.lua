@@ -53,13 +53,16 @@ local function refreshDebug()
 
 	debugLabel.Visible = true
 	debugLabel.Text = string.format(
-		"DEV DEBUG [F3]\nPreset: %s\nItems: %d\nWeight: %.1f\nBulk: %.1f\nBase Instability: %.3f\nCurrent Sway: %.3f",
+		"DEV DEBUG [F3]\nPreset: %s\nItems: %d\nWeight: %.1f\nBulk: %.1f\nBase Instability: %.3f\nCurrent Sway: %.3f\nStrain: %.3f (%s)\nLoad Severity: %.3f",
 		latestSnapshot.preset or "?",
 		latestSnapshot.itemCount or 0,
 		latestSnapshot.weight or 0,
 		latestSnapshot.bulk or 0,
 		latestSnapshot.baseInstability or 0,
-		latestSnapshot.currentSway or 0
+		latestSnapshot.currentSway or 0,
+		latestSnapshot.strain or 0,
+		latestSnapshot.strainStage or "None",
+		latestSnapshot.strainLoadSeverity or 0
 	)
 end
 
