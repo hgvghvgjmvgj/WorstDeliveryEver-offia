@@ -46,16 +46,31 @@ local function markBlocker(part)
 	return part
 end
 
-function PrototypeMap.Build()
+local function clearTemplateWorld()
+	local existing = Workspace:FindFirstChild("GetItInPrototype")
+	if existing then
+		existing:Destroy()
+	end
+
 	local oldOneTrip = Workspace:FindFirstChild("OneTripPrototype")
 	if oldOneTrip then
 		oldOneTrip:Destroy()
 	end
 
-	local existing = Workspace:FindFirstChild("GetItInPrototype")
-	if existing then
-		existing:Destroy()
+	local baseplate = Workspace:FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		baseplate:Destroy()
 	end
+
+	for _, descendant in Workspace:GetDescendants() do
+		if descendant:IsA("SpawnLocation") then
+			descendant:Destroy()
+		end
+	end
+end
+
+function PrototypeMap.Build()
+	clearTemplateWorld()
 
 	local world = Instance.new("Folder")
 	world.Name = "GetItInPrototype"
@@ -80,11 +95,12 @@ function PrototypeMap.Build()
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PrototypeSpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.CFrame = CFrame.lookAt(Vector3.new(8, 1, -20), Vector3.new(0, 1, -12))
+	spawn.CFrame = CFrame.lookAt(Vector3.new(8, 0.6, -18), Vector3.new(0, 0.6, -12))
 	spawn.Anchored = true
+	spawn.CanCollide = false
 	spawn.Neutral = true
-	spawn.Transparency = 0.5
-	spawn.Color = Color3.fromRGB(78, 170, 255)
+	spawn.Duration = 0
+	spawn.Transparency = 1
 	spawn.Parent = world
 
 	local truck = Instance.new("Model")

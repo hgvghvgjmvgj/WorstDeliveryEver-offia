@@ -16,9 +16,16 @@ local completed = false
 local currentObjectIndex = 1
 local activeObject = nil
 local activeObjectId = nil
+local objectYawDegrees = 0
+local objectTilted = false
 
 local function getWorld()
 	return Workspace:FindFirstChild("GetItInPrototype")
+end
+
+local function getPrototypeSpawn()
+	local world = getWorld()
+	return world and world:FindFirstChild("PrototypeSpawn")
 end
 
 local function getCharacterPieces(player)
@@ -30,6 +37,18 @@ local function getCharacterPieces(player)
 	return character, character:FindFirstChildOfClass("Humanoid"), character:FindFirstChild("HumanoidRootPart")
 end
 
+local function placePlayerAtPrototypeSpawn(player)
+	local spawn = getPrototypeSpawn()
+	if spawn and spawn:IsA("SpawnLocation") then
+		player.RespawnLocation = spawn
+	end
+
+	local _, _, root = getCharacterPieces(player)
+	if root and spawn then
+		root.CFrame = spawn.CFrame + Vector3.new(0, 3.5, 0)
+	end
+end
+
 local function currentDefinition()
 	return activeObjectId and ObjectConfig.Get(activeObjectId) or nil
 end
@@ -39,7 +58,6 @@ local function sendState(player, message, overrideHolding)
 		return
 	end
 
-	local state = stateByPlayer[player]
 	local isHolding = overrideHolding
 	if isHolding == nil then
 		isHolding = holder == player
@@ -50,7 +68,7 @@ local function sendState(player, message, overrideHolding)
 	stateRemote:FireClient(player, {
 		holding = isHolding,
 		message = message,
-		tilted = state and state.tilted or false,
+		tilted = objectTilted,
 		objectName = definition and definition.DisplayName or "",
 		roundIndex = currentObjectIndex,
 		roundCount = #ObjectConfig.Order,
@@ -59,7 +77,7 @@ end
 
 local function broadcastState(message)
 	for _, player in Players:GetPlayers() do
-		sendState(player, message, false)
+		sendState(player, message, holder == player)
 	end
 end
 
@@ -80,6 +98,20 @@ local function placeOnFloor(cframe, size)
 	local rotationOnly = cframe - position
 
 	return CFrame.new(position.X, Config.FloorTopY + halfHeight + 0.03, position.Z) * rotationOnly
+end
+
+local function buildOrientationCFrame(position, yawDegrees, tilted, definition)
+	local orientation = CFrame.Angles(0, math.rad(yawDegrees), 0)
+
+	if tilted then
+		if definition.TiltAxis == "X" then
+			orientation *= CFrame.Angles(math.rad(Config.TiltDegrees), 0, 0)
+		else
+			orientation *= CFrame.Angles(0, 0, math.rad(Config.TiltDegrees))
+		end
+	end
+
+	return CFrame.new(position) * orientation
 end
 
 local function isBlocked(candidateCFrame, object, character)
@@ -182,7 +214,6 @@ local function grab(player)
 		stateByPlayer[player] = state
 	end
 
-	state.tilted = false
 	state.lastRootPosition = root.Position
 	state.lastBlockedMessage = 0
 
@@ -196,7 +227,7 @@ local function grab(player)
 		prompt.Enabled = false
 	end
 
-	sendState(player, "Walk normally. Rotate, tilt, drop, and re-grab whenever you need.", true)
+	sendState(player, "Walk normally. Q/E rotate, R tilts, F drops.", true)
 end
 
 local function notifyBlocked(player, message)
@@ -212,7 +243,7 @@ local function notifyBlocked(player, message)
 	end
 end
 
-local function trySetCFrame(player, candidateCFrame, blockedMessage)
+local function tryPlace(player, candidateCFrame, blockedMessage)
 	local object = activeObject
 	local character = player.Character
 	if not object or not character then
@@ -234,17 +265,18 @@ local function rotate(player, direction)
 		return
 	end
 
-	local candidate = activeObject.CFrame * CFrame.Angles(0, math.rad(Config.RotateStepDegrees * direction), 0)
-	trySetCFrame(player, candidate, "No room to rotate there. Back up first.")
-end
-
-local function getTiltRotation(definition, direction)
-	local angle = math.rad(Config.TiltDegrees * direction)
-	if definition.TiltAxis == "X" then
-		return CFrame.Angles(angle, 0, 0)
+	local definition = currentDefinition()
+	if not definition then
+		return
 	end
 
-	return CFrame.Angles(0, 0, angle)
+	local candidateYaw = objectYawDegrees + Config.RotateStepDegrees * direction
+	local candidate = buildOrientationCFrame(activeObject.Position, candidateYaw, objectTilted, definition)
+
+	if tryPlace(player, candidate, "Rotation blocked. Back away from the wall first.") then
+		objectYawDegrees = candidateYaw
+		sendState(player, ("ROTATED %s"):format(direction < 0 and "LEFT" or "RIGHT"))
+	end
 end
 
 local function toggleTilt(player)
@@ -252,18 +284,17 @@ local function toggleTilt(player)
 		return
 	end
 
-	local state = stateByPlayer[player]
 	local definition = currentDefinition()
-	if not state or not definition then
+	if not definition then
 		return
 	end
 
-	local direction = state.tilted and -1 or 1
-	local candidate = activeObject.CFrame * getTiltRotation(definition, direction)
+	local candidateTilted = not objectTilted
+	local candidate = buildOrientationCFrame(activeObject.Position, objectYawDegrees, candidateTilted, definition)
 
-	if trySetCFrame(player, candidate, "No room to tilt here. Back away from the wall.") then
-		state.tilted = not state.tilted
-		sendState(player, state.tilted and "Reoriented." or "Returned to the starting orientation.")
+	if tryPlace(player, candidate, "Tilt blocked. Give the object more space first.") then
+		objectTilted = candidateTilted
+		sendState(player, objectTilted and "TILTED / REORIENTED" or "RETURNED FLAT")
 	end
 end
 
@@ -305,6 +336,9 @@ local function spawnCurrentObject()
 		return
 	end
 
+	objectYawDegrees = 0
+	objectTilted = false
+
 	local object = Instance.new("Part")
 	object.Name = "MoveObject"
 	object.Size = definition.Size
@@ -315,7 +349,7 @@ local function spawnCurrentObject()
 	object.TopSurface = Enum.SurfaceType.Smooth
 	object.BottomSurface = Enum.SurfaceType.Smooth
 
-	local start = CFrame.new(Config.ObjectStartPosition)
+	local start = buildOrientationCFrame(Config.ObjectStartPosition, objectYawDegrees, objectTilted, definition)
 	object.CFrame = placeOnFloor(start, object.Size)
 	object.Parent = folder
 	activeObject = object
@@ -335,7 +369,6 @@ local function spawnCurrentObject()
 	addObjectBillboard(object, definition.ChallengeText)
 
 	for _, state in stateByPlayer do
-		state.tilted = false
 		state.lastRootPosition = nil
 		clearNoCollision(state)
 	end
@@ -402,17 +435,15 @@ local function applyMirroredMovement(player, state)
 
 	if delta.Magnitude > 0.001 then
 		local originalObject = object.CFrame
-
 		local fullCandidate = originalObject + delta
-		if not trySetCFrame(player, fullCandidate, "Jammed — you can move freely. Back up, sidestep, rotate, or tilt.") then
+
+		if not tryPlace(player, fullCandidate, "Jammed — back up, sidestep, rotate, or tilt.") then
 			if math.abs(delta.X) > 0.001 then
-				local xDelta = Vector3.new(delta.X, 0, 0)
-				trySetCFrame(player, originalObject + xDelta)
+				tryPlace(player, originalObject + Vector3.new(delta.X, 0, 0))
 			end
 
 			if math.abs(delta.Z) > 0.001 then
-				local zDelta = Vector3.new(0, 0, delta.Z)
-				trySetCFrame(player, object.CFrame + zDelta)
+				tryPlace(player, object.CFrame + Vector3.new(0, 0, delta.Z))
 			end
 		end
 	end
@@ -431,14 +462,20 @@ end
 
 local function setupPlayer(player)
 	stateByPlayer[player] = {
-		tilted = false,
 		lastRootPosition = nil,
 		lastBlockedMessage = 0,
 		noCollisionConstraints = {},
 	}
 
+	local spawn = getPrototypeSpawn()
+	if spawn and spawn:IsA("SpawnLocation") then
+		player.RespawnLocation = spawn
+	end
+
 	player.CharacterAdded:Connect(function()
-		task.wait(0.2)
+		task.wait(0.15)
+		placePlayerAtPrototypeSpawn(player)
+
 		if holder == player then
 			holder = nil
 		end
@@ -458,6 +495,7 @@ local function setupPlayer(player)
 
 	if player.Character then
 		task.defer(function()
+			placePlayerAtPrototypeSpawn(player)
 			local definition = currentDefinition()
 			local message = definition
 				and ("Get the %s through the doorway."):format(definition.DisplayName)
