@@ -69,6 +69,25 @@ local function teleportToSpawn(player)
 	end
 end
 
+local function restorePickupItems()
+	local world = Workspace:FindFirstChild("OneTripPrototype")
+	local itemsFolder = world and world:FindFirstChild("PickupItems")
+	if not itemsFolder then
+		return
+	end
+
+	for _, itemPart in itemsFolder:GetChildren() do
+		if itemPart:IsA("BasePart") then
+			itemPart.Transparency = 0
+			itemPart.CanCollide = true
+			local prompt = itemPart:FindFirstChild("InteractionPrompt")
+			if prompt and prompt:IsA("ProximityPrompt") then
+				prompt.Enabled = true
+			end
+		end
+	end
+end
+
 local function resetTrip(player, message)
 	local state = playerStates[player]
 	if not state then
@@ -76,6 +95,7 @@ local function resetTrip(player, message)
 	end
 
 	clearCarryVisuals(state)
+	restorePickupItems()
 
 	state.phase = "Loading"
 	state.items = {}
@@ -163,6 +183,18 @@ local function takeItem(player, itemId)
 	table.insert(state.items, itemId)
 	state.weight += definition.Weight
 	state.baseReward += definition.Reward
+
+	local world = Workspace:FindFirstChild("OneTripPrototype")
+	local itemsFolder = world and world:FindFirstChild("PickupItems")
+	local pickupPart = itemsFolder and itemsFolder:FindFirstChild(itemId)
+	if pickupPart and pickupPart:IsA("BasePart") then
+		pickupPart.Transparency = 1
+		pickupPart.CanCollide = false
+		local prompt = pickupPart:FindFirstChild("InteractionPrompt")
+		if prompt and prompt:IsA("ProximityPrompt") then
+			prompt.Enabled = false
+		end
+	end
 
 	attachItemVisual(player, itemId, #state.items)
 	applyCarrySpeed(player)
