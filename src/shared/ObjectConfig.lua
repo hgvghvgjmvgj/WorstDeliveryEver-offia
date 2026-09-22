@@ -70,7 +70,7 @@ ObjectConfig.Objects = {
 	Piano = {
 		DisplayName = "Grand Piano-ish Thing",
 		TiltAxis = "Z",
-		ChallengeText = "THE HALL TURNS. THE CEILING PUNISHES CHEAP TILTS.",
+		ChallengeText = "GET THROUGH, THEN PIVOT AROUND THE CORNER.",
 		Pieces = {
 			{Size = Vector3.new(10.5, 2.5, 4.6), Offset = CFrame.new(-0.3, 3.6, 0), Color = purple},
 			{Size = Vector3.new(5.5, 1.1, 2.0), Offset = CFrame.new(3.5, 2.0, -2.3), Color = Color3.fromRGB(105, 75, 157)},
@@ -80,7 +80,7 @@ ObjectConfig.Objects = {
 		Challenge = {
 			Kind = "CornerHall",
 			EntryWidth = 8.5,
-			HallWidth = 10.0,
+			HallWidth = 16.0,
 			CeilingHeight = 7.7,
 			ExitClearanceX = 22,
 			SuccessCenter = Vector3.new(14.5, 3.5, 20),
