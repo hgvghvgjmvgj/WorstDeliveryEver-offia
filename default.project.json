@@ -1,5 +1,5 @@
 {
-  "name": "OneTrip",
+  "name": "GetItIn",
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
