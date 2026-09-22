@@ -1,6 +1,6 @@
 --!strict
 
-local Controllers = script:WaitForChild("Controllers")
+local Controllers = script.Parent:WaitForChild("Controllers")
 
 local InteractionController = require(Controllers:WaitForChild("InteractionController"))
 local PrototypeUIController = require(Controllers:WaitForChild("PrototypeUIController"))
