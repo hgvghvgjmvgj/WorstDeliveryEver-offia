@@ -139,7 +139,7 @@ local function buildItemClusters(root: Folder)
 	end
 end
 
-local function buildBay(root: Folder, baysFolder: Folder, index: number)
+local function buildBay(baysFolder: Folder, index: number)
 	local world = GameConfig.World
 	local angle = ((index - 1) / world.BayCount) * math.pi * 2
 	local direction = Vector3.new(math.cos(angle), 0, math.sin(angle))
@@ -275,7 +275,7 @@ function WorldService.Build(): Folder
 	baysFolder.Parent = root
 
 	for index = 1, world.BayCount do
-		buildBay(root, baysFolder, index)
+		buildBay(baysFolder, index)
 	end
 
 	local fallbackSpawn = Instance.new("SpawnLocation")
