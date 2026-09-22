@@ -3,6 +3,7 @@
 return table.freeze({
 	FootprintSize = Vector3.new(410, 1, 410),
 	WallHeight = 28,
+	CeilingClearance = 46,
 	MainLaneWidth = 20,
 
 	Bay = table.freeze({
