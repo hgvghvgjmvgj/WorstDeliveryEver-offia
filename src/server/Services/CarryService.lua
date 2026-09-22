@@ -290,8 +290,7 @@ local function updateStrain(player: Player, state: CarryState, dt: number)
 		)
 	end
 
-	if state.TutorialWarningsEnabled
-		and not state.TutorialStrainMessageShown
+	if not state.TutorialStrainMessageShown
 		and state.Strain >= tuning.TutorialMessageStrain
 	then
 		state.TutorialStrainMessageShown = true
