@@ -41,6 +41,7 @@ type CarryState = {
 	LastGrabAt: number,
 	VisualAccumulator: number,
 	StateAccumulator: number,
+	WideItemCount: number,
 }
 
 local states: {[Player]: CarryState} = {}
@@ -242,6 +243,7 @@ local function recompute(player: Player, state: CarryState)
 	state.Weight = 0
 	state.Bulk = 0
 	state.RunValue = 0
+	state.WideItemCount = 0
 
 	for index, entry in state.Items do
 		local definition = ItemConfig[entry.ItemId]
@@ -251,6 +253,9 @@ local function recompute(player: Player, state: CarryState)
 			state.Weight += definition.Weight
 			state.Bulk += definition.Bulk
 			state.RunValue += definition.Value
+			if definition.ShapeTag == "Wide" then
+				state.WideItemCount += 1
+			end
 		end
 	end
 
@@ -373,6 +378,7 @@ local function initializePlayer(player: Player)
 		LastGrabAt = 0,
 		VisualAccumulator = 0,
 		StateAccumulator = 0,
+		WideItemCount = 0,
 	}
 
 	states[player] = state
@@ -533,7 +539,8 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 			local angle = math.acos(dot)
 			if math.deg(angle) >= movement.TurnAngleDeadzoneDegrees then
 				local sign = math.sign(previous:Cross(direction).Y)
-				state.DynamicSway += Vector2.new(sign * angle * movement.TurnGain, 0)
+				local wideMultiplier = 1 + state.WideItemCount * movement.WideTurnMultiplierPerItem
+				state.DynamicSway += Vector2.new(sign * angle * movement.TurnGain * wideMultiplier, 0)
 			end
 		end
 
@@ -562,6 +569,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	end
 
 	if state.BaseInstability >= CarryConfig.Danger.MinimumBaseForCollapse
+		and state.CurrentSway.Magnitude >= CarryConfig.Danger.MinimumSwayForCollapse
 		and risk >= CarryConfig.Danger.CollapseRisk
 	then
 		if not state.CollapseStartedAt then
@@ -570,7 +578,9 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 		elseif os.clock() - state.CollapseStartedAt >= CarryConfig.Danger.CollapseWarningSeconds then
 			partialCollapse(player, state)
 		end
-	elseif risk <= CarryConfig.Danger.RecoveryRisk then
+	elseif risk <= CarryConfig.Danger.RecoveryRisk
+		or state.CurrentSway.Magnitude < CarryConfig.Danger.MinimumSwayForCollapse * 0.75
+	then
 		state.CollapseStartedAt = nil
 	end
 
