@@ -304,7 +304,6 @@ local function updateStrain(player: Player, state: CarryState, dt: number)
 		feedbackRemote:FireClient(player, "StrainStage", {
 			stage = newStage,
 		})
-		sendState(player, state, true)
 	end
 end
 
