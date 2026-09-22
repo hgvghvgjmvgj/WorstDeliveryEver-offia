@@ -466,7 +466,7 @@ function WorldService.Build(): Folder
 		lanesFolder,
 		"NorthSouthLane",
 		Vector3.new(WarehouseConfig.MainLaneWidth, 0.08, laneLength),
-		CFrame.new(0, 0.06, 0),
+		CFrame.new(0, 0.19, 0),
 		Color3.fromRGB(107, 113, 124),
 		0.65
 	)
@@ -476,7 +476,7 @@ function WorldService.Build(): Folder
 		lanesFolder,
 		"EastWestLane",
 		Vector3.new(laneLength, 0.08, WarehouseConfig.MainLaneWidth),
-		CFrame.new(0, 0.065, 0),
+		CFrame.new(0, 0.195, 0),
 		Color3.fromRGB(107, 113, 124),
 		0.65
 	)
