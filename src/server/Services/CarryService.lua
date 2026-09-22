@@ -295,7 +295,7 @@ local function updateStrain(player: Player, state: CarryState, dt: number)
 		and state.Strain >= tuning.TutorialMessageStrain
 	then
 		state.TutorialStrainMessageShown = true
-		noticeRemote:FireClient(player, "HEAVY LOADS GET HARDER TO HOLD.")
+		noticeRemote:FireClient(player, "LOAD PRESSURE BUILDS WHEN YOU CARRY TOO MUCH FOR TOO LONG.")
 	end
 
 	local newStage = strainStageName(state.Strain)
