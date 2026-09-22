@@ -15,6 +15,7 @@ local ItemService = {}
 
 local itemFolder: Folder? = nil
 local spawnFolder: Folder? = nil
+local lostVisualFolder: Folder? = nil
 
 local function makeWorldItem(itemId: string, cframe: CFrame, spawnName: string?, ownerUserId: number?): Part
 	assert(itemFolder, "ItemService.Start must run first")
@@ -76,6 +77,11 @@ function ItemService.Start(root: Folder)
 	itemFolder.Parent = root
 
 	spawnFolder = root:WaitForChild("ItemSpawns") :: Folder
+
+	lostVisualFolder = Instance.new("Folder")
+	lostVisualFolder.Name = "LostCollapseItems"
+	lostVisualFolder.Parent = root
+
 	for _, spawnPart in spawnFolder:GetChildren() do
 		if spawnPart:IsA("BasePart") then
 			spawnStock(spawnPart)
@@ -133,6 +139,80 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 	end
 
 	return true, itemId, pickupCFrame
+end
+
+function ItemService.SpawnCollapseLoss(itemId: string, startCFrame: CFrame, offsetIndex: number)
+	if not lostVisualFolder then
+		return
+	end
+
+	local visual = PrototypeVisualConfig.Items[itemId]
+	if not visual then
+		return
+	end
+
+	local angle = offsetIndex * 1.73
+	local radius = 3.0 + (offsetIndex % 3) * 1.05
+	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+	local destinationPosition = Vector3.new(
+		startCFrame.Position.X + offset.X,
+		visual.Size.Y * 0.5 + 0.06,
+		startCFrame.Position.Z + offset.Z
+	)
+
+	local lost = Instance.new("Part")
+	lost.Name = ("Lost_%s"):format(itemId)
+	lost.Size = visual.Size
+	lost.CFrame = startCFrame
+	lost.Anchored = true
+	lost.CanCollide = false
+	lost.CanTouch = false
+	lost.CanQuery = false
+	lost.Material = Enum.Material.SmoothPlastic
+	lost.Color = visual.Color
+	lost:SetAttribute("ItemId", itemId)
+	lost:SetAttribute("Available", false)
+	lost:SetAttribute("LostFromCollapse", true)
+	lost.Parent = lostVisualFolder
+
+	local spin = CFrame.Angles(
+		math.rad(24 + offsetIndex * 11),
+		math.rad(offsetIndex * 43),
+		math.rad(30 - offsetIndex * 7)
+	)
+
+	local scatter = TweenService:Create(
+		lost,
+		TweenInfo.new(
+			CarryConfig.Failure.CollapseScatterSeconds,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			CFrame = CFrame.new(destinationPosition) * spin,
+		}
+	)
+	scatter:Play()
+
+	task.delay(
+		math.max(0.5, CarryConfig.Failure.LostVisualLifetimeSeconds - 0.45),
+		function()
+			if not lost.Parent then
+				return
+			end
+
+			TweenService:Create(
+				lost,
+				TweenInfo.new(0.40, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{
+					Transparency = 1,
+					Size = lost.Size * 0.82,
+				}
+			):Play()
+		end
+	)
+
+	Debris:AddItem(lost, CarryConfig.Failure.LostVisualLifetimeSeconds)
 end
 
 function ItemService.SpawnDropped(itemId: string, startCFrame: CFrame, ownerUserId: number, offsetIndex: number)
