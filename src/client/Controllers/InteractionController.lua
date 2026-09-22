@@ -14,6 +14,23 @@ local Controller = {}
 local player = Players.LocalPlayer
 local nearestItem: BasePart? = nil
 local scanAccumulator = 0
+local highlight: Highlight? = nil
+
+local function ensureHighlight(): Highlight
+	if highlight and highlight.Parent then
+		return highlight
+	end
+
+	local created = Instance.new("Highlight")
+	created.Name = "OneTripGrabHighlight"
+	created.FillTransparency = 0.88
+	created.OutlineTransparency = 0.18
+	created.DepthMode = Enum.HighlightDepthMode.Occluded
+	created.Enabled = false
+	created.Parent = workspace
+	highlight = created
+	return created
+end
 
 local function getNearest(): BasePart?
 	local world = workspace:FindFirstChild("OneTripPrototype")
@@ -41,6 +58,12 @@ local function getNearest(): BasePart?
 	return best
 end
 
+local function updateHighlight()
+	local currentHighlight = ensureHighlight()
+	currentHighlight.Adornee = nearestItem
+	currentHighlight.Enabled = nearestItem ~= nil
+end
+
 function Controller.Start(uiController: any)
 	local remoteFolder = ReplicatedStorage:WaitForChild(RemoteNames.Folder)
 	local requestGrab = remoteFolder:WaitForChild(RemoteNames.RequestGrab) :: RemoteEvent
@@ -60,25 +83,43 @@ function Controller.Start(uiController: any)
 		return Enum.ContextActionResult.Sink
 	end
 
-	ContextActionService:BindAction("OneTripGrab", grabAction, true, Enum.KeyCode.E, Enum.KeyCode.ButtonX)
+	ContextActionService:BindAction(
+		"OneTripGrab",
+		grabAction,
+		true,
+		Enum.KeyCode.E,
+		Enum.KeyCode.ButtonX
+	)
 	ContextActionService:SetTitle("OneTripGrab", "GRAB")
 	ContextActionService:SetPosition("OneTripGrab", UDim2.new(1, -150, 1, -180))
 
-	ContextActionService:BindAction("OneTripDrop", dropAction, false, Enum.KeyCode.Q, Enum.KeyCode.ButtonB)
+	ContextActionService:BindAction(
+		"OneTripDrop",
+		dropAction,
+		false,
+		Enum.KeyCode.Q,
+		Enum.KeyCode.ButtonB
+	)
 
 	RunService.RenderStepped:Connect(function(dt)
 		scanAccumulator += dt
-		if scanAccumulator < 0.10 then
+		if scanAccumulator < 0.08 then
 			return
 		end
 		scanAccumulator = 0
 
 		nearestItem = getNearest()
+		updateHighlight()
 
 		if nearestItem then
 			local itemId = nearestItem:GetAttribute("ItemId")
-			local definition = if typeof(itemId) == "string" then ItemConfig[itemId] else nil
-			uiController.SetNearbyItem(definition and definition.Name or nearestItem.Name)
+			local definition = if typeof(itemId) == "string"
+				then ItemConfig[itemId]
+				else nil
+
+			uiController.SetNearbyItem(
+				definition and definition.Name or nearestItem.Name
+			)
 		else
 			uiController.SetNearbyItem(nil)
 		end
@@ -86,7 +127,7 @@ function Controller.Start(uiController: any)
 		local touchButton = ContextActionService:GetButton("OneTripGrab")
 		if touchButton then
 			touchButton.Visible = nearestItem ~= nil
-			touchButton.Size = UDim2.fromOffset(92, 92)
+			touchButton.Size = UDim2.fromOffset(96, 96)
 		end
 	end)
 end
