@@ -1,78 +1,91 @@
 # GET IT IN!
 
-A solo-complete, social Roblox spatial puzzle about forcing absurd oversized objects through spaces that look too small for them.
+A solo-complete social Roblox moving game about forcing absurd oversized objects through spaces that look too small for them.
 
 ## Current status
 
-- Prototype Zero controls: PASS
+- Core carry mechanic: PASS
 - Mobile controls: PASS
-- M2 core loop: PASS
-- M3 variety: PASS
-- M4 economy + progression: PASS
-- M5 saving + reliability: PASS
-- M6 map + art: REVISION TEST
+- Core loop: PASS
+- Puzzle variety proof: PASS
+- Basic economy proof: PASS
+- Saving: PASS
+- Visual direction: PASS
+- **M6.5 independent multi-job architecture: CURRENT TEST**
 
-## M6 map revision
+## M6.5 — Multi-job architecture reset
 
-The first art pass looked good but was intentionally too small. The map is now a full neighborhood-scale foundation rather than one isolated driveway.
+The old server architecture had one global active object, one global contract index, and one global holder. That meant the entire server effectively shared one job.
 
-### New neighborhood layout
+M6.5 replaces that with **independent job state per player**.
 
-- roughly 340 x 320 stud ground footprint
-- multiple streets and sidewalks
-- central active contract property
-- 7 surrounding house lots
-- moving-company yard / office
-- 4 future truck/player bays
-- visible contract board
-- visible $100 and $180 job districts
-- future special-job property
-- trees and landscaping across the whole neighborhood
-- tall outer border far from the active area so players cannot jump directly into the void
+### Current proof
 
-This is still a compact Roblox map, not an open-world city. The goal is to give a multiplayer server room to breathe while keeping players close enough to see other moving jobs.
+The map now has four functional job sites.
 
-### Money now has a world-facing purpose
+Each assigned player gets their own:
+- plot
+- furniture object
+- challenge geometry
+- success zone
+- current contract index
+- rotate / tilt state
+- holder state
+- completion state
 
-Current cash progression remains:
-- starter jobs
-- $100 unlock tier
-- $180 hard-job tier
+Player A completing or moving their furniture should not change Player B's job.
 
-The map now communicates those tiers physically through labeled lots and the contract board.
+### Why only four sites right now?
 
-The moving-company yard also reserves visible space for later money sinks:
-- truck styles
-- tools
-- company upgrades
+This milestone is proving the architecture, not the final server capacity.
 
-Those are presentation/future hooks only in M6; we are not adding power-creep upgrades before their design is tested.
+Once two or more simultaneous jobs pass cleanly, we can scale the same plot system to more sites and add waiting/HQ behavior for larger servers.
 
-### Multiplayer preparation
+## Vehicle direction — locked for later
 
-M8 will still implement the actual social/multiplayer job behavior. The current server still has one active contract simulation.
+The longer-term loop is now:
 
-M6 now gives M8 somewhere to put:
-- multiple player trucks
-- simultaneous visible jobs
-- shared social space
-- contract selection
-- progression districts
+**Moving Company HQ -> choose contract -> get vehicle -> travel to job site -> solve move -> get paid -> return / take next job**
 
-### Puzzle protection
+Vehicle progression can become a meaningful money sink:
+- starter van
+- larger box truck
+- faster vehicle
+- cosmetic paint/wheels/company branding
+- specialized trucks that unlock multi-item or heavy contracts
 
-The active job remains contained by side fences so a player cannot carry furniture around the entire house and skip the intended route.
+The vehicle should support the moving fantasy, not become a separate driving simulator.
 
-## M6 PASS criteria
+### Map size strategy
 
-- Map feels large enough for a populated server rather than one player.
-- You cannot easily leave the world/void.
-- The active puzzle still reads clearly.
-- The neighborhood is not so huge that players feel isolated.
-- Cash/unlocks visibly relate to future jobs/areas.
-- Current furniture controls and save system still work.
-- Mobile performance remains smooth.
+Do **not** build the final giant map before vehicles exist.
 
-## Blender
+Current town footprint is large enough to prove multiple simultaneous jobs.
 
-Still not required for this map revision. Studio primitives remain appropriate for the neighborhood structure and collision-heavy environment.
+After the vehicle system works, expand outward with:
+- new suburbs
+- townhouses
+- apartments
+- commercial district
+- wealthy district
+- special-event job sites
+
+That creates update-friendly map expansion without forcing players to walk long empty distances.
+
+## M6.5 PASS test
+
+Use Roblox Studio multiplayer test with at least 2 players.
+
+PASS if:
+1. Player 1 is assigned one job site.
+2. Player 2 is assigned a different job site.
+3. Both players see their own furniture.
+4. Player 1 can grab/rotate/tilt their furniture.
+5. Player 2 can do the same at the same time.
+6. Moving Player 1's object does not move Player 2's.
+7. Completing Player 1's contract does not advance Player 2's contract.
+8. Each player receives only their own payout.
+9. Saving still works.
+10. Leaving frees the plot for a future player.
+
+Do not judge contract selection, reputation, vehicles, polished UI, co-op helping, or final map size yet. Those come after coexistence passes.

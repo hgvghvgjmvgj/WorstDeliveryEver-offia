@@ -162,10 +162,15 @@ stateRemote.OnClientEvent:Connect(function(snapshot)
 	local unlocked = snapshot.unlockedCount or 1
 
 	cashLabel.Text = string.format("$%d", snapshot.cash or 0)
-	roundLabel.Text = string.format("CONTRACT %d — %s — +$%d", index, string.upper(objectName), payout)
+	local plotIndex = snapshot.plotIndex
+	if plotIndex then
+		roundLabel.Text = string.format("SITE %d • CONTRACT %d • %s • +$%d", plotIndex, index, string.upper(objectName), payout)
+	else
+		roundLabel.Text = "WAITING AT HQ"
+	end
 
 	if snapshot.allUnlocked then
-		nextUnlock.Text = "ALL M4 CONTRACTS UNLOCKED"
+		nextUnlock.Text = "ALL CURRENT CONTRACTS UNLOCKED"
 	else
 		nextUnlock.Text = string.format(
 			"NEXT: %s AT $%d   •   %d UNLOCKED",

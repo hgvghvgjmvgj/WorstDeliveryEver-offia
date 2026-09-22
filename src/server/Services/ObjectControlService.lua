@@ -7,29 +7,23 @@ local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
 local ObjectConfig = require(ReplicatedStorage:WaitForChild("ObjectConfig"))
 local ProgressionConfig = require(ReplicatedStorage:WaitForChild("ProgressionConfig"))
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
+local JobPlotService = require(script.Parent:WaitForChild("JobPlotService"))
 
 local ObjectControlService = {}
 
 local actionRemote
 local stateRemote
-local holder = nil
-local stateByPlayer = {}
-local completed = false
-local currentContractIndex = 1
-local activeObject = nil
-local activeRoot = nil
-local activeObjectId = nil
-local activePieceLocals = {}
-local objectYawDegrees = 0
-local objectTilted = false
 
-local function getWorld()
-	return Workspace:FindFirstChild("GetItInPrototype")
+local playerState = {}
+local jobsByPlayer = {}
+
+local function currentContract(job)
+	return ProgressionConfig.GetContract(job.currentContractIndex)
 end
 
-local function getPrototypeSpawn()
-	local world = getWorld()
-	return world and world:FindFirstChild("PrototypeSpawn")
+local function currentDefinition(job)
+	local contract = currentContract(job)
+	return contract and ObjectConfig.Get(contract.ObjectId) or nil
 end
 
 local function getCharacterPieces(player)
@@ -41,34 +35,13 @@ local function getCharacterPieces(player)
 	return character, character:FindFirstChildOfClass("Humanoid"), character:FindFirstChild("HumanoidRootPart")
 end
 
-local function placePlayerAtPrototypeSpawn(player)
-	local spawn = getPrototypeSpawn()
-	if spawn and spawn:IsA("SpawnLocation") then
-		player.RespawnLocation = spawn
-	end
-
-	local _, _, root = getCharacterPieces(player)
-	if root and spawn then
-		root.CFrame = spawn.CFrame + Vector3.new(0, 3.5, 0)
-	end
-end
-
-local function currentContract()
-	return ProgressionConfig.GetContract(currentContractIndex)
-end
-
-local function currentDefinition()
-	local contract = currentContract()
-	return contract and ObjectConfig.Get(contract.ObjectId) or nil
-end
-
 local function getPlayerCash(player)
-	local state = stateByPlayer[player]
+	local state = playerState[player]
 	return state and state.cash or 0
 end
 
 local function savePlayerProgress(player)
-	local state = stateByPlayer[player]
+	local state = playerState[player]
 	if not state or not state.dataLoaded or not state.canSave then
 		return false
 	end
@@ -81,29 +54,32 @@ local function savePlayerProgress(player)
 	return success
 end
 
-local function sendState(player, message, overrideHolding)
+local function sendState(player, job, message, overrideHolding)
 	if not player or not player.Parent or not stateRemote then
 		return
 	end
 
-	local isHolding = overrideHolding
-	if isHolding == nil then
-		isHolding = holder == player
-	end
-
-	local state = stateByPlayer[player]
+	local state = playerState[player]
 	local cash = state and state.cash or 0
-	local definition = currentDefinition()
-	local contract = currentContract()
-	local nextIndex, nextContract = ProgressionConfig.GetNextLocked(cash)
+	local definition = job and currentDefinition(job) or nil
+	local contract = job and currentContract(job) or nil
+	local _, nextContract = ProgressionConfig.GetNextLocked(cash)
 	local nextDefinition = nextContract and ObjectConfig.Get(nextContract.ObjectId) or nil
 
+	local isHolding = false
+	if job then
+		isHolding = overrideHolding
+		if isHolding == nil then
+			isHolding = job.holder == player
+		end
+	end
+
 	stateRemote:FireClient(player, {
-		holding = isHolding,
+		holding = isHolding == true,
 		message = message,
-		tilted = objectTilted,
+		tilted = job and job.objectTilted or false,
 		objectName = definition and definition.DisplayName or "",
-		contractIndex = currentContractIndex,
+		contractIndex = job and job.currentContractIndex or 0,
 		contractCount = #ProgressionConfig.Contracts,
 		payout = contract and contract.Payout or 0,
 		cash = cash,
@@ -111,12 +87,37 @@ local function sendState(player, message, overrideHolding)
 		nextUnlockName = nextDefinition and nextDefinition.DisplayName or "",
 		nextUnlockCash = nextContract and nextContract.UnlockCash or nil,
 		allUnlocked = nextContract == nil,
+		plotIndex = job and job.plot:GetAttribute("PlotIndex") or nil,
 	})
 end
 
-local function broadcastState(message)
-	for _, player in Players:GetPlayers() do
-		sendState(player, message, holder == player)
+local function clearNoCollision(state)
+	if not state or not state.noCollisionConstraints then
+		return
+	end
+
+	for _, constraint in state.noCollisionConstraints do
+		if constraint and constraint.Parent then
+			constraint:Destroy()
+		end
+	end
+
+	table.clear(state.noCollisionConstraints)
+end
+
+local function restoreCharacter(player)
+	local _, humanoid = getCharacterPieces(player)
+	if humanoid then
+		humanoid.WalkSpeed = Config.BaseWalkSpeed
+		humanoid.AutoRotate = true
+	end
+end
+
+local function placePlayerAtPlot(player, plot)
+	local spawn = JobPlotService.GetPlayerSpawn(plot)
+	local _, _, root = getCharacterPieces(player)
+	if root and spawn then
+		root.CFrame = spawn.CFrame + Vector3.new(0, 3.5, 0)
 	end
 end
 
@@ -147,17 +148,15 @@ local function makeDecoration(parent, name, size, cframe, color)
 	part.CanQuery = false
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = color
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
 	return part
 end
 
-local function makeMarker(parent, name, center, size)
+local function makeMarker(parent, originCFrame, center, size)
 	local part = Instance.new("Part")
-	part.Name = name
+	part.Name = "SuccessZone"
 	part.Size = Vector3.new(size.X, 0.12, size.Z)
-	part.CFrame = CFrame.new(center.X, Config.FloorTopY + 0.08, center.Z)
+	part.CFrame = originCFrame * CFrame.new(center.X, Config.FloorTopY + 0.08, center.Z)
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
@@ -169,7 +168,7 @@ local function makeMarker(parent, name, center, size)
 	return part
 end
 
-local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, totalWidth, wallHeight)
+local function addWallWithDoor(job, parent, z, doorCenterX, doorWidth, doorHeight, totalWidth, wallHeight)
 	totalWidth = totalWidth or 86
 	wallHeight = wallHeight or 12
 	local thickness = 2
@@ -177,6 +176,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 	local rightEdge = totalWidth * 0.5
 	local doorLeft = doorCenterX - doorWidth * 0.5
 	local doorRight = doorCenterX + doorWidth * 0.5
+	local origin = job.origin.CFrame
 
 	local leftWidth = doorLeft - leftEdge
 	if leftWidth > 0.1 then
@@ -184,7 +184,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 			parent,
 			"WallLeft_" .. tostring(z),
 			Vector3.new(leftWidth, wallHeight, thickness),
-			CFrame.new(leftEdge + leftWidth * 0.5, wallHeight * 0.5, z)
+			origin * CFrame.new(leftEdge + leftWidth * 0.5, wallHeight * 0.5, z)
 		)
 	end
 
@@ -194,7 +194,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 			parent,
 			"WallRight_" .. tostring(z),
 			Vector3.new(rightWidth, wallHeight, thickness),
-			CFrame.new(doorRight + rightWidth * 0.5, wallHeight * 0.5, z)
+			origin * CFrame.new(doorRight + rightWidth * 0.5, wallHeight * 0.5, z)
 		)
 	end
 
@@ -204,41 +204,21 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 			parent,
 			"WallHeader_" .. tostring(z),
 			Vector3.new(doorWidth, headerHeight, thickness),
-			CFrame.new(doorCenterX, doorHeight + headerHeight * 0.5, z)
+			origin * CFrame.new(doorCenterX, doorHeight + headerHeight * 0.5, z)
 		)
 	end
 
-	-- Bright trim makes the opening readable without changing collision.
 	local trimColor = Color3.fromRGB(72, 177, 196)
 	local trimDepth = 0.38
 	local frontZ = z - thickness * 0.5 - trimDepth * 0.5
-	makeDecoration(
-		parent,
-		"DoorTrimLeft_" .. tostring(z),
-		Vector3.new(0.42, doorHeight + 0.3, trimDepth),
-		CFrame.new(doorLeft - 0.21, doorHeight * 0.5, frontZ),
-		trimColor
-	)
-	makeDecoration(
-		parent,
-		"DoorTrimRight_" .. tostring(z),
-		Vector3.new(0.42, doorHeight + 0.3, trimDepth),
-		CFrame.new(doorRight + 0.21, doorHeight * 0.5, frontZ),
-		trimColor
-	)
-	makeDecoration(
-		parent,
-		"DoorTrimTop_" .. tostring(z),
-		Vector3.new(doorWidth + 0.84, 0.42, trimDepth),
-		CFrame.new(doorCenterX, doorHeight + 0.21, frontZ),
-		trimColor
-	)
+	makeDecoration(parent, "DoorTrimLeft_" .. tostring(z), Vector3.new(0.42, doorHeight + 0.3, trimDepth), origin * CFrame.new(doorLeft - 0.21, doorHeight * 0.5, frontZ), trimColor)
+	makeDecoration(parent, "DoorTrimRight_" .. tostring(z), Vector3.new(0.42, doorHeight + 0.3, trimDepth), origin * CFrame.new(doorRight + 0.21, doorHeight * 0.5, frontZ), trimColor)
+	makeDecoration(parent, "DoorTrimTop_" .. tostring(z), Vector3.new(doorWidth + 0.84, 0.42, trimDepth), origin * CFrame.new(doorCenterX, doorHeight + 0.21, frontZ), trimColor)
 end
 
-local function buildChallenge(definition)
-	local world = getWorld()
-	local challengeFolder = world and world:FindFirstChild("ChallengeGeometry")
-	local markerFolder = world and world:FindFirstChild("RoundMarkers")
+local function buildChallenge(job, definition)
+	local challengeFolder = job.plot:FindFirstChild("ChallengeGeometry")
+	local markerFolder = job.plot:FindFirstChild("RoundMarkers")
 	if not challengeFolder or not markerFolder then
 		return
 	end
@@ -249,94 +229,30 @@ local function buildChallenge(definition)
 	local challenge = definition.Challenge
 
 	if challenge.Kind == "NarrowDoor" then
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ,
-			0,
-			challenge.DoorWidth,
-			challenge.DoorHeight
-		)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ, 0, challenge.DoorWidth, challenge.DoorHeight)
 	elseif challenge.Kind == "LowThenOffset" then
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ,
-			0,
-			challenge.FirstDoorWidth,
-			challenge.FirstDoorHeight
-		)
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ + (challenge.SecondDoorOffsetZ or 9),
-			challenge.SecondDoorCenterX,
-			challenge.SecondDoorWidth,
-			challenge.SecondDoorHeight
-		)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ, 0, challenge.FirstDoorWidth, challenge.FirstDoorHeight)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ + (challenge.SecondDoorOffsetZ or 9), challenge.SecondDoorCenterX, challenge.SecondDoorWidth, challenge.SecondDoorHeight)
 	elseif challenge.Kind == "OffsetEntry" then
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ,
-			challenge.FirstDoorCenterX,
-			challenge.DoorWidth,
-			challenge.DoorHeight
-		)
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ + 9,
-			challenge.SecondDoorCenterX,
-			challenge.DoorWidth,
-			challenge.DoorHeight
-		)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ, challenge.FirstDoorCenterX, challenge.DoorWidth, challenge.DoorHeight)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ + 9, challenge.SecondDoorCenterX, challenge.DoorWidth, challenge.DoorHeight)
 	elseif challenge.Kind == "CornerHall" then
-		addWallWithDoor(
-			challengeFolder,
-			Config.DoorCenterZ,
-			0,
-			challenge.EntryWidth,
-			9.5
-		)
+		addWallWithDoor(job, challengeFolder, Config.DoorCenterZ, 0, challenge.EntryWidth, 9.5)
 
+		local origin = job.origin.CFrame
 		local halfHall = challenge.HallWidth * 0.5
-		makeBlocker(
-			challengeFolder,
-			"HallLeft",
-			Vector3.new(2, 12, 16),
-			CFrame.new(-halfHall - 1, 6, Config.DoorCenterZ + 8)
-		)
-		makeBlocker(
-			challengeFolder,
-			"HallRightShort",
-			Vector3.new(2, 12, 7),
-			CFrame.new(halfHall + 1, 6, Config.DoorCenterZ + 4.5)
-		)
-		makeBlocker(
-			challengeFolder,
-			"HallEnd",
-			Vector3.new(17, 12, 2),
-			CFrame.new(-3.7, 6, Config.DoorCenterZ + 15)
-		)
-		makeBlocker(
-			challengeFolder,
-			"OuterRight",
-			Vector3.new(2, 12, 26),
-			CFrame.new(challenge.ExitClearanceX or 19, 6, Config.DoorCenterZ + 12)
-		)
-		makeBlocker(
-			challengeFolder,
-			"CornerCeiling",
-			Vector3.new(24, 1.5, 20),
-			CFrame.new(6, challenge.CeilingHeight + 0.75, Config.DoorCenterZ + 10)
-		)
+		makeBlocker(challengeFolder, "HallLeft", Vector3.new(2, 12, 16), origin * CFrame.new(-halfHall - 1, 6, Config.DoorCenterZ + 8))
+		makeBlocker(challengeFolder, "HallRightShort", Vector3.new(2, 12, 7), origin * CFrame.new(halfHall + 1, 6, Config.DoorCenterZ + 4.5))
+		makeBlocker(challengeFolder, "HallEnd", Vector3.new(17, 12, 2), origin * CFrame.new(-3.7, 6, Config.DoorCenterZ + 15))
+		makeBlocker(challengeFolder, "OuterRight", Vector3.new(2, 12, 26), origin * CFrame.new(challenge.ExitClearanceX or 19, 6, Config.DoorCenterZ + 12))
+		makeBlocker(challengeFolder, "CornerCeiling", Vector3.new(24, 1.5, 20), origin * CFrame.new(6, challenge.CeilingHeight + 0.75, Config.DoorCenterZ + 10))
 	end
 
-	makeMarker(
-		markerFolder,
-		"SuccessZone",
-		challenge.SuccessCenter,
-		challenge.SuccessSize
-	)
+	makeMarker(markerFolder, job.origin.CFrame, challenge.SuccessCenter, challenge.SuccessSize)
 end
 
-local function buildOrientationCFrame(position, yawDegrees, tilted, definition)
+local function buildOrientationCFrame(job, worldPosition, yawDegrees, tilted, definition)
+	local localPosition = job.origin.CFrame:PointToObjectSpace(worldPosition)
 	local orientation = CFrame.Angles(0, math.rad(yawDegrees), 0)
 
 	if tilted then
@@ -347,24 +263,22 @@ local function buildOrientationCFrame(position, yawDegrees, tilted, definition)
 		end
 	end
 
-	return CFrame.new(position) * orientation
+	return job.origin.CFrame * CFrame.new(localPosition) * orientation
 end
 
 local function getPartHalfHeight(cframe, size)
 	local right = cframe.RightVector
 	local up = cframe.UpVector
 	local look = cframe.LookVector
-
-	return
-		math.abs(right.Y) * size.X * 0.5
+	return math.abs(right.Y) * size.X * 0.5
 		+ math.abs(up.Y) * size.Y * 0.5
 		+ math.abs(look.Y) * size.Z * 0.5
 end
 
-local function placeModelOnFloor(candidatePivot)
+local function placeModelOnFloor(job, candidatePivot)
 	local minimumY = math.huge
 
-	for _, entry in activePieceLocals do
+	for _, entry in job.activePieceLocals do
 		local worldCFrame = candidatePivot * entry.LocalCFrame
 		local bottom = worldCFrame.Position.Y - getPartHalfHeight(worldCFrame, entry.Part.Size)
 		minimumY = math.min(minimumY, bottom)
@@ -377,13 +291,13 @@ local function placeModelOnFloor(candidatePivot)
 	return candidatePivot + Vector3.new(0, Config.FloorTopY + 0.03 - minimumY, 0)
 end
 
-local function isBlocked(candidatePivot, character)
+local function isBlocked(job, candidatePivot, character)
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-	overlapParams.FilterDescendantsInstances = {activeObject, character}
+	overlapParams.FilterDescendantsInstances = {job.activeObject, character}
 	overlapParams.RespectCanCollide = true
 
-	for _, entry in activePieceLocals do
+	for _, entry in job.activePieceLocals do
 		local worldCFrame = candidatePivot * entry.LocalCFrame
 		local parts = Workspace:GetPartBoundsInBox(worldCFrame, entry.Part.Size * 0.96, overlapParams)
 
@@ -397,57 +311,10 @@ local function isBlocked(candidatePivot, character)
 	return false
 end
 
-local function clearNoCollision(state)
-	if not state or not state.noCollisionConstraints then
-		return
-	end
-
-	for _, constraint in state.noCollisionConstraints do
-		if constraint and constraint.Parent then
-			constraint:Destroy()
-		end
-	end
-
-	table.clear(state.noCollisionConstraints)
-end
-
-local function restoreCharacter(player)
-	local _, humanoid = getCharacterPieces(player)
-	if humanoid then
-		humanoid.WalkSpeed = Config.BaseWalkSpeed
-		humanoid.AutoRotate = true
-	end
-end
-
-local function release(player, message)
-	if holder ~= player then
-		return
-	end
-
-	local state = stateByPlayer[player]
-	holder = nil
-
-	if state then
-		clearNoCollision(state)
-		state.lastRootPosition = nil
-	end
-
-	restoreCharacter(player)
-
-	if activeRoot then
-		local prompt = activeRoot:FindFirstChild("GrabPrompt")
-		if prompt then
-			prompt.Enabled = not completed
-		end
-	end
-
-	sendState(player, message or "Dropped. Walk around it and grab again from another side.", false)
-end
-
-local function addHolderNoCollision(character, state)
+local function addHolderNoCollision(job, character, state)
 	state.noCollisionConstraints = {}
 
-	for _, entry in activePieceLocals do
+	for _, entry in job.activePieceLocals do
 		for _, descendant in character:GetDescendants() do
 			if descendant:IsA("BasePart") then
 				local constraint = Instance.new("NoCollisionConstraint")
@@ -461,54 +328,37 @@ local function addHolderNoCollision(character, state)
 	end
 end
 
-local function getObjectPosition()
-	return activeObject and activeObject:GetPivot().Position or Vector3.zero
+local function getObjectPosition(job)
+	return job.activeObject and job.activeObject:GetPivot().Position or Vector3.zero
 end
 
-local function grab(player)
-	if completed or holder or not activeObject or not activeRoot then
+local function release(job, player, message)
+	if job.holder ~= player then
 		return
 	end
 
-	local character, humanoid, root = getCharacterPieces(player)
-	if not character or not humanoid or not root then
-		return
+	local state = playerState[player]
+	job.holder = nil
+
+	if state then
+		clearNoCollision(state)
+		state.lastRootPosition = nil
 	end
 
-	if (getObjectPosition() - root.Position).Magnitude > Config.PromptGrabLimit then
-		return
+	restoreCharacter(player)
+
+	if job.activeRoot then
+		local prompt = job.activeRoot:FindFirstChild("GrabPrompt")
+		if prompt then
+			prompt.Enabled = not job.completed
+		end
 	end
 
-	holder = player
-
-	local state = stateByPlayer[player]
-	if not state then
-		return
-	end
-
-	if not state.dataLoaded then
-		sendState(player, "Loading your progress...", false)
-		return
-	end
-
-	state.lastRootPosition = root.Position
-	state.lastBlockedMessage = 0
-
-	addHolderNoCollision(character, state)
-
-	humanoid.WalkSpeed = Config.CarryWalkSpeed
-	humanoid.AutoRotate = true
-
-	local prompt = activeRoot:FindFirstChild("GrabPrompt")
-	if prompt then
-		prompt.Enabled = false
-	end
-
-	sendState(player, "Walk normally. Q/E rotate, R tilts, F drops.", true)
+	sendState(player, job, message or "Dropped. Reposition and grab it again.", false)
 end
 
-local function notifyBlocked(player, message)
-	local state = stateByPlayer[player]
+local function notifyBlocked(job, player, message)
+	local state = playerState[player]
 	if not state then
 		return
 	end
@@ -516,62 +366,62 @@ local function notifyBlocked(player, message)
 	local now = os.clock()
 	if now - (state.lastBlockedMessage or 0) >= 0.8 then
 		state.lastBlockedMessage = now
-		sendState(player, message or "Jammed. Back up, rotate, or tilt.")
+		sendState(player, job, message or "Jammed. Back up, rotate, or tilt.")
 	end
 end
 
-local function tryPlace(player, candidatePivot, blockedMessage)
+local function tryPlace(job, player, candidatePivot, blockedMessage)
 	local character = player.Character
-	if not activeObject or not character then
+	if not job.activeObject or not character then
 		return false
 	end
 
-	candidatePivot = placeModelOnFloor(candidatePivot)
+	candidatePivot = placeModelOnFloor(job, candidatePivot)
 
-	if isBlocked(candidatePivot, character) then
-		notifyBlocked(player, blockedMessage)
+	if isBlocked(job, candidatePivot, character) then
+		notifyBlocked(job, player, blockedMessage)
 		return false
 	end
 
-	activeObject:PivotTo(candidatePivot)
+	job.activeObject:PivotTo(candidatePivot)
 	return true
 end
 
-local function rotate(player, direction)
-	if holder ~= player or not activeObject then
+local function rotate(job, player, direction)
+	if job.holder ~= player or not job.activeObject then
 		return
 	end
 
-	local definition = currentDefinition()
+	local definition = currentDefinition(job)
 	if not definition then
 		return
 	end
 
-	local candidateYaw = objectYawDegrees + Config.RotateStepDegrees * direction
-	local candidate = buildOrientationCFrame(getObjectPosition(), candidateYaw, objectTilted, definition)
+	local candidateYaw = job.objectYawDegrees + Config.RotateStepDegrees * direction
+	local candidate = buildOrientationCFrame(job, getObjectPosition(job), candidateYaw, job.objectTilted, definition)
 
-	if tryPlace(player, candidate, "Rotation blocked. Give it more room.") then
-		objectYawDegrees = candidateYaw
-		sendState(player, ("ROTATED %s"):format(direction < 0 and "LEFT" or "RIGHT"))
+	if tryPlace(job, player, candidate, "Rotation blocked. Give it more room.") then
+		job.objectYawDegrees = candidateYaw
+		sendState(player, job, direction < 0 and "ROTATED LEFT" or "ROTATED RIGHT")
 	end
 end
 
-local function toggleTilt(player)
-	if holder ~= player or not activeObject then
+local function toggleTilt(job, player)
+	if job.holder ~= player or not job.activeObject then
 		return
 	end
 
-	local definition = currentDefinition()
+	local definition = currentDefinition(job)
 	if not definition then
 		return
 	end
 
-	local candidateTilted = not objectTilted
-	local candidate = buildOrientationCFrame(getObjectPosition(), objectYawDegrees, candidateTilted, definition)
+	local candidateTilted = not job.objectTilted
+	local candidate = buildOrientationCFrame(job, getObjectPosition(job), job.objectYawDegrees, candidateTilted, definition)
 
-	if tryPlace(player, candidate, "Tilt blocked. Give it more room.") then
-		objectTilted = candidateTilted
-		sendState(player, objectTilted and "TILTED / REORIENTED" or "RETURNED FLAT")
+	if tryPlace(job, player, candidate, "Tilt blocked. Give it more room.") then
+		job.objectTilted = candidateTilted
+		sendState(player, job, job.objectTilted and "TILTED / REORIENTED" or "RETURNED FLAT")
 	end
 end
 
@@ -596,33 +446,31 @@ local function addObjectBillboard(root, text)
 	label.Parent = gui
 end
 
-local function spawnCurrentObject()
-	local world = getWorld()
-	local folder = world and world:FindFirstChild("RoundObject")
+local function spawnCurrentObject(job)
+	local folder = job.plot:FindFirstChild("RoundObject")
 	if not folder then
 		return
 	end
 
 	folder:ClearAllChildren()
-	activeObject = nil
-	activeRoot = nil
-	activePieceLocals = {}
-	holder = nil
+	job.activeObject = nil
+	job.activeRoot = nil
+	job.activePieceLocals = {}
+	job.holder = nil
 
-	local contract = currentContract()
+	local contract = currentContract(job)
 	if not contract then
 		return
 	end
 
-	activeObjectId = contract.ObjectId
-	local definition = ObjectConfig.Get(activeObjectId)
+	local definition = ObjectConfig.Get(contract.ObjectId)
 	if not definition then
 		return
 	end
 
-	objectYawDegrees = 0
-	objectTilted = false
-	buildChallenge(definition)
+	job.objectYawDegrees = 0
+	job.objectTilted = false
+	buildChallenge(job, definition)
 
 	local model = Instance.new("Model")
 	model.Name = "MoveObject"
@@ -636,7 +484,6 @@ local function spawnCurrentObject()
 	root.CanTouch = false
 	root.CanQuery = false
 	root.Transparency = 1
-	root.CFrame = CFrame.new(Config.ObjectStartPosition)
 	root.Parent = model
 	model.PrimaryPart = root
 
@@ -653,22 +500,37 @@ local function spawnCurrentObject()
 		part.Color = pieceDefinition.Color
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.CFrame = root.CFrame * pieceDefinition.Offset
 		part.Parent = model
 
 		if hasCollision then
-			table.insert(activePieceLocals, {
+			table.insert(job.activePieceLocals, {
 				Part = part,
 				LocalCFrame = pieceDefinition.Offset,
 			})
 		end
 	end
 
-	activeObject = model
-	activeRoot = root
+	job.activeObject = model
+	job.activeRoot = root
 
-	local startPivot = buildOrientationCFrame(Config.ObjectStartPosition, 0, false, definition)
-	model:PivotTo(placeModelOnFloor(startPivot))
+	local startWorld = job.origin.CFrame:PointToWorldSpace(Config.ObjectStartPosition)
+	local startPivot = buildOrientationCFrame(job, startWorld, 0, false, definition)
+
+	root.CFrame = startPivot
+	for _, pieceDefinition in definition.Pieces do
+		-- Individual piece CFrames are corrected by the PivotTo below.
+	end
+
+	model:PivotTo(placeModelOnFloor(job, startPivot))
+
+	-- PivotTo uses the root pivot, but the parts still need their configured local offsets
+	-- on first spawn because they were created at the origin.
+	for index, pieceDefinition in definition.Pieces do
+		local part = model:FindFirstChild("Piece" .. index)
+		if part then
+			part.CFrame = model:GetPivot() * pieceDefinition.Offset
+		end
+	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GrabPrompt"
@@ -680,23 +542,40 @@ local function spawnCurrentObject()
 	prompt.KeyboardKeyCode = Enum.KeyCode.G
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
 	prompt.Parent = root
-	prompt.Triggered:Connect(grab)
+	prompt.Triggered:Connect(function(triggeringPlayer)
+		if triggeringPlayer ~= job.owner or job.completed or job.holder then
+			return
+		end
+
+		local state = playerState[triggeringPlayer]
+		local character, humanoid, playerRoot = getCharacterPieces(triggeringPlayer)
+		if not state or not state.dataLoaded or not character or not humanoid or not playerRoot then
+			return
+		end
+
+		if (getObjectPosition(job) - playerRoot.Position).Magnitude > Config.PromptGrabLimit then
+			return
+		end
+
+		job.holder = triggeringPlayer
+		state.lastRootPosition = playerRoot.Position
+		state.lastBlockedMessage = 0
+		addHolderNoCollision(job, character, state)
+
+		humanoid.WalkSpeed = Config.CarryWalkSpeed
+		humanoid.AutoRotate = true
+		prompt.Enabled = false
+
+		sendState(triggeringPlayer, job, "YOUR JOB • Q/E rotate • R tilt • F drop", true)
+	end)
 
 	addObjectBillboard(root, definition.ChallengeText)
-
-	for _, state in stateByPlayer do
-		state.lastRootPosition = nil
-		clearNoCollision(state)
-	end
-
-	broadcastState(
-		("CONTRACT %d — %s — PAYS $%d"):format(currentContractIndex, definition.DisplayName, contract.Payout)
-	)
+	sendState(job.owner, job, ("JOB SITE %d • %s • PAYS $%d"):format(job.plot:GetAttribute("PlotIndex") or 0, definition.DisplayName, contract.Payout), false)
 end
 
-local function allObjectCornersInsideZone()
-	local definition = currentDefinition()
-	if not definition then
+local function allObjectCornersInsideZone(job)
+	local definition = currentDefinition(job)
+	if not definition or not job.activeObject then
 		return false
 	end
 
@@ -705,16 +584,17 @@ local function allObjectCornersInsideZone()
 	local minCorner = center - size * 0.5
 	local maxCorner = center + size * 0.5
 
-	for _, entry in activePieceLocals do
-		local cf = activeObject:GetPivot() * entry.LocalCFrame
+	for _, entry in job.activePieceLocals do
+		local cf = job.activeObject:GetPivot() * entry.LocalCFrame
 		local half = entry.Part.Size * 0.5
 
 		for sx = -1, 1, 2 do
 			for sy = -1, 1, 2 do
 				for sz = -1, 1, 2 do
-					local corner = cf:PointToWorldSpace(Vector3.new(half.X * sx, half.Y * sy, half.Z * sz))
-					if
-						corner.X < minCorner.X or corner.X > maxCorner.X
+					local worldCorner = cf:PointToWorldSpace(Vector3.new(half.X * sx, half.Y * sy, half.Z * sz))
+					local corner = job.origin.CFrame:PointToObjectSpace(worldCorner)
+
+					if corner.X < minCorner.X or corner.X > maxCorner.X
 						or corner.Y < minCorner.Y or corner.Y > maxCorner.Y
 						or corner.Z < minCorner.Z or corner.Z > maxCorner.Z
 					then
@@ -728,78 +608,79 @@ local function allObjectCornersInsideZone()
 	return true
 end
 
-local function advanceRoundFor(player)
-	local cash = getPlayerCash(player)
+local function advanceRound(job)
+	local cash = getPlayerCash(job.owner)
 	local unlockedCount = ProgressionConfig.GetUnlockedCount(cash)
 
-	currentContractIndex += 1
-	if currentContractIndex > unlockedCount then
-		currentContractIndex = 1
+	job.currentContractIndex += 1
+	if job.currentContractIndex > unlockedCount then
+		job.currentContractIndex = 1
 	end
 
-	spawnCurrentObject()
+	spawnCurrentObject(job)
 end
 
-local function complete()
-	if completed or not activeObject then
+local function complete(job)
+	if job.completed or not job.activeObject then
 		return
 	end
 
-	completed = true
-	local player = holder
-	local contract = currentContract()
-
-	if player and contract then
-		local state = stateByPlayer[player]
-		local oldUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
-		state.cash += contract.Payout
-		state.dirty = true
-		local newUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
-
-		task.spawn(function()
-			savePlayerProgress(player)
-		end)
-
-		release(player, ("DELIVERED! +$%d"):format(contract.Payout))
-
-		local message
-		if newUnlocked > oldUnlocked then
-			local unlockedContract = ProgressionConfig.GetContract(newUnlocked)
-			local unlockedDefinition = unlockedContract and ObjectConfig.Get(unlockedContract.ObjectId)
-			message = unlockedDefinition
-				and ("NEW CONTRACT UNLOCKED: %s"):format(string.upper(unlockedDefinition.DisplayName))
-				or "NEW CONTRACT UNLOCKED!"
-		else
-			message = ("DELIVERED! +$%d"):format(contract.Payout)
-		end
-
-		sendState(player, message, false)
-
-		if activeRoot then
-			local prompt = activeRoot:FindFirstChild("GrabPrompt")
-			if prompt then
-				prompt.Enabled = false
-			end
-		end
-
-		task.delay(Config.NextObjectDelay, function()
-			completed = false
-			advanceRoundFor(player)
-		end)
-	else
-		completed = false
+	local player = job.holder
+	local contract = currentContract(job)
+	if not player or player ~= job.owner or not contract then
+		return
 	end
+
+	job.completed = true
+
+	local state = playerState[player]
+	local oldUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
+	state.cash += contract.Payout
+	state.dirty = true
+	local newUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
+
+	task.spawn(function()
+		savePlayerProgress(player)
+	end)
+
+	release(job, player, ("DELIVERED! +$%d"):format(contract.Payout))
+
+	local message = ("DELIVERED! +$%d"):format(contract.Payout)
+	if newUnlocked > oldUnlocked then
+		local unlockedContract = ProgressionConfig.GetContract(newUnlocked)
+		local unlockedDefinition = unlockedContract and ObjectConfig.Get(unlockedContract.ObjectId)
+		if unlockedDefinition then
+			message = "NEW CONTRACT UNLOCKED: " .. string.upper(unlockedDefinition.DisplayName)
+		end
+	end
+
+	sendState(player, job, message, false)
+
+	if job.activeRoot then
+		local prompt = job.activeRoot:FindFirstChild("GrabPrompt")
+		if prompt then
+			prompt.Enabled = false
+		end
+	end
+
+	task.delay(Config.NextObjectDelay, function()
+		if jobsByPlayer[player] ~= job then
+			return
+		end
+		job.completed = false
+		advanceRound(job)
+	end)
 end
 
-local function applyMirroredMovement(player, state)
-	if not activeObject then
-		release(player)
+local function applyMirroredMovement(job, player, state)
+	if not job.activeObject then
+		release(job, player)
 		return
 	end
 
 	local _, _, root = getCharacterPieces(player)
 	if not root then
-		release(player)
+		release(job, player)
 		return
 	end
 
@@ -817,34 +698,59 @@ local function applyMirroredMovement(player, state)
 	end
 
 	if delta.Magnitude > 0.001 then
-		local originalPivot = activeObject:GetPivot()
+		local originalPivot = job.activeObject:GetPivot()
 		local fullCandidate = originalPivot + delta
 
-		if not tryPlace(player, fullCandidate, "Jammed — back up, sidestep, rotate, or tilt.") then
+		if not tryPlace(job, player, fullCandidate, "Jammed — back up, sidestep, rotate, or tilt.") then
 			if math.abs(delta.X) > 0.001 then
-				tryPlace(player, originalPivot + Vector3.new(delta.X, 0, 0))
+				tryPlace(job, player, originalPivot + Vector3.new(delta.X, 0, 0))
 			end
 
 			if math.abs(delta.Z) > 0.001 then
-				tryPlace(player, activeObject:GetPivot() + Vector3.new(0, 0, delta.Z))
+				tryPlace(job, player, job.activeObject:GetPivot() + Vector3.new(0, 0, delta.Z))
 			end
 		end
 	end
 
 	state.lastRootPosition = root.Position
 
-	if (root.Position - getObjectPosition()).Magnitude > Config.MaxCarryDistance then
-		release(player, "You let go. Grab it again from a better side.")
+	if (root.Position - getObjectPosition(job)).Magnitude > Config.MaxCarryDistance then
+		release(job, player, "You let go. Grab it again from a better side.")
 		return
 	end
 
-	if allObjectCornersInsideZone() then
-		complete()
+	if allObjectCornersInsideZone(job) then
+		complete(job)
 	end
 end
 
+local function createJobForPlayer(player, plot)
+	local origin = JobPlotService.GetOrigin(plot)
+	if not origin then
+		return nil
+	end
+
+	local job = {
+		owner = player,
+		plot = plot,
+		origin = origin,
+		currentContractIndex = 1,
+		activeObject = nil,
+		activeRoot = nil,
+		activePieceLocals = {},
+		objectYawDegrees = 0,
+		objectTilted = false,
+		holder = nil,
+		completed = false,
+	}
+
+	jobsByPlayer[player] = job
+	spawnCurrentObject(job)
+	return job
+end
+
 local function setupPlayer(player)
-	stateByPlayer[player] = {
+	playerState[player] = {
 		cash = 0,
 		dataLoaded = false,
 		canSave = false,
@@ -854,41 +760,8 @@ local function setupPlayer(player)
 		noCollisionConstraints = {},
 	}
 
-	local spawn = getPrototypeSpawn()
-	if spawn and spawn:IsA("SpawnLocation") then
-		player.RespawnLocation = spawn
-	end
-
-	player.CharacterAdded:Connect(function()
-		task.wait(0.15)
-		placePlayerAtPrototypeSpawn(player)
-
-		if holder == player then
-			holder = nil
-		end
-
-		local state = stateByPlayer[player]
-		if state then
-			clearNoCollision(state)
-			state.lastRootPosition = nil
-		end
-
-		local definition = currentDefinition()
-		sendState(
-			player,
-			definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside.",
-			false
-		)
-	end)
-
-	if player.Character then
-		task.defer(function()
-			placePlayerAtPrototypeSpawn(player)
-		end)
-	end
-
 	local success, savedCash = PlayerDataService.LoadCash(player)
-	local state = stateByPlayer[player]
+	local state = playerState[player]
 	if not state or not player.Parent then
 		return
 	end
@@ -897,24 +770,35 @@ local function setupPlayer(player)
 	state.dataLoaded = true
 	state.canSave = success
 
-	local definition = currentDefinition()
-	if success then
-		sendState(
-			player,
-			savedCash > 0 and ("Progress loaded — $%d"):format(savedCash)
-				or (definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside."),
-			false
-		)
-	else
-		sendState(
-			player,
-			"Saving is unavailable this session. Your existing save will not be overwritten.",
-			false
-		)
+	local plot = JobPlotService.Claim(player)
+	if not plot then
+		sendState(player, nil, "All 4 prototype job sites are busy. Stay at HQ until one opens.", false)
+		return
+	end
+
+	local job = createJobForPlayer(player, plot)
+
+	local function onCharacter(character)
+		task.wait(0.15)
+		if job and jobsByPlayer[player] == job then
+			placePlayerAtPlot(player, plot)
+			sendState(player, job, ("ASSIGNED JOB SITE %d"):format(plot:GetAttribute("PlotIndex") or 0), false)
+		end
+	end
+
+	player.CharacterAdded:Connect(onCharacter)
+	if player.Character then
+		task.defer(onCharacter, player.Character)
+	end
+
+	if not success then
+		sendState(player, job, "Saving unavailable this session; existing saved data will not be overwritten.", false)
 	end
 end
 
 function ObjectControlService.Start()
+	JobPlotService.Initialize()
+
 	local remotes = ReplicatedStorage:FindFirstChild("GetItInRemotes")
 	if not remotes then
 		remotes = Instance.new("Folder")
@@ -937,44 +821,51 @@ function ObjectControlService.Start()
 	end
 
 	actionRemote.OnServerEvent:Connect(function(player, action)
+		local job = jobsByPlayer[player]
+		if not job then
+			return
+		end
+
 		if action == "RotateLeft" then
-			rotate(player, -1)
+			rotate(job, player, -1)
 		elseif action == "RotateRight" then
-			rotate(player, 1)
+			rotate(job, player, 1)
 		elseif action == "Tilt" then
-			toggleTilt(player)
+			toggleTilt(job, player)
 		elseif action == "Release" then
-			release(player)
+			release(job, player)
 		end
 	end)
 
 	Players.PlayerAdded:Connect(setupPlayer)
 	Players.PlayerRemoving:Connect(function(player)
-		if holder == player then
-			holder = nil
+		local job = jobsByPlayer[player]
+		if job and job.holder == player then
+			release(job, player)
 		end
 
-		local state = stateByPlayer[player]
+		local state = playerState[player]
 		if state then
 			clearNoCollision(state)
 			if state.dirty then
 				savePlayerProgress(player)
 			end
 		end
-		stateByPlayer[player] = nil
+
+		jobsByPlayer[player] = nil
+		JobPlotService.Release(player)
+		playerState[player] = nil
 	end)
 
 	for _, player in Players:GetPlayers() do
-		setupPlayer(player)
+		task.spawn(setupPlayer, player)
 	end
-
-	spawnCurrentObject()
 
 	task.spawn(function()
 		while true do
 			task.wait(PlayerDataService.AutosaveInterval)
 			for _, player in Players:GetPlayers() do
-				local state = stateByPlayer[player]
+				local state = playerState[player]
 				if state and state.dirty then
 					task.spawn(function()
 						savePlayerProgress(player)
@@ -986,7 +877,7 @@ function ObjectControlService.Start()
 
 	game:BindToClose(function()
 		for _, player in Players:GetPlayers() do
-			local state = stateByPlayer[player]
+			local state = playerState[player]
 			if state and state.dirty then
 				savePlayerProgress(player)
 			end
@@ -994,11 +885,12 @@ function ObjectControlService.Start()
 	end)
 
 	RunService.Heartbeat:Connect(function()
-		local player = holder
-		if player and player.Parent then
-			local state = stateByPlayer[player]
-			if state then
-				applyMirroredMovement(player, state)
+		for player, job in jobsByPlayer do
+			if job.holder == player and player.Parent then
+				local state = playerState[player]
+				if state then
+					applyMirroredMovement(job, player, state)
+				end
 			end
 		end
 	end)
