@@ -461,7 +461,7 @@ function WorldService.Build(): Folder
 	lanesFolder.Name = "MainLanes"
 	lanesFolder.Parent = root
 
-	local laneLength = 315
+	local laneLength = WarehouseConfig.Bay.Radius * 2
 	local laneNS = makePart(
 		lanesFolder,
 		"NorthSouthLane",
@@ -491,7 +491,7 @@ function WorldService.Build(): Folder
 	local clearanceNS = makePart(
 		clearanceFolder,
 		"ClearanceNorthSouth",
-		Vector3.new(1.2, 1.2, 300),
+		Vector3.new(1.2, 1.2, WarehouseConfig.Bay.Radius * 2),
 		CFrame.new(0, WarehouseConfig.CeilingClearance, 0),
 		Color3.fromRGB(116, 121, 132),
 		0.62
@@ -503,7 +503,7 @@ function WorldService.Build(): Folder
 	local clearanceEW = makePart(
 		clearanceFolder,
 		"ClearanceEastWest",
-		Vector3.new(300, 1.2, 1.2),
+		Vector3.new(WarehouseConfig.Bay.Radius * 2, 1.2, 1.2),
 		CFrame.new(0, WarehouseConfig.CeilingClearance, 0),
 		Color3.fromRGB(116, 121, 132),
 		0.62
