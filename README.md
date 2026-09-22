@@ -11,7 +11,7 @@ M1/M1.1 carry feel, M2 multiplayer ownership, and M2.1 Carry Strain remain locke
 ## M2.2 structure
 
 - 12-player concentric shared warehouse
-- 410 x 410 stud overall graybox footprint
+- 500 x 500 stud overall graybox footprint
 - structured Near / Mid / Deep risk gradient
 - 36 authoritative shared item positions
 - open sightlines instead of narrow aisle mazes
@@ -48,21 +48,21 @@ Designed to make the return trip long enough for dangerous loads and Load Pressu
 
 Measured from bay unload locations to the nearest stock opportunity:
 
-- Near: about 70-115 studs depending on bay/cluster alignment
-- Mid: about 111-120 studs
-- Deep: about 148-162 studs
+- Near: about 63-88 studs depending on bay/cluster alignment
+- Mid: about 113-151 studs
+- Deep: about 180-199 studs
 
 At normal 16-stud walk speed this is roughly:
 
-- Near: 4.4-7.2 seconds
-- Mid: 6.9-7.5 seconds
-- Deep: 9.2-10.1 seconds
+- Near: about 3.9-5.5 seconds
+- Mid: about 7.1-9.4 seconds
+- Deep: about 11.3-12.4 seconds
 
 At the current heavily-loaded 9.5-stud minimum movement speed:
 
-- Near: 7.4-12.1 seconds
-- Mid: 11.7-12.7 seconds
-- Deep: 15.6-17.0 seconds
+- Near: about 6.6-9.3 seconds
+- Mid: about 11.9-15.9 seconds
+- Deep: about 18.9-20.9 seconds
 
 These are geometry estimates, not forced timers.
 
