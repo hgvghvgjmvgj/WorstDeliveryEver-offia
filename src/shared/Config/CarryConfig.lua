@@ -86,7 +86,7 @@ return table.freeze({
 		MinimumLoadSeverity = 0.10,
 		MaxAccumulationPerSecond = 0.070,
 		AccumulationExponent = 1.25,
-		ComfortDecayPerSecond = 0.035,
+		ComfortDecayPerSecond = 0.080,
 
 		Moderate = 0.30,
 		High = 0.62,
