@@ -19,4 +19,4 @@ ItemService.Start(world)
 CarryService.Start(ItemService)
 UnloadService.Start(world, CarryService)
 
-print("[ONE TRIP] M1 core carry prototype loaded")
+print("[ONE TRIP] M1.1 core feel prototype loaded")
