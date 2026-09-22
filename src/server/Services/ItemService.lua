@@ -141,7 +141,8 @@ function ItemService.SpawnDropped(itemId: string, cframe: CFrame, ownerUserId: n
 	local angle = offsetIndex * 1.73
 	local radius = 2.5 + (offsetIndex % 3) * 0.8
 	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-	local item = makeWorldItem(itemId, CFrame.new(cframe.Position + offset), nil, ownerUserId)
+	local dropPosition = Vector3.new(cframe.Position.X + offset.X, 0.01, cframe.Position.Z + offset.Z)
+	local item = makeWorldItem(itemId, CFrame.new(dropPosition), nil, ownerUserId)
 	item:SetAttribute("ProtectedUntil", Workspace:GetServerTimeNow() + CarryConfig.DroppedItemProtectionSeconds)
 	Debris:AddItem(item, GameConfig.Prototype.DroppedItemLifetimeSeconds)
 end
