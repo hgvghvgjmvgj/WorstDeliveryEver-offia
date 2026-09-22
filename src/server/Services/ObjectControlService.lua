@@ -527,6 +527,18 @@ function ObjectControlService.Start()
 		stateRemote.Parent = remotes
 	end
 
+	actionRemote.OnServerEvent:Connect(function(player, action)
+		if action == "RotateLeft" then
+			rotate(player, -1)
+		elseif action == "RotateRight" then
+			rotate(player, 1)
+		elseif action == "Tilt" then
+			toggleTilt(player)
+		elseif action == "Release" then
+			release(player)
+		end
+	end)
+
 	Players.PlayerAdded:Connect(setupPlayer)
 	Players.PlayerRemoving:Connect(function(player)
 		if holder == player then
