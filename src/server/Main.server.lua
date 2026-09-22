@@ -22,4 +22,4 @@ ItemService.Start(world)
 CarryService.Start(ItemService)
 UnloadService.Start(world, CarryService)
 
-print("[ONE TRIP] M2 multiplayer warehouse foundation loaded")
+print("[ONE TRIP] M2.1 carry strain prototype loaded")
