@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
 local ObjectConfig = require(ReplicatedStorage:WaitForChild("ObjectConfig"))
 local ProgressionConfig = require(ReplicatedStorage:WaitForChild("ProgressionConfig"))
+local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
 
 local ObjectControlService = {}
 
@@ -64,6 +65,20 @@ end
 local function getPlayerCash(player)
 	local state = stateByPlayer[player]
 	return state and state.cash or 0
+end
+
+local function savePlayerProgress(player)
+	local state = stateByPlayer[player]
+	if not state or not state.dataLoaded or not state.canSave then
+		return false
+	end
+
+	local success = PlayerDataService.SaveCash(player, state.cash)
+	if success then
+		state.dirty = false
+	end
+
+	return success
 end
 
 local function sendState(player, message, overrideHolding)
@@ -423,10 +438,12 @@ local function grab(player)
 
 	local state = stateByPlayer[player]
 	if not state then
-		state = {
-			cash = 0,
-		}
-		stateByPlayer[player] = state
+		return
+	end
+
+	if not state.dataLoaded then
+		sendState(player, "Loading your progress...", false)
+		return
 	end
 
 	state.lastRootPosition = root.Position
@@ -686,7 +703,12 @@ local function complete()
 		local state = stateByPlayer[player]
 		local oldUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
 		state.cash += contract.Payout
+		state.dirty = true
 		local newUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
+
+		task.spawn(function()
+			savePlayerProgress(player)
+		end)
 
 		release(player, ("DELIVERED! +$%d"):format(contract.Payout))
 
@@ -774,6 +796,9 @@ end
 local function setupPlayer(player)
 	stateByPlayer[player] = {
 		cash = 0,
+		dataLoaded = false,
+		canSave = false,
+		dirty = false,
 		lastRootPosition = nil,
 		lastBlockedMessage = 0,
 		noCollisionConstraints = {},
@@ -809,13 +834,33 @@ local function setupPlayer(player)
 	if player.Character then
 		task.defer(function()
 			placePlayerAtPrototypeSpawn(player)
-			local definition = currentDefinition()
-			sendState(
-				player,
-				definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside.",
-				false
-			)
 		end)
+	end
+
+	local success, savedCash = PlayerDataService.LoadCash(player)
+	local state = stateByPlayer[player]
+	if not state or not player.Parent then
+		return
+	end
+
+	state.cash = savedCash
+	state.dataLoaded = true
+	state.canSave = success
+
+	local definition = currentDefinition()
+	if success then
+		sendState(
+			player,
+			savedCash > 0 and ("Progress loaded — $%d"):format(savedCash)
+				or (definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside."),
+			false
+		)
+	else
+		sendState(
+			player,
+			"Saving is unavailable this session. Your existing save will not be overwritten.",
+			false
+		)
 	end
 end
 
@@ -862,6 +907,9 @@ function ObjectControlService.Start()
 		local state = stateByPlayer[player]
 		if state then
 			clearNoCollision(state)
+			if state.dirty then
+				savePlayerProgress(player)
+			end
 		end
 		stateByPlayer[player] = nil
 	end)
@@ -871,6 +919,29 @@ function ObjectControlService.Start()
 	end
 
 	spawnCurrentObject()
+
+	task.spawn(function()
+		while true do
+			task.wait(PlayerDataService.AutosaveInterval)
+			for _, player in Players:GetPlayers() do
+				local state = stateByPlayer[player]
+				if state and state.dirty then
+					task.spawn(function()
+						savePlayerProgress(player)
+					end)
+				end
+			end
+		end
+	end)
+
+	game:BindToClose(function()
+		for _, player in Players:GetPlayers() do
+			local state = stateByPlayer[player]
+			if state and state.dirty then
+				savePlayerProgress(player)
+			end
+		end
+	end)
 
 	RunService.Heartbeat:Connect(function()
 		local player = holder

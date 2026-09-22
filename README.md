@@ -8,50 +8,63 @@ A solo-first Roblox spatial puzzle about forcing absurd oversized objects throug
 - Mobile controls: PASS
 - M2 core loop: PASS
 - M3 variety: PASS
-- M4 economy + progression: CURRENT TEST
+- M4 economy + progression: PASS
+- M5 saving + reliability: CURRENT TEST
 
-## M4 — Economy + Progression
+## M5 — Saving + Reliability
 
-M4 adds one currency and contract unlocks without making the carrying mechanic easier.
+M5 persists the progression already proven in M4 without changing the puzzle controls or economy.
 
-Session progression (not saved yet):
+Saved:
+- cash
+- contract unlocks indirectly through saved cash
 
-- **Oversized Couch** — unlocked immediately — pays $45
-- **Tall Wardrobe** — unlocked immediately — pays $60
-- **L-Shaped Sectional** — unlocks at $100 — pays $90
-- **Grand Piano-ish Thing** — unlocks at $180 — pays $125
+Not saved yet:
+- current furniture position
+- active contract position/state
+- cosmetics
+- settings
+- map state
 
-The expected first-session path is:
+### Reliability rules
 
-Couch -> Wardrobe -> unlock Sectional -> complete Sectional -> unlock Piano.
+- Data loads before the player can grab furniture.
+- Cash is sanitized before use.
+- DataStore reads/writes retry up to 3 times.
+- Progress saves after successful deliveries.
+- Dirty progress also autosaves every 60 seconds.
+- Dirty progress saves again when leaving and when the server closes.
+- If loading fails, the player can still play that session, but saving is disabled so a temporary failure cannot overwrite an existing save with $0.
+- Current cash only increases, so saves keep the larger stored value to protect against an older server overwriting newer progress.
 
-Progression changes the situations available to the player. There are deliberately no Strength, Grip, Carry Speed, or similar upgrades.
+## Studio testing
 
-## M3 cleanup included
+Roblox DataStores only persist when the experience is published and Studio/API access is available for the test environment.
 
-- Challenge walls now span the playable area so walking around the puzzle is no longer the intended shortcut.
-- Wardrobe now has a low doorway followed by an offset second doorway, so one tilt is not the whole solution.
-- Piano hallway has a low ceiling around the corner, so standing the long piano vertically should not erase the corner puzzle.
-- Delivery now requires the full multi-piece object to be inside the success zone, not just its center pivot.
+For the real M5 test:
+1. Publish the experience privately.
+2. Enable Studio access to API services for the test place if testing persistence from Studio.
+3. Join and earn cash.
+4. Leave completely.
+5. Rejoin.
+6. Confirm the same cash returns and the same contracts remain unlocked.
 
-## M4 PASS criteria
+## M5 PASS criteria
 
-- Cash makes finishing a delivery feel more meaningful.
-- The next unlock is understandable without opening a menu.
-- Unlocking the Sectional/Piano creates real curiosity.
-- New contracts feel like new problems, not stat-gated copies.
-- The player is not thinking "I need +10 Strength to make this less annoying."
-- The first two unlock thresholds feel quick enough for a first session.
+- Earned cash survives a full leave/rejoin.
+- Sectional/Piano unlocks rebuild correctly from loaded cash.
+- Rejoining never resets valid progress to $0.
+- A failed DataStore request does not crash the game.
+- Normal carrying, rotate, tilt, drop, delivery, and payouts still behave exactly as before.
+- Repeated deliveries do not duplicate or lose payouts unexpectedly.
 
 ## Do not worry about yet
 
-- DataStore saving (M5)
-- final models and map art
-- large contract library
-- rarity / special orders
-- co-op
-- monetization
-- polished effects and sound
-- final UI styling
+- polished map/art
+- final furniture models
+- rarity / special contracts
+- social/co-op systems
+- monetization implementation
+- final UI/VFX/audio
 
-Cash resets when the server/session restarts on purpose. Persistence comes next if M4 passes.
+The hint/monetization concept remains planned for the monetization milestone: one useful free hint per contract, with optional paid convenience later, without making base puzzles unfair.

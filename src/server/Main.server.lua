@@ -7,4 +7,4 @@ local ObjectControlService = require(Services:WaitForChild("ObjectControlService
 PrototypeMap.Build()
 ObjectControlService.Start()
 
-print("[GET IT IN] Prototype Zero object-control test started")
+print("[GET IT IN] M5 saving + reliability test started")
