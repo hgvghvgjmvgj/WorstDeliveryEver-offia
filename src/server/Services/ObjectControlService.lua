@@ -206,7 +206,7 @@ local function buildChallenge(definition)
 		)
 		addWallWithDoor(
 			challengeFolder,
-			Config.DoorCenterZ + 9,
+			Config.DoorCenterZ + (challenge.SecondDoorOffsetZ or 9),
 			challenge.SecondDoorCenterX,
 			challenge.SecondDoorWidth,
 			challenge.SecondDoorHeight
