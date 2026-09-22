@@ -15,8 +15,8 @@ return table.freeze({
 		SpawnOffset = CFrame.new(0, 2.9, -12.5),
 		UnloadOffset = CFrame.new(0, 0.30, -7.0),
 		ProcessingOffset = CFrame.new(0, 0.24, -6.8),
-		VanOffset = CFrame.new(0, 2.5, 14.5),
-		OwnerLabelOffset = CFrame.new(0, 4.4, 10.5),
+		VanOffset = CFrame.new(0, 2.5, 23.0),
+		OwnerLabelOffset = CFrame.new(0, 4.4, 15.5),
 
 		InitialStockSlots = 3,
 		MaxPlannedStockSlots = 10,
