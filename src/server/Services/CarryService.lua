@@ -42,6 +42,7 @@ type CarryState = {
 	LastDirection: Vector3?,
 	DangerState: string,
 	CollapseStartedAt: number?,
+	LastRecoveryFeedbackAt: number,
 	Character: Model?,
 	Humanoid: Humanoid?,
 	Root: BasePart?,
@@ -501,6 +502,7 @@ local function initializePlayer(player: Player)
 		LastDirection = nil,
 		DangerState = "Stable",
 		CollapseStartedAt = nil,
+		LastRecoveryFeedbackAt = -math.huge,
 		Character = nil,
 		Humanoid = nil,
 		Root = nil,
@@ -861,9 +863,18 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 			< CarryConfig.Danger.MinimumSwayForCollapse * 0.75
 	then
 		if state.CollapseStartedAt then
+			local warningDuration = os.clock() - state.CollapseStartedAt
+			local sinceLastRecovery = os.clock() - state.LastRecoveryFeedbackAt
+
 			state.CollapseStartedAt = nil
-			noticeRemote:FireClient(player, "SAVED IT.")
-			feedbackRemote:FireClient(player, "Recovered", {})
+
+			if warningDuration >= CarryConfig.Danger.RecoveryFeedbackMinWarningSeconds
+				and sinceLastRecovery >= CarryConfig.Danger.RecoveryFeedbackCooldownSeconds
+			then
+				state.LastRecoveryFeedbackAt = os.clock()
+				noticeRemote:FireClient(player, "SAVED IT.")
+				feedbackRemote:FireClient(player, "Recovered", {})
+			end
 		end
 	end
 
