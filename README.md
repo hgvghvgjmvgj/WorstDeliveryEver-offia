@@ -1,17 +1,33 @@
-# Worst Delivery Ever
+# ONE TRIP!
 
-Fast-build Roblox physics game.
+Prototype for a small Roblox game built around one decision:
 
-## Core loop
-ORDER -> LOAD -> DRIVE -> SURVIVE -> DELIVER -> GET PAID -> UPGRADE -> REPEAT
+**How much can you carry before the trip becomes too risky?**
 
-## Development rule
-Build the gray-box gameplay loop first. No art polish, monetization, pets, rebirths, trading, crafting, or complex cargo placement until the core run is fun.
+## Milestone 1 — Core Carry Prototype
 
-## Rojo
-- src/server -> ServerScriptService
-- src/shared -> ReplicatedStorage
-- src/client -> StarterPlayerScripts
-- src/gui -> StarterGui
+The current build intentionally generates a gray-box test map at runtime.
 
-The local proxy setup is preserved separately. Its node_modules and .env are intentionally ignored by Git.
+Player flow:
+
+1. Spawn beside the grocery car.
+2. Take as many groceries as you want from the trunk.
+3. Each item increases weight and the possible payout.
+4. Press **GO — ONE TRIP**.
+5. Walk to the front door.
+6. Moving and turning while overloaded increases the balance meter.
+7. Reach the door to get paid, or hit 100% balance and drop everything.
+8. Reset and immediately try again.
+
+This milestone does **not** include saving, upgrades, rarity, monetization, final models, or final map art. The only question is whether choosing "one more item" and surviving the walk is fun.
+
+## Test
+
+Run Rojo, connect Studio, and press Play in a one-player test.
+
+Pass criteria:
+- Picking items up is immediately understandable.
+- Taking more items visibly changes the character.
+- A heavy load is meaningfully harder than a light load.
+- The player can deliberately play safer to recover balance.
+- Success/failure resets quickly enough to encourage another attempt.

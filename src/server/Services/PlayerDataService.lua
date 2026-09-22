@@ -1,3 +1,0 @@
-local PlayerDataService = {}
-
-return PlayerDataService

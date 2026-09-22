@@ -1,3 +1,0 @@
-local UpgradeService = {}
-
-return UpgradeService

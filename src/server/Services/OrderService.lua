@@ -1,3 +1,0 @@
-local OrderService = {}
-
-return OrderService

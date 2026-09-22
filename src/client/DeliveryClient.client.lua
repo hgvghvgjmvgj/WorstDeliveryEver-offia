@@ -1,1 +1,0 @@
-print("[WorstDeliveryEver] Client started")
