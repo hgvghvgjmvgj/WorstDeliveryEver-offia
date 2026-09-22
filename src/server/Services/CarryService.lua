@@ -35,6 +35,10 @@ type CarryState = {
 	RunValue: number,
 	SessionScore: number,
 	BaseInstability: number,
+	Strain: number,
+	StrainLoadSeverity: number,
+	StrainStage: string,
+	StrainPhase: number,
 	DynamicSway: Vector2,
 	CurrentSway: Vector2,
 	Phase: number,
@@ -44,6 +48,7 @@ type CarryState = {
 	CollapseStartedAt: number?,
 	LastRecoveryFeedbackAt: number,
 	TutorialWarningsEnabled: boolean,
+	TutorialStrainMessageShown: boolean,
 	Character: Model?,
 	Humanoid: Humanoid?,
 	Root: BasePart?,
@@ -191,6 +196,118 @@ local function riskValue(state: CarryState): number
 	return state.BaseInstability
 		+ state.CurrentSway.Magnitude * CarryConfig.Danger.SwayRiskScale
 end
+
+local function normalizedPressure(value: number, startValue: number, fullValue: number): number
+	return math.clamp(
+		(value - startValue) / math.max(0.01, fullValue - startValue),
+		0,
+		1
+	)
+end
+
+local function calculateStrainLoadSeverity(player: Player, state: CarryState): number
+	if #state.Items == 0 then
+		return 0
+	end
+
+	local tuning = CarryConfig.Strain
+	local stats = getStats(player)
+
+	local weightRatio = state.Weight / math.max(stats.Strength, 0.1)
+	local bulkRatio = state.Bulk / math.max(stats.CarrySpace, 0.1)
+
+	local weightPressure = normalizedPressure(
+		weightRatio,
+		tuning.StartWeightRatio,
+		tuning.FullWeightRatio
+	)
+	local bulkPressure = normalizedPressure(
+		bulkRatio,
+		tuning.StartBulkRatio,
+		tuning.FullBulkRatio
+	)
+	local basePressure = normalizedPressure(
+		state.BaseInstability,
+		tuning.StartBaseInstability,
+		tuning.FullBaseInstability
+	)
+	local heightPressure = normalizedPressure(
+		state.MaxLayer,
+		tuning.StartLayer,
+		tuning.FullLayer
+	)
+
+	local combined = weightPressure * tuning.WeightWeight
+		+ bulkPressure * tuning.BulkWeight
+		+ basePressure * tuning.BaseWeight
+		+ heightPressure * tuning.HeightWeight
+
+	local peak = math.max(
+		weightPressure,
+		bulkPressure,
+		basePressure,
+		heightPressure
+	)
+
+	return math.clamp(
+		peak * tuning.PeakPressureWeight
+			+ combined * tuning.CombinedPressureWeight,
+		0,
+		1
+	)
+end
+
+local function strainStageName(strain: number): string
+	local tuning = CarryConfig.Strain
+
+	if strain >= tuning.Critical then
+		return "Critical"
+	elseif strain >= tuning.High then
+		return "High"
+	elseif strain >= tuning.Moderate then
+		return "Moderate"
+	elseif strain > 0 then
+		return "Low"
+	end
+
+	return "None"
+end
+
+local function updateStrain(player: Player, state: CarryState, dt: number)
+	local tuning = CarryConfig.Strain
+	local severity = state.StrainLoadSeverity
+
+	if #state.Items == 0 then
+		state.Strain = 0
+	elseif severity >= tuning.MinimumLoadSeverity then
+		local rate = tuning.MaxAccumulationPerSecond
+			* (severity ^ tuning.AccumulationExponent)
+		state.Strain = math.min(tuning.Max, state.Strain + rate * dt)
+	else
+		state.Strain = math.max(
+			0,
+			state.Strain - tuning.ComfortDecayPerSecond * dt
+		)
+	end
+
+	if state.TutorialWarningsEnabled
+		and not state.TutorialStrainMessageShown
+		and state.Strain >= tuning.TutorialMessageStrain
+	then
+		state.TutorialStrainMessageShown = true
+		noticeRemote:FireClient(player, "HEAVY LOADS GET HARDER TO HOLD.")
+	end
+
+	local newStage = strainStageName(state.Strain)
+	if newStage ~= state.StrainStage then
+		state.StrainStage = newStage
+		feedbackRemote:FireClient(player, "StrainStage", {
+			stage = newStage,
+		})
+		sendState(player, state, true)
+	end
+end
+
 
 local function ensureRig(state: CarryState)
 	local character = state.Character
@@ -383,6 +500,7 @@ local function recompute(player: Player, state: CarryState)
 	end
 
 	state.BaseInstability = calculateBaseInstability(player, state)
+	state.StrainLoadSeverity = calculateStrainLoadSeverity(player, state)
 
 	if state.Humanoid then
 		state.Humanoid.WalkSpeed = movementSpeedFor(player, state)
@@ -410,6 +528,9 @@ local function sendState(player: Player, state: CarryState, force: boolean?)
 		sessionScore = state.SessionScore,
 		baseInstability = state.BaseInstability,
 		currentSway = state.CurrentSway.Magnitude,
+		strain = state.Strain,
+		strainLoadSeverity = state.StrainLoadSeverity,
+		strainStage = state.StrainStage,
 		dangerState = state.DangerState,
 		preset = player:GetAttribute("CarryPreset") or "Beginner",
 	})
@@ -417,6 +538,10 @@ end
 
 local function resetMotion(state: CarryState)
 	state.BaseInstability = 0
+	state.Strain = 0
+	state.StrainLoadSeverity = 0
+	state.StrainStage = "None"
+	state.StrainPhase = 0
 	state.DynamicSway = Vector2.zero
 	state.CurrentSway = Vector2.zero
 	state.CollapseStartedAt = nil
@@ -496,6 +621,10 @@ local function initializePlayer(player: Player)
 		RunValue = 0,
 		SessionScore = 0,
 		BaseInstability = 0,
+		Strain = 0,
+		StrainLoadSeverity = 0,
+		StrainStage = "None",
+		StrainPhase = 0,
 		DynamicSway = Vector2.zero,
 		CurrentSway = Vector2.zero,
 		Phase = 0,
@@ -505,6 +634,7 @@ local function initializePlayer(player: Player)
 		CollapseStartedAt = nil,
 		LastRecoveryFeedbackAt = -math.huge,
 		TutorialWarningsEnabled = true,
+		TutorialStrainMessageShown = false,
 		Character = nil,
 		Humanoid = nil,
 		Root = nil,
@@ -815,9 +945,19 @@ local function updateLayerVisuals(state: CarryState, risk: number, dt: number)
 				state.Phase * stack.NearCollapseShakeSpeed + layerIndex * 1.73
 			) * stack.NearCollapseShake * dangerAlpha * topFactor
 
-			local visualX = layerVisual.Sway.X + shake
+			local strainAlpha = math.clamp(
+				state.Strain / math.max(0.01, CarryConfig.Strain.Max),
+				0,
+				1
+			)
+			local strainShake = math.sin(
+				state.StrainPhase * 1.55 + layerIndex * 2.11
+			) * CarryConfig.Strain.VisualShakeAtMax * strainAlpha * topFactor
+
+			local visualX = layerVisual.Sway.X + shake + strainShake
 			local visualY = layerVisual.Sway.Y
 				+ math.cos(state.Phase * 0.81 + layerIndex) * shake * 0.35
+				+ strainShake * 0.30
 
 			local lean = math.clamp(visualX, -1.35, 1.35)
 				* math.rad(stack.MaxVisualLeanDegrees)
@@ -852,6 +992,19 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	local horizontalVelocity = Vector3.new(velocity3.X, 0, velocity3.Z)
 	local speed = horizontalVelocity.Magnitude
 	local movement = CarryConfig.Movement
+	local strainTuning = CarryConfig.Strain
+
+	updateStrain(player, state, dt)
+
+	local strainAlpha = math.clamp(
+		state.Strain / math.max(0.01, strainTuning.Max),
+		0,
+		1
+	)
+	local swayGenerationMultiplier = 1
+		+ (strainTuning.SwayGenerationMultiplierAtMax - 1) * strainAlpha
+	local recoveryMultiplier = 1
+		- (1 - strainTuning.MinimumRecoveryMultiplierAtMax) * strainAlpha
 
 	local acceleration = (horizontalVelocity - state.LastVelocity)
 		/ math.max(dt, 1 / 240)
@@ -860,6 +1013,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	local decayRate = if speed <= movement.VelocityDeadzone
 		then movement.StoppedRecoveryRate
 		else movement.MovingRecoveryRate
+	decayRate *= recoveryMultiplier
 
 	state.DynamicSway *= math.exp(-decayRate * dt)
 
@@ -878,6 +1032,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 			* movement.AccelerationGain
 			* dt
 			* excessScale
+			* swayGenerationMultiplier
 	end
 
 	if speed >= movement.TurnMinimumSpeed then
@@ -894,7 +1049,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 					+ state.WideItemCount * movement.WideTurnMultiplierPerItem
 
 				state.DynamicSway += Vector2.new(
-					sign * angle * movement.TurnGain * wideMultiplier,
+					sign * angle * movement.TurnGain * wideMultiplier * swayGenerationMultiplier,
 					0
 				)
 			end
@@ -911,6 +1066,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	)
 
 	state.Phase += speed * dt * 0.55
+	state.StrainPhase += dt * strainTuning.TremorFrequency
 
 	local movementRatio = math.clamp(
 		speed / CarryConfig.BaseWalkSpeed,
@@ -929,7 +1085,19 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 			* 0.38
 	)
 
-	state.CurrentSway = state.DynamicSway + oscillation
+	local tremorAlpha = math.clamp(
+		(state.Strain - strainTuning.TremorStart)
+			/ math.max(0.01, strainTuning.Max - strainTuning.TremorStart),
+		0,
+		1
+	)
+	local tremorAmplitude = tremorAlpha * strainTuning.TremorAmplitudeAtMax
+	local strainTremor = Vector2.new(
+		math.sin(state.StrainPhase) * tremorAmplitude,
+		math.cos(state.StrainPhase) * tremorAmplitude * strainTuning.TremorVerticalRatio
+	)
+
+	state.CurrentSway = state.DynamicSway + oscillation + strainTremor
 
 	local risk = riskValue(state)
 	local newDanger = dangerName(risk)
