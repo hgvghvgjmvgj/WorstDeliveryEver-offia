@@ -36,7 +36,7 @@ Expected:
 - relatively safe
 - Load Pressure usually low/negligible unless you deliberately overload
 
-Measured normal-speed nearest-stock route: about 4.4-7.2 seconds.
+Measured normal-speed nearest-stock route: about 3.9-5.5 seconds.
 
 ## Test C - Deep run
 
@@ -50,8 +50,8 @@ Expected:
 - the player feels the difference between taking something near and taking a Safe deep
 
 Measured route from bay unload to Deep stock:
-- normal speed: about 9.2-10.1 seconds
-- current minimum heavily-loaded speed: about 15.6-17.0 seconds
+- normal speed: about 11.3-12.4 seconds
+- current minimum heavily-loaded speed: about 18.9-20.9 seconds
 
 ## Test D - Greed decision
 
