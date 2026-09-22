@@ -139,7 +139,7 @@ function Controller.Start()
 	noticeLabel = makeLabel(gui, "Notice", UDim2.fromOffset(440, 52), UDim2.new(0.5, -220, 0, 100), 20)
 	noticeLabel.Visible = false
 
-	debugLabel = makeLabel(gui, "Debug", UDim2.fromOffset(310, 150), UDim2.new(1, -328, 0, 18), 15)
+	debugLabel = makeLabel(gui, "Debug", UDim2.fromOffset(310, 196), UDim2.new(1, -328, 0, 18), 15)
 	debugLabel.TextXAlignment = Enum.TextXAlignment.Left
 	debugLabel.TextYAlignment = Enum.TextYAlignment.Top
 	debugLabel.Visible = false
