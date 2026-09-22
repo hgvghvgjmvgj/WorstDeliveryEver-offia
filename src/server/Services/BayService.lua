@@ -1,6 +1,9 @@
 --!strict
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
 
 local BayService = {}
 
@@ -79,7 +82,7 @@ local function placeCharacterAtBay(player: Player, character: Model)
 end
 
 local function firstAvailableBay(): number?
-	for index = 1, 12 do
+	for index = 1, GameConfig.MaxPlayersTarget do
 		if not bayOwners[index] then
 			return index
 		end
@@ -150,7 +153,7 @@ function BayService.Start(root: Folder)
 	worldRoot = root
 	baysFolder = root:WaitForChild("Bays") :: Folder
 
-	for index = 1, 12 do
+	for index = 1, GameConfig.MaxPlayersTarget do
 		updateBayPresentation(index, nil)
 	end
 
