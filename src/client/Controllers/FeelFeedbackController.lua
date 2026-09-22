@@ -68,6 +68,13 @@ function Controller.Start()
 			pulseFov(1.2, 0.06, 0.15)
 		elseif kind == "Collapse" then
 			pulseFov(4.5, 0.07, 0.22)
+		elseif kind == "StrainStage" then
+			local stage = if typeof(data) == "table" then data.stage else nil
+			if stage == "High" then
+				pulseFov(0.9, 0.08, 0.18)
+			elseif stage == "Critical" then
+				pulseFov(1.8, 0.10, 0.24)
+			end
 		elseif kind == "Unload" then
 			local count = if typeof(data) == "table" then tonumber(data.itemCount) or 1 else 1
 			pulseFov(
