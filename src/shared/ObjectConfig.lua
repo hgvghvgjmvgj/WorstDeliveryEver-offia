@@ -80,10 +80,11 @@ ObjectConfig.Objects = {
 		Challenge = {
 			Kind = "CornerHall",
 			EntryWidth = 8.5,
-			HallWidth = 9.2,
+			HallWidth = 10.0,
 			CeilingHeight = 7.7,
-			SuccessCenter = Vector3.new(13, 3.5, 20),
-			SuccessSize = Vector3.new(8, 12, 14),
+			ExitClearanceX = 22,
+			SuccessCenter = Vector3.new(14.5, 3.5, 20),
+			SuccessSize = Vector3.new(14, 12, 8),
 		},
 	},
 }
