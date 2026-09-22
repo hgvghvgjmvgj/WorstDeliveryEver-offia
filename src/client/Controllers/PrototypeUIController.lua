@@ -126,9 +126,9 @@ function Controller.Start()
 	gui.IgnoreGuiInset = false
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	statusLabel = makeLabel(gui, "Status", UDim2.fromOffset(340, 70), UDim2.fromOffset(18, 18), 18)
+	statusLabel = makeLabel(gui, "Status", UDim2.fromOffset(350, 88), UDim2.fromOffset(18, 18), 18)
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-	statusLabel.Text = "RUN VALUE 0    SESSION 0\nStable"
+	statusLabel.Text = "BAY --\nRUN VALUE 0    SESSION 0\nStable"
 
 	promptLabel = makeLabel(gui, "Prompt", UDim2.fromOffset(310, 54), UDim2.new(0.5, -155, 1, -92), 20)
 	promptLabel.Visible = false
@@ -159,8 +159,14 @@ function Controller.Start()
 		latestSnapshot = snapshot
 
 		local dangerState = snapshot.dangerState or "Stable"
+		local bayIndex = player:GetAttribute("BayIndex")
+		local bayText = if typeof(bayIndex) == "number"
+			then string.format("BAY %02d", bayIndex)
+			else "BAY --"
+
 		statusLabel.Text = string.format(
-			"RUN VALUE %d    SESSION %d\n%s   -   %d items",
+			"%s\nRUN VALUE %d    SESSION %d\n%s   -   %d items",
+			bayText,
 			snapshot.runValue or 0,
 			snapshot.sessionScore or 0,
 			dangerState,
