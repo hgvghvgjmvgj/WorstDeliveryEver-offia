@@ -484,6 +484,34 @@ function WorldService.Build(): Folder
 
 	buildItemZones(root)
 
+	local clearanceFolder = Instance.new("Folder")
+	clearanceFolder.Name = "CeilingClearanceGuides"
+	clearanceFolder.Parent = root
+
+	local clearanceNS = makePart(
+		clearanceFolder,
+		"ClearanceNorthSouth",
+		Vector3.new(1.2, 1.2, 300),
+		CFrame.new(0, WarehouseConfig.CeilingClearance, 0),
+		Color3.fromRGB(116, 121, 132),
+		0.62
+	)
+	clearanceNS.CanCollide = false
+	clearanceNS.CanTouch = false
+	clearanceNS.CanQuery = false
+
+	local clearanceEW = makePart(
+		clearanceFolder,
+		"ClearanceEastWest",
+		Vector3.new(300, 1.2, 1.2),
+		CFrame.new(0, WarehouseConfig.CeilingClearance, 0),
+		Color3.fromRGB(116, 121, 132),
+		0.62
+	)
+	clearanceEW.CanCollide = false
+	clearanceEW.CanTouch = false
+	clearanceEW.CanQuery = false
+
 	local baysFolder = Instance.new("Folder")
 	baysFolder.Name = "Bays"
 	baysFolder.Parent = root
