@@ -36,7 +36,7 @@ function UnloadService.Start(worldRoot: Folder, carryService: any)
 			return
 		end
 		lastUnloadAt[player] = now
-		carryService.Unload(player)
+		carryService.Unload(player, zone.CFrame)
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
