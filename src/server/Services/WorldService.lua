@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
-local PrototypeVisualConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PrototypeVisualConfig"))
 
 local WorldService = {}
 
@@ -75,9 +74,9 @@ function WorldService.Build(): Folder
 	itemFloor.CanCollide = false
 	itemFloor.Material = Enum.Material.SmoothPlastic
 
-	local itemLabel = makePart(root, "ItemFloorLabel", Vector3.new(1, 1, 1), CFrame.new(0, 1, 6), Color3.new(1, 1, 1), 1)
+	local itemLabel = makePart(root, "ItemFloorLabel", Vector3.new(1, 1, 1), CFrame.new(0, 1, 5), Color3.new(1, 1, 1), 1)
 	itemLabel.CanCollide = false
-	addBillboard(itemLabel, "M1 ITEM FLOOR")
+	addBillboard(itemLabel, "M1.1 TEMPTATION TEST")
 
 	local unloadZone = makePart(
 		root,
@@ -89,7 +88,7 @@ function WorldService.Build(): Folder
 	)
 	unloadZone.CanCollide = false
 	unloadZone.CanTouch = true
-	addBillboard(unloadZone, "UNLOAD / TEST SCORE", Color3.fromRGB(182, 255, 201))
+	addBillboard(unloadZone, "MAKE IT HOME", Color3.fromRGB(182, 255, 201))
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PrototypeSpawn"
@@ -107,26 +106,42 @@ function WorldService.Build(): Folder
 	spawnFolder.Name = "ItemSpawns"
 	spawnFolder.Parent = root
 
-	local xSpacing = 14
-	local rowZ = { -4, 16 }
-
-	for index, itemId in PrototypeVisualConfig.Order do
-		local row = if index <= 4 then 1 else 2
-		local column = if index <= 4 then index else index - 4
-		local x = (column - 2.5) * xSpacing
-		local z = rowZ[row]
-
+	for index, spawnDefinition in world.TestItemSpawns do
 		local marker = makePart(
 			spawnFolder,
-			itemId,
+			("Spawn_%02d_%s"):format(index, spawnDefinition.ItemId),
 			Vector3.new(2, 0.15, 2),
-			CFrame.new(x, 0.16, z),
+			CFrame.new(spawnDefinition.Position),
 			Color3.fromRGB(130, 138, 151),
-			0.55
+			0.72
 		)
 		marker.CanCollide = false
-		marker:SetAttribute("ItemId", itemId)
+		marker:SetAttribute("ItemId", spawnDefinition.ItemId)
 	end
+
+	local routeLeft = makePart(
+		root,
+		"ReturnPathLeft",
+		Vector3.new(2, 0.08, 29),
+		CFrame.new(-16, 0.08, -35),
+		Color3.fromRGB(99, 104, 113),
+		0.4
+	)
+	routeLeft.CanCollide = false
+
+	local routeRight = makePart(
+		root,
+		"ReturnPathRight",
+		Vector3.new(2, 0.08, 29),
+		CFrame.new(16, 0.08, -35),
+		Color3.fromRGB(99, 104, 113),
+		0.4
+	)
+	routeRight.CanCollide = false
+
+	local feedback = Instance.new("Folder")
+	feedback.Name = "Feedback"
+	feedback.Parent = root
 
 	local wallColor = Color3.fromRGB(67, 71, 79)
 	local halfX = world.FootprintSize.X * 0.5
