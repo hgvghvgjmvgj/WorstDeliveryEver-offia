@@ -199,7 +199,10 @@ function Controller.Start()
 				Color3.fromRGB(255, 92, 82)
 			)
 		elseif kind == "Recovered" then
-			showBurst("SAVED IT", Color3.fromRGB(122, 224, 255))
+			local showText = typeof(data) == "table" and data.showText == true
+			if showText then
+				showBurst("SAVED IT", Color3.fromRGB(122, 224, 255))
+			end
 		end
 	end)
 
