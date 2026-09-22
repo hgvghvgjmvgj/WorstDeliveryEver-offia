@@ -7,4 +7,5 @@ return table.freeze({
 	RequestDrop = "RequestDrop",
 	CarryState = "CarryState",
 	PrototypeNotice = "PrototypeNotice",
+	PrototypeFeedback = "PrototypeFeedback",
 })
