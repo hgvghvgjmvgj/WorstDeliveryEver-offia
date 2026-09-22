@@ -7,7 +7,6 @@ local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild
 
 local BayService = {}
 
-local worldRoot: Folder? = nil
 local baysFolder: Folder? = nil
 
 local bayOwners: {[number]: Player} = {}
@@ -150,7 +149,6 @@ function BayService.GetBayModel(player: Player): Model?
 end
 
 function BayService.Start(root: Folder)
-	worldRoot = root
 	baysFolder = root:WaitForChild("Bays") :: Folder
 
 	for index = 1, GameConfig.MaxPlayersTarget do
