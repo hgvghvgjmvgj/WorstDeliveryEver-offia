@@ -2,9 +2,9 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Services = ServerScriptService:WaitForChild("Services")
 local PrototypeMap = require(Services:WaitForChild("PrototypeMap"))
-local CarryService = require(Services:WaitForChild("CarryService"))
+local ObjectControlService = require(Services:WaitForChild("ObjectControlService"))
 
 PrototypeMap.Build()
-CarryService.Start()
+ObjectControlService.Start()
 
-print("[GET IT IN] Prototype Zero started")
+print("[GET IT IN] Prototype Zero object-control test started")

@@ -1,22 +1,15 @@
 local GetItInConfig = {
 	BaseWalkSpeed = 16,
-	CarryWalkSpeed = 9.5,
 
+	ObjectMoveSpeed = 7.5,
+	InputSendInterval = 0.06,
 	PromptGrabLimit = 11,
-	GrabDistance = 6.4,
-	CarryHeightOffset = -0.7,
-	AutoReleaseDistance = 10.5,
+	HolderGap = 2.4,
 
 	RotateStepDegrees = 15,
 	TiltDegrees = 90,
 
-	PositionResponsiveness = 7,
-	OrientationResponsiveness = 7,
-	MaxMoveForce = 14000,
-	MaxTurnTorque = 14000,
-	MaxMoveVelocity = 12,
-	MaxAngularVelocity = 2.2,
-
+	FloorTopY = 0.4,
 	CouchStartCFrame = CFrame.new(0, 2.1, -12),
 	CouchSize = Vector3.new(10, 4, 3.2),
 

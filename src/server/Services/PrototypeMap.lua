@@ -41,6 +41,11 @@ local function addBillboard(part, text, offset, size)
 	label.Parent = gui
 end
 
+local function markBlocker(part)
+	part:SetAttribute("MoveBlocker", true)
+	return part
+end
+
 function PrototypeMap.Build()
 	local oldOneTrip = Workspace:FindFirstChild("OneTripPrototype")
 	if oldOneTrip then
@@ -64,14 +69,13 @@ function PrototypeMap.Build()
 		Color3.fromRGB(78, 207, 96)
 	)
 
-	local path = makePart(
+	makePart(
 		world,
 		"Path",
 		Vector3.new(25, 0.35, 66),
 		CFrame.new(0, 0.18, 2),
 		Color3.fromRGB(108, 116, 134)
 	)
-	path.CanCollide = true
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PrototypeSpawn"
@@ -97,35 +101,35 @@ function PrototypeMap.Build()
 	local wallColor = Color3.fromRGB(255, 201, 74)
 	local wallThickness = 2
 	local wallHeight = 12
-	local totalWallWidth = 34
+	local totalWallWidth = 42
 	local sideWidth = (totalWallWidth - Config.DoorWidth) / 2
 	local leftX = -(Config.DoorWidth / 2 + sideWidth / 2)
 	local rightX = -leftX
 
-	makePart(
+	markBlocker(makePart(
 		world,
 		"WallLeft",
 		Vector3.new(sideWidth, wallHeight, wallThickness),
 		CFrame.new(leftX, wallHeight / 2, Config.DoorCenterZ),
 		wallColor
-	)
+	))
 
-	makePart(
+	markBlocker(makePart(
 		world,
 		"WallRight",
 		Vector3.new(sideWidth, wallHeight, wallThickness),
 		CFrame.new(rightX, wallHeight / 2, Config.DoorCenterZ),
 		wallColor
-	)
+	))
 
 	local headerHeight = wallHeight - Config.DoorHeight
-	makePart(
+	markBlocker(makePart(
 		world,
 		"WallHeader",
 		Vector3.new(Config.DoorWidth, headerHeight, wallThickness),
 		CFrame.new(0, Config.DoorHeight + headerHeight / 2, Config.DoorCenterZ),
 		wallColor
-	)
+	))
 
 	local doorMarker = makePart(
 		world,
@@ -137,14 +141,13 @@ function PrototypeMap.Build()
 	)
 	doorMarker.Transparency = 0.25
 
-	local insideFloor = makePart(
+	makePart(
 		world,
 		"InsideFloor",
 		Vector3.new(28, 0.4, 25),
 		CFrame.new(0, 0.2, 21),
 		Color3.fromRGB(213, 219, 231)
 	)
-	insideFloor.CanCollide = true
 
 	local finish = makePart(
 		world,
@@ -161,13 +164,12 @@ function PrototypeMap.Build()
 	couch.Name = "Couch"
 	couch.Size = Config.CouchSize
 	couch.CFrame = Config.CouchStartCFrame
-	couch.Anchored = false
+	couch.Anchored = true
 	couch.CanCollide = true
 	couch.Material = Enum.Material.SmoothPlastic
 	couch.Color = Color3.fromRGB(239, 73, 78)
 	couch.TopSurface = Enum.SurfaceType.Smooth
 	couch.BottomSurface = Enum.SurfaceType.Smooth
-	couch.CustomPhysicalProperties = PhysicalProperties.new(0.55, 0.65, 0.15, 1, 1)
 	couch.Parent = world
 
 	local prompt = Instance.new("ProximityPrompt")
