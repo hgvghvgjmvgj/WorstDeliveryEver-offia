@@ -76,9 +76,9 @@ local function makeButton(name, text, action)
 	return button
 end
 
-makeButton("RotateLeft", "↺ ROTATE", "RotateLeft")
+makeButton("RotateLeft", "LEFT", "RotateLeft")
 makeButton("Tilt", "TILT", "Tilt")
-makeButton("RotateRight", "ROTATE ↻", "RotateRight")
+makeButton("RotateRight", "RIGHT", "RotateRight")
 local dropButton = makeButton("Drop", "DROP", "Release")
 dropButton.BackgroundColor3 = Color3.fromRGB(231, 79, 79)
 
@@ -88,7 +88,7 @@ desktopHint.Position = UDim2.new(0.5, -210, 1, -126)
 desktopHint.BackgroundTransparency = 1
 desktopHint.TextColor3 = Color3.fromRGB(235, 235, 235)
 desktopHint.TextStrokeTransparency = 0.55
-desktopHint.Text = "Q/E rotate   •   R tilt   •   F drop"
+desktopHint.Text = "Q/E rotate   -   R tilt   -   F drop"
 desktopHint.TextScaled = true
 desktopHint.Font = Enum.Font.GothamBold
 desktopHint.Visible = false

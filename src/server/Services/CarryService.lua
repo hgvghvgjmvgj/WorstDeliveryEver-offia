@@ -33,6 +33,11 @@ local function getCharacterPieces(player)
 	return character, humanoid, root
 end
 
+local function flatYawFromCFrame(cframe)
+	local look = cframe.LookVector
+	return math.atan2(-look.X, -look.Z)
+end
+
 local function sendState(player, message, overrideHolding)
 	if not player or not player.Parent then
 		return
@@ -47,7 +52,7 @@ local function sendState(player, message, overrideHolding)
 	stateRemote:FireClient(player, {
 		holding = isHolding,
 		message = message,
-		yawDegrees = state and math.deg(state.yaw) or 0,
+		yawDegrees = state and math.deg(state.yawOffset or 0) or 0,
 		tilted = state and state.roll ~= 0 or false,
 	})
 end
@@ -74,10 +79,26 @@ local function resetCouch()
 	end)
 end
 
+local function clearNoCollision(state)
+	if not state or not state.noCollisionConstraints then
+		return
+	end
+
+	for _, constraint in state.noCollisionConstraints do
+		if constraint and constraint.Parent then
+			constraint:Destroy()
+		end
+	end
+
+	table.clear(state.noCollisionConstraints)
+end
+
 local function cleanupConstraints(state)
 	if not state then
 		return
 	end
+
+	clearNoCollision(state)
 
 	for _, instance in {
 		state.alignPosition,
@@ -94,6 +115,7 @@ local function cleanupConstraints(state)
 	state.alignOrientation = nil
 	state.couchAttachment = nil
 	state.targetPart = nil
+	state.targetAttachment = nil
 end
 
 local function release(player, message)
@@ -113,10 +135,14 @@ local function release(player, message)
 	end
 
 	if couch then
+		couch.AssemblyLinearVelocity *= 0.35
+		couch.AssemblyAngularVelocity *= 0.35
+
 		local prompt = couch:FindFirstChild("GrabPrompt")
 		if prompt then
 			prompt.Enabled = true
 		end
+
 		pcall(function()
 			couch:SetNetworkOwner(nil)
 		end)
@@ -143,18 +169,33 @@ local function makeTargetPart()
 	return part, attachment
 end
 
+local function addHolderNoCollision(character, couch, state)
+	state.noCollisionConstraints = {}
+
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local constraint = Instance.new("NoCollisionConstraint")
+			constraint.Name = "HolderNoCollision"
+			constraint.Part0 = couch
+			constraint.Part1 = descendant
+			constraint.Parent = couch
+			table.insert(state.noCollisionConstraints, constraint)
+		end
+	end
+end
+
 local function grab(player)
 	if completed or holder then
 		return
 	end
 
 	local couch = getCouch()
-	local _, humanoid, root = getCharacterPieces(player)
-	if not couch or not humanoid or not root then
+	local character, humanoid, root = getCharacterPieces(player)
+	if not couch or not character or not humanoid or not root then
 		return
 	end
 
-	if (couch.Position - root.Position).Magnitude > 11 then
+	if (couch.Position - root.Position).Magnitude > Config.PromptGrabLimit then
 		return
 	end
 
@@ -162,14 +203,13 @@ local function grab(player)
 
 	local state = stateByPlayer[player]
 	if not state then
-		state = {
-			yaw = math.rad(couch.Orientation.Y),
-			roll = 0,
-		}
+		state = {}
 		stateByPlayer[player] = state
 	end
 
-	state.yaw = math.atan2(-couch.CFrame.LookVector.X, -couch.CFrame.LookVector.Z)
+	local rootYaw = flatYawFromCFrame(root.CFrame)
+	local couchYaw = flatYawFromCFrame(couch.CFrame)
+	state.yawOffset = couchYaw - rootYaw
 	state.roll = 0
 
 	local couchAttachment = Instance.new("Attachment")
@@ -187,6 +227,7 @@ local function grab(player)
 	alignPosition.Responsiveness = Config.PositionResponsiveness
 	alignPosition.RigidityEnabled = false
 	alignPosition.ReactionForceEnabled = false
+	alignPosition.ApplyAtCenterOfMass = true
 	alignPosition.Parent = couch
 
 	local alignOrientation = Instance.new("AlignOrientation")
@@ -207,6 +248,8 @@ local function grab(player)
 	state.alignPosition = alignPosition
 	state.alignOrientation = alignOrientation
 
+	addHolderNoCollision(character, couch, state)
+
 	humanoid.WalkSpeed = Config.CarryWalkSpeed
 
 	local prompt = couch:FindFirstChild("GrabPrompt")
@@ -218,7 +261,7 @@ local function grab(player)
 		couch:SetNetworkOwner(player)
 	end)
 
-	sendState(player, "Move normally. Rotate or tilt the couch to make it fit.", true)
+	sendState(player, "Move normally. If it jams, rotate, tilt, drop, or reposition.", true)
 end
 
 local function rotate(player, direction)
@@ -231,7 +274,7 @@ local function rotate(player, direction)
 		return
 	end
 
-	state.yaw += math.rad(Config.RotateStepDegrees * direction)
+	state.yawOffset += math.rad(Config.RotateStepDegrees * direction)
 	sendState(player)
 end
 
@@ -264,7 +307,7 @@ local function complete()
 
 	if player then
 		release(player, "IT FIT! Prototype Zero passed this run.")
-		sendState(player, "IT FIT! Try again and see if another approach feels possible.", false)
+		sendState(player, "IT FIT! Try another approach if you want.", false)
 	end
 
 	task.delay(Config.ResetDelay, function()
@@ -275,8 +318,9 @@ end
 
 local function setupPlayer(player)
 	stateByPlayer[player] = {
-		yaw = 0,
+		yawOffset = 0,
 		roll = 0,
+		noCollisionConstraints = {},
 	}
 
 	player.CharacterAdded:Connect(function()
@@ -361,15 +405,20 @@ function CarryService.Start()
 		end
 
 		local separation = (currentCouch.Position - root.Position).Magnitude
-		if separation > Config.MaxGrabSeparation then
-			release(player, "Too far away. Grab it again from a better position.")
+		if separation > Config.AutoReleaseDistance then
+			release(player, "It got stuck behind you. Reposition and grab it again.")
 			return
 		end
 
-		local targetPosition = root.Position + root.CFrame.LookVector * Config.GrabDistance + Vector3.new(0, -0.9, 0)
+		local rootYaw = flatYawFromCFrame(root.CFrame)
+		local targetPosition =
+			root.Position
+			+ root.CFrame.LookVector * Config.GrabDistance
+			+ Vector3.new(0, Config.CarryHeightOffset, 0)
+
 		state.targetPart.CFrame =
 			CFrame.new(targetPosition)
-			* CFrame.Angles(0, state.yaw, 0)
+			* CFrame.Angles(0, rootYaw + state.yawOffset, 0)
 			* CFrame.Angles(0, 0, state.roll)
 
 		if currentCouch.Position.Z >= Config.SuccessZ then
