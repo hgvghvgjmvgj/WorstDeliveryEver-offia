@@ -5,13 +5,6 @@ local blue = Color3.fromRGB(101, 181, 255)
 local orange = Color3.fromRGB(239, 151, 74)
 local purple = Color3.fromRGB(159, 103, 221)
 
-ObjectConfig.Order = {
-	"Couch",
-	"Wardrobe",
-	"Sectional",
-	"Piano",
-}
-
 ObjectConfig.Objects = {
 	Couch = {
 		DisplayName = "Oversized Couch",
@@ -27,25 +20,28 @@ ObjectConfig.Objects = {
 			Kind = "NarrowDoor",
 			DoorWidth = 5.6,
 			DoorHeight = 8.5,
-			SuccessCenter = Vector3.new(0, 2, 25),
-			SuccessSize = Vector3.new(18, 8, 7),
+			SuccessCenter = Vector3.new(0, 3.5, 25),
+			SuccessSize = Vector3.new(18, 12, 8),
 		},
 	},
 
 	Wardrobe = {
 		DisplayName = "Tall Wardrobe",
 		TiltAxis = "X",
-		ChallengeText = "THE DOOR IS TOO LOW. REORIENT IT.",
+		ChallengeText = "LOW FIRST DOOR. OFFSET SECOND DOOR.",
 		Pieces = {
 			{Size = Vector3.new(5.0, 10.2, 3.5), Offset = CFrame.new(0, 5.1, 0), Color = blue},
 			{Size = Vector3.new(0.18, 9.5, 0.15), Offset = CFrame.new(0, 5.1, -1.83), Color = Color3.fromRGB(220, 239, 255)},
 		},
 		Challenge = {
-			Kind = "LowDoor",
-			DoorWidth = 6.5,
-			DoorHeight = 6.7,
-			SuccessCenter = Vector3.new(0, 2, 25),
-			SuccessSize = Vector3.new(18, 8, 7),
+			Kind = "LowThenOffset",
+			FirstDoorWidth = 6.4,
+			FirstDoorHeight = 6.7,
+			SecondDoorCenterX = 3.1,
+			SecondDoorWidth = 5.1,
+			SecondDoorHeight = 8.8,
+			SuccessCenter = Vector3.new(3.1, 3.5, 29),
+			SuccessSize = Vector3.new(13, 12, 8),
 		},
 	},
 
@@ -65,15 +61,15 @@ ObjectConfig.Objects = {
 			SecondDoorCenterX = 3.0,
 			DoorWidth = 7.0,
 			DoorHeight = 9.0,
-			SuccessCenter = Vector3.new(3, 2, 29),
-			SuccessSize = Vector3.new(16, 8, 7),
+			SuccessCenter = Vector3.new(3, 3.5, 29),
+			SuccessSize = Vector3.new(16, 12, 8),
 		},
 	},
 
 	Piano = {
 		DisplayName = "Grand Piano-ish Thing",
 		TiltAxis = "Z",
-		ChallengeText = "LONG OBJECT. NOW TURN A 90° HALLWAY.",
+		ChallengeText = "THE HALL TURNS. THE CEILING PUNISHES CHEAP TILTS.",
 		Pieces = {
 			{Size = Vector3.new(10.5, 2.5, 4.6), Offset = CFrame.new(-0.3, 3.6, 0), Color = purple},
 			{Size = Vector3.new(5.5, 1.1, 2.0), Offset = CFrame.new(3.5, 2.0, -2.3), Color = Color3.fromRGB(105, 75, 157)},
@@ -83,9 +79,10 @@ ObjectConfig.Objects = {
 		Challenge = {
 			Kind = "CornerHall",
 			EntryWidth = 8.5,
-			HallWidth = 9.0,
-			SuccessCenter = Vector3.new(13, 2, 20),
-			SuccessSize = Vector3.new(7, 8, 14),
+			HallWidth = 9.2,
+			CeilingHeight = 7.7,
+			SuccessCenter = Vector3.new(13, 3.5, 20),
+			SuccessSize = Vector3.new(8, 12, 14),
 		},
 	},
 }

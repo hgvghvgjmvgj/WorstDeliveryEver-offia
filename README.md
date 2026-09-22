@@ -7,40 +7,51 @@ A solo-first Roblox spatial puzzle about forcing absurd oversized objects throug
 - Prototype Zero controls: PASS
 - Mobile controls: PASS
 - M2 core loop: PASS
-- M3 variety: CURRENT TEST
+- M3 variety: PASS
+- M4 economy + progression: CURRENT TEST
 
-## M3 — Variety Test
+## M4 — Economy + Progression
 
-The carry controls are intentionally unchanged. This milestone tests whether different geometry creates different thinking.
+M4 adds one currency and contract unlocks without making the carrying mechanic easier.
 
-Current M3 set:
+Session progression (not saved yet):
 
-1. **Oversized Couch + narrow door**
-   - Wide object.
-   - Classic pivot/angle problem.
+- **Oversized Couch** — unlocked immediately — pays $45
+- **Tall Wardrobe** — unlocked immediately — pays $60
+- **L-Shaped Sectional** — unlocks at $100 — pays $90
+- **Grand Piano-ish Thing** — unlocks at $180 — pays $125
 
-2. **Tall Wardrobe + low doorway**
-   - Height is the blocker instead of width.
-   - Reorientation/tilt should be necessary.
+The expected first-session path is:
 
-3. **L-Shaped Sectional + offset double entry**
-   - The furniture is genuinely non-rectangular.
-   - Two openings are offset, creating an S-like route.
+Couch -> Wardrobe -> unlock Sectional -> complete Sectional -> unlock Piano.
 
-4. **Long Piano-ish Thing + 90-degree hallway**
-   - Long awkward silhouette.
-   - The route turns, so fitting through the first entrance is not enough.
+Progression changes the situations available to the player. There are deliberately no Strength, Grip, Carry Speed, or similar upgrades.
 
-## M3 PASS criteria
+## M3 cleanup included
 
-The four rounds should not feel like reskins of one rectangle puzzle.
+- Challenge walls now span the playable area so walking around the puzzle is no longer the intended shortcut.
+- Wardrobe now has a low doorway followed by an offset second doorway, so one tilt is not the whole solution.
+- Piano hallway has a low ceiling around the corner, so standing the long piano vertically should not erase the corner puzzle.
+- Delivery now requires the full multi-piece object to be inside the success zone, not just its center pivot.
 
-We want the player to think different things:
-- "turn it sideways"
-- "stand/lay it differently"
-- "I need to plan this weird L-shape"
-- "I got through the door, but now I have to make the corner"
+## M4 PASS criteria
 
-Do not worry about cash, upgrades, saving, rarity, final models, final map art, destruction, co-op, monetization, or polished effects yet.
+- Cash makes finishing a delivery feel more meaningful.
+- The next unlock is understandable without opening a menu.
+- Unlocking the Sectional/Piano creates real curiosity.
+- New contracts feel like new problems, not stat-gated copies.
+- The player is not thinking "I need +10 Strength to make this less annoying."
+- The first two unlock thresholds feel quick enough for a first session.
 
-If one round is impossible or annoying because of bad dimensions, revise the geometry. If all four reduce to the same rotate-and-walk solution, M3 fails.
+## Do not worry about yet
+
+- DataStore saving (M5)
+- final models and map art
+- large contract library
+- rarity / special orders
+- co-op
+- monetization
+- polished effects and sound
+- final UI styling
+
+Cash resets when the server/session restarts on purpose. Persistence comes next if M4 passes.

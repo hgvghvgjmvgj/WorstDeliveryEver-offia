@@ -16,8 +16,8 @@ screenGui.IgnoreGuiInset = false
 screenGui.Parent = playerGui
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.fromOffset(260, 48)
-title.Position = UDim2.new(0.5, -130, 0, 14)
+title.Size = UDim2.fromOffset(250, 44)
+title.Position = UDim2.new(0.5, -125, 0, 12)
 title.BackgroundTransparency = 0.16
 title.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
 title.TextColor3 = Color3.new(1, 1, 1)
@@ -26,28 +26,50 @@ title.TextScaled = true
 title.Font = Enum.Font.GothamBlack
 title.Parent = screenGui
 
+local cashLabel = Instance.new("TextLabel")
+cashLabel.Size = UDim2.fromOffset(150, 42)
+cashLabel.Position = UDim2.new(1, -166, 0, 12)
+cashLabel.BackgroundTransparency = 0.14
+cashLabel.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
+cashLabel.TextColor3 = Color3.fromRGB(102, 255, 137)
+cashLabel.Text = "$0"
+cashLabel.TextScaled = true
+cashLabel.Font = Enum.Font.GothamBlack
+cashLabel.Parent = screenGui
+
 local roundLabel = Instance.new("TextLabel")
-roundLabel.Size = UDim2.fromOffset(230, 34)
-roundLabel.Position = UDim2.new(0.5, -115, 0, 66)
+roundLabel.Size = UDim2.new(0.58, 0, 0, 34)
+roundLabel.Position = UDim2.new(0.21, 0, 0, 62)
 roundLabel.BackgroundTransparency = 0.22
 roundLabel.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
 roundLabel.TextColor3 = Color3.fromRGB(255, 222, 86)
-roundLabel.Text = "OBJECT 1/3"
+roundLabel.Text = "CONTRACT 1"
 roundLabel.TextScaled = true
 roundLabel.Font = Enum.Font.GothamBlack
 roundLabel.Parent = screenGui
 
 local objective = Instance.new("TextLabel")
-objective.Size = UDim2.new(0.72, 0, 0, 54)
-objective.Position = UDim2.new(0.14, 0, 0, 108)
+objective.Size = UDim2.new(0.72, 0, 0, 52)
+objective.Position = UDim2.new(0.14, 0, 0, 103)
 objective.BackgroundTransparency = 0.18
 objective.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
 objective.TextColor3 = Color3.new(1, 1, 1)
 objective.TextWrapped = true
 objective.TextScaled = true
 objective.Font = Enum.Font.GothamBold
-objective.Text = "Get the object through the doorway."
+objective.Text = "Get the object inside."
 objective.Parent = screenGui
+
+local nextUnlock = Instance.new("TextLabel")
+nextUnlock.Size = UDim2.new(0.60, 0, 0, 30)
+nextUnlock.Position = UDim2.new(0.20, 0, 0, 160)
+nextUnlock.BackgroundTransparency = 0.35
+nextUnlock.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
+nextUnlock.TextColor3 = Color3.fromRGB(210, 218, 232)
+nextUnlock.Text = "NEXT CONTRACT: $100"
+nextUnlock.TextScaled = true
+nextUnlock.Font = Enum.Font.GothamBold
+nextUnlock.Parent = screenGui
 
 local controls = Instance.new("Frame")
 controls.Name = "CarryControls"
@@ -134,10 +156,24 @@ stateRemote.OnClientEvent:Connect(function(snapshot)
 	controls.Visible = holding
 	desktopHint.Visible = holding and UserInputService.KeyboardEnabled
 
-	local index = snapshot.roundIndex or 1
-	local count = snapshot.roundCount or 1
 	local objectName = snapshot.objectName or "Object"
-	roundLabel.Text = string.format("OBJECT %d/%d — %s", index, count, string.upper(objectName))
+	local payout = snapshot.payout or 0
+	local index = snapshot.contractIndex or 1
+	local unlocked = snapshot.unlockedCount or 1
+
+	cashLabel.Text = string.format("$%d", snapshot.cash or 0)
+	roundLabel.Text = string.format("CONTRACT %d — %s — +$%d", index, string.upper(objectName), payout)
+
+	if snapshot.allUnlocked then
+		nextUnlock.Text = "ALL M4 CONTRACTS UNLOCKED"
+	else
+		nextUnlock.Text = string.format(
+			"NEXT: %s AT $%d   •   %d UNLOCKED",
+			string.upper(snapshot.nextUnlockName or "CONTRACT"),
+			snapshot.nextUnlockCash or 0,
+			unlocked
+		)
+	end
 
 	if snapshot.message and snapshot.message ~= "" then
 		objective.Text = snapshot.message

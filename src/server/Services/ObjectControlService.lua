@@ -5,6 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
 local ObjectConfig = require(ReplicatedStorage:WaitForChild("ObjectConfig"))
+local ProgressionConfig = require(ReplicatedStorage:WaitForChild("ProgressionConfig"))
 
 local ObjectControlService = {}
 
@@ -13,7 +14,7 @@ local stateRemote
 local holder = nil
 local stateByPlayer = {}
 local completed = false
-local currentObjectIndex = 1
+local currentContractIndex = 1
 local activeObject = nil
 local activeRoot = nil
 local activeObjectId = nil
@@ -51,8 +52,18 @@ local function placePlayerAtPrototypeSpawn(player)
 	end
 end
 
+local function currentContract()
+	return ProgressionConfig.GetContract(currentContractIndex)
+end
+
 local function currentDefinition()
-	return activeObjectId and ObjectConfig.Get(activeObjectId) or nil
+	local contract = currentContract()
+	return contract and ObjectConfig.Get(contract.ObjectId) or nil
+end
+
+local function getPlayerCash(player)
+	local state = stateByPlayer[player]
+	return state and state.cash or 0
 end
 
 local function sendState(player, message, overrideHolding)
@@ -65,15 +76,26 @@ local function sendState(player, message, overrideHolding)
 		isHolding = holder == player
 	end
 
+	local state = stateByPlayer[player]
+	local cash = state and state.cash or 0
 	local definition = currentDefinition()
+	local contract = currentContract()
+	local nextIndex, nextContract = ProgressionConfig.GetNextLocked(cash)
+	local nextDefinition = nextContract and ObjectConfig.Get(nextContract.ObjectId) or nil
 
 	stateRemote:FireClient(player, {
 		holding = isHolding,
 		message = message,
 		tilted = objectTilted,
 		objectName = definition and definition.DisplayName or "",
-		roundIndex = currentObjectIndex,
-		roundCount = #ObjectConfig.Order,
+		contractIndex = currentContractIndex,
+		contractCount = #ProgressionConfig.Contracts,
+		payout = contract and contract.Payout or 0,
+		cash = cash,
+		unlockedCount = ProgressionConfig.GetUnlockedCount(cash),
+		nextUnlockName = nextDefinition and nextDefinition.DisplayName or "",
+		nextUnlockCash = nextContract and nextContract.UnlockCash or nil,
+		allUnlocked = nextContract == nil,
 	})
 end
 
@@ -114,7 +136,7 @@ local function makeMarker(parent, name, center, size)
 end
 
 local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, totalWidth, wallHeight)
-	totalWidth = totalWidth or 44
+	totalWidth = totalWidth or 86
 	wallHeight = wallHeight or 12
 	local thickness = 2
 	local leftEdge = -totalWidth * 0.5
@@ -126,7 +148,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 	if leftWidth > 0.1 then
 		makeBlocker(
 			parent,
-			"WallLeft",
+			"WallLeft_" .. tostring(z),
 			Vector3.new(leftWidth, wallHeight, thickness),
 			CFrame.new(leftEdge + leftWidth * 0.5, wallHeight * 0.5, z)
 		)
@@ -136,7 +158,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 	if rightWidth > 0.1 then
 		makeBlocker(
 			parent,
-			"WallRight",
+			"WallRight_" .. tostring(z),
 			Vector3.new(rightWidth, wallHeight, thickness),
 			CFrame.new(doorRight + rightWidth * 0.5, wallHeight * 0.5, z)
 		)
@@ -146,7 +168,7 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 	if headerHeight > 0.1 then
 		makeBlocker(
 			parent,
-			"WallHeader",
+			"WallHeader_" .. tostring(z),
 			Vector3.new(doorWidth, headerHeight, thickness),
 			CFrame.new(doorCenterX, doorHeight + headerHeight * 0.5, z)
 		)
@@ -166,13 +188,28 @@ local function buildChallenge(definition)
 
 	local challenge = definition.Challenge
 
-	if challenge.Kind == "NarrowDoor" or challenge.Kind == "LowDoor" then
+	if challenge.Kind == "NarrowDoor" then
 		addWallWithDoor(
 			challengeFolder,
 			Config.DoorCenterZ,
 			0,
 			challenge.DoorWidth,
 			challenge.DoorHeight
+		)
+	elseif challenge.Kind == "LowThenOffset" then
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ,
+			0,
+			challenge.FirstDoorWidth,
+			challenge.FirstDoorHeight
+		)
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ + 9,
+			challenge.SecondDoorCenterX,
+			challenge.SecondDoorWidth,
+			challenge.SecondDoorHeight
 		)
 	elseif challenge.Kind == "OffsetEntry" then
 		addWallWithDoor(
@@ -202,20 +239,32 @@ local function buildChallenge(definition)
 		makeBlocker(
 			challengeFolder,
 			"HallLeft",
-			Vector3.new(2, 12, 12),
-			CFrame.new(-halfHall - 1, 6, Config.DoorCenterZ + 7)
+			Vector3.new(2, 12, 16),
+			CFrame.new(-halfHall - 1, 6, Config.DoorCenterZ + 8)
 		)
 		makeBlocker(
 			challengeFolder,
 			"HallRightShort",
-			Vector3.new(2, 12, 6),
-			CFrame.new(halfHall + 1, 6, Config.DoorCenterZ + 4)
+			Vector3.new(2, 12, 7),
+			CFrame.new(halfHall + 1, 6, Config.DoorCenterZ + 4.5)
 		)
 		makeBlocker(
 			challengeFolder,
 			"HallEnd",
-			Vector3.new(16, 12, 2),
-			CFrame.new(-4, 6, Config.DoorCenterZ + 13)
+			Vector3.new(17, 12, 2),
+			CFrame.new(-3.7, 6, Config.DoorCenterZ + 15)
+		)
+		makeBlocker(
+			challengeFolder,
+			"OuterRight",
+			Vector3.new(2, 12, 26),
+			CFrame.new(19, 6, Config.DoorCenterZ + 12)
+		)
+		makeBlocker(
+			challengeFolder,
+			"CornerCeiling",
+			Vector3.new(24, 1.5, 20),
+			CFrame.new(6, challenge.CeilingHeight + 0.75, Config.DoorCenterZ + 10)
 		)
 	end
 
@@ -374,7 +423,9 @@ local function grab(player)
 
 	local state = stateByPlayer[player]
 	if not state then
-		state = {}
+		state = {
+			cash = 0,
+		}
 		stateByPlayer[player] = state
 	end
 
@@ -496,7 +547,12 @@ local function spawnCurrentObject()
 	activePieceLocals = {}
 	holder = nil
 
-	activeObjectId = ObjectConfig.Order[currentObjectIndex]
+	local contract = currentContract()
+	if not contract then
+		return
+	end
+
+	activeObjectId = contract.ObjectId
 	local definition = ObjectConfig.Get(activeObjectId)
 	if not definition then
 		return
@@ -566,24 +622,52 @@ local function spawnCurrentObject()
 		clearNoCollision(state)
 	end
 
-	broadcastState(("OBJECT %d/%d — %s"):format(currentObjectIndex, #ObjectConfig.Order, definition.DisplayName))
+	broadcastState(
+		("CONTRACT %d — %s — PAYS $%d"):format(currentContractIndex, definition.DisplayName, contract.Payout)
+	)
 end
 
-local function pointInsideZone(point, center, size)
-	local delta = point - center
-	return
-		math.abs(delta.X) <= size.X * 0.5
-		and math.abs(delta.Y) <= size.Y * 0.5
-		and math.abs(delta.Z) <= size.Z * 0.5
+local function allObjectCornersInsideZone()
+	local definition = currentDefinition()
+	if not definition then
+		return false
+	end
+
+	local center = definition.Challenge.SuccessCenter
+	local size = definition.Challenge.SuccessSize
+	local minCorner = center - size * 0.5
+	local maxCorner = center + size * 0.5
+
+	for _, entry in activePieceLocals do
+		local cf = activeObject:GetPivot() * entry.LocalCFrame
+		local half = entry.Part.Size * 0.5
+
+		for sx = -1, 1, 2 do
+			for sy = -1, 1, 2 do
+				for sz = -1, 1, 2 do
+					local corner = cf:PointToWorldSpace(Vector3.new(half.X * sx, half.Y * sy, half.Z * sz))
+					if
+						corner.X < minCorner.X or corner.X > maxCorner.X
+						or corner.Y < minCorner.Y or corner.Y > maxCorner.Y
+						or corner.Z < minCorner.Z or corner.Z > maxCorner.Z
+					then
+						return false
+					end
+				end
+			end
+		end
+	end
+
+	return true
 end
 
-local function advanceRound()
-	currentObjectIndex += 1
-	if currentObjectIndex > #ObjectConfig.Order then
-		currentObjectIndex = 1
-		spawnCurrentObject()
-		broadcastState("ALL 4 DELIVERED! Looping the M3 variety set.")
-		return
+local function advanceRoundFor(player)
+	local cash = getPlayerCash(player)
+	local unlockedCount = ProgressionConfig.GetUnlockedCount(cash)
+
+	currentContractIndex += 1
+	if currentContractIndex > unlockedCount then
+		currentContractIndex = 1
 	end
 
 	spawnCurrentObject()
@@ -596,23 +680,43 @@ local function complete()
 
 	completed = true
 	local player = holder
+	local contract = currentContract()
 
-	if player then
-		release(player, "DELIVERED!")
-		sendState(player, "DELIVERED! Next problem incoming...", false)
-	end
+	if player and contract then
+		local state = stateByPlayer[player]
+		local oldUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
+		state.cash += contract.Payout
+		local newUnlocked = ProgressionConfig.GetUnlockedCount(state.cash)
 
-	if activeRoot then
-		local prompt = activeRoot:FindFirstChild("GrabPrompt")
-		if prompt then
-			prompt.Enabled = false
+		release(player, ("DELIVERED! +$%d"):format(contract.Payout))
+
+		local message
+		if newUnlocked > oldUnlocked then
+			local unlockedContract = ProgressionConfig.GetContract(newUnlocked)
+			local unlockedDefinition = unlockedContract and ObjectConfig.Get(unlockedContract.ObjectId)
+			message = unlockedDefinition
+				and ("NEW CONTRACT UNLOCKED: %s"):format(string.upper(unlockedDefinition.DisplayName))
+				or "NEW CONTRACT UNLOCKED!"
+		else
+			message = ("DELIVERED! +$%d"):format(contract.Payout)
 		end
-	end
 
-	task.delay(Config.NextObjectDelay, function()
+		sendState(player, message, false)
+
+		if activeRoot then
+			local prompt = activeRoot:FindFirstChild("GrabPrompt")
+			if prompt then
+				prompt.Enabled = false
+			end
+		end
+
+		task.delay(Config.NextObjectDelay, function()
+			completed = false
+			advanceRoundFor(player)
+		end)
+	else
 		completed = false
-		advanceRound()
-	end)
+	end
 end
 
 local function applyMirroredMovement(player, state)
@@ -662,14 +766,14 @@ local function applyMirroredMovement(player, state)
 		return
 	end
 
-	local challenge = currentDefinition().Challenge
-	if pointInsideZone(getObjectPosition(), challenge.SuccessCenter, challenge.SuccessSize) then
+	if allObjectCornersInsideZone() then
 		complete()
 	end
 end
 
 local function setupPlayer(player)
 	stateByPlayer[player] = {
+		cash = 0,
 		lastRootPosition = nil,
 		lastBlockedMessage = 0,
 		noCollisionConstraints = {},
