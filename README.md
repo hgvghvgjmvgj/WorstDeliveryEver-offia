@@ -1,91 +1,73 @@
-# GET IT IN!
+# ONE TRIP
 
-A solo-complete social Roblox moving game about forcing absurd oversized objects through spaces that look too small for them.
+A 12-player Roblox game about carrying an increasingly ridiculous pile of objects and deciding whether to risk **ONE MORE** before making it back to your van.
 
-## Current status
+## Current milestone
 
-- Core carry mechanic: PASS
-- Mobile controls: PASS
-- Core loop: PASS
-- Puzzle variety proof: PASS
-- Basic economy proof: PASS
-- Saving: PASS
-- Visual direction: PASS
-- **M6.5 independent multi-job architecture: CURRENT TEST**
+**M0 — Project reset + prototype foundation**
 
-## M6.5 — Multi-job architecture reset
+This repository previously contained the old **GET IT IN!** project. The old gameplay architecture has been removed. ONE TRIP starts from a clean, prototype-first foundation.
 
-The old server architecture had one global active object, one global contract index, and one global holder. That meant the entire server effectively shared one job.
+### M0 goals
 
-M6.5 replaces that with **independent job state per player**.
+- clean Rojo project structure
+- one shared source of truth for prototype tuning
+- simple 12-player graybox layout
+- eight primitive test-item definitions
+- networking namespace prepared for the carry prototype
+- no economy, persistence, rarity system, monetization, events, or final art
 
-### Current proof
+## Locked core loop
 
-The map now has four functional job sites.
+**Enter warehouse -> grab objects -> build a ridiculous carried pile -> decide whether to risk ONE MORE -> return to your van -> unload -> earn -> upgrade -> repeat.**
 
-Each assigned player gets their own:
-- plot
-- furniture object
-- challenge geometry
-- success zone
-- current contract index
-- rotate / tilt state
-- holder state
-- completion state
+Only the first half of that loop belongs in the current prototype. We are proving the carrying decision before building the surrounding game.
 
-Player A completing or moving their furniture should not change Player B's job.
+## Prototype question
 
-### Why only four sites right now?
+> Is carrying a ridiculous pile, reading its danger, and deciding whether to risk ONE MORE genuinely fun?
 
-This milestone is proving the architecture, not the final server capacity.
+If primitive blocks cannot make that fun, we fix the carrying mechanic before adding progression.
 
-Once two or more simultaneous jobs pass cleanly, we can scale the same plot system to more sites and add waiting/HQ behavior for larger servers.
+## Project structure
 
-## Vehicle direction — locked for later
+```text
+src/
+  client/
+    Main.client.lua
+  server/
+    Main.server.lua
+    Services/
+      RemoteService.lua
+      WorldService.lua
+  shared/
+    Config/
+      CarryConfig.lua
+      GameConfig.lua
+      ItemConfig.lua
+    Net/
+      RemoteNames.lua
 
-The longer-term loop is now:
+docs/
+  ARCHITECTURE.md
+  CORE_MECHANIC.md
+```
 
-**Moving Company HQ -> choose contract -> get vehicle -> travel to job site -> solve move -> get paid -> return / take next job**
+## Tooling
 
-Vehicle progression can become a meaningful money sink:
-- starter van
-- larger box truck
-- faster vehicle
-- cosmetic paint/wheels/company branding
-- specialized trucks that unlock multi-item or heavy contracts
+This project uses Rojo.
 
-The vehicle should support the moving fantasy, not become a separate driving simulator.
+```bash
+aftman install
+rojo serve
+```
 
-### Map size strategy
+Build a place file with:
 
-Do **not** build the final giant map before vehicles exist.
+```bash
+rojo build -o OneTrip.rbxlx
+```
 
-Current town footprint is large enough to prove multiple simultaneous jobs.
+## Scope rule
 
-After the vehicle system works, expand outward with:
-- new suburbs
-- townhouses
-- apartments
-- commercial district
-- wealthy district
-- special-event job sites
-
-That creates update-friendly map expansion without forcing players to walk long empty distances.
-
-## M6.5 PASS test
-
-Use Roblox Studio multiplayer test with at least 2 players.
-
-PASS if:
-1. Player 1 is assigned one job site.
-2. Player 2 is assigned a different job site.
-3. Both players see their own furniture.
-4. Player 1 can grab/rotate/tilt their furniture.
-5. Player 2 can do the same at the same time.
-6. Moving Player 1's object does not move Player 2's.
-7. Completing Player 1's contract does not advance Player 2's contract.
-8. Each player receives only their own payout.
-9. Saving still works.
-10. Leaving frees the plot for a future player.
-
-Do not judge contract selection, reputation, vehicles, polished UI, co-op helping, or final map size yet. Those come after coexistence passes.
+Do not add pets, rebirths, combat, trading, crafting, multiple currencies, giant maps, quests, clans, battle passes, aggressive PvP, or unrelated minigames to solve uncertainty in the carry mechanic.

@@ -1,10 +1,12 @@
+--!strict
+
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Services = ServerScriptService:WaitForChild("Services")
-local PrototypeMap = require(Services:WaitForChild("PrototypeMap"))
-local ObjectControlService = require(Services:WaitForChild("ObjectControlService"))
+local RemoteService = require(Services:WaitForChild("RemoteService"))
+local WorldService = require(Services:WaitForChild("WorldService"))
 
-PrototypeMap.Build()
-ObjectControlService.Start()
+RemoteService.Initialize()
+WorldService.Build()
 
-print("[GET IT IN] M6.5 multi-job architecture test started")
+print("[ONE TRIP] M0 foundation loaded")

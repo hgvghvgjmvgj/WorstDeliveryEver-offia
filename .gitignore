@@ -5,10 +5,18 @@
 /*.rbxl.lock
 sourcemap.json
 
-# Local proxy dependencies/secrets
-proxy/node_modules/
-proxy/.env
+# Generated packages / local tools
+Packages/
+DevPackages/
+.wally/
+*.exe
+*.zip
 
-# Common local junk
+# Local editor / OS files
+.vscode/
 .DS_Store
 Thumbs.db
+
+# Logs / temporary files
+*.log
+tmp/
