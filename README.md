@@ -1,73 +1,63 @@
 # ONE TRIP
 
-A 12-player Roblox game about carrying an increasingly ridiculous pile of objects and deciding whether to risk **ONE MORE** before making it back to your van.
+A 12-player Roblox game about carrying an increasingly ridiculous pile of objects and deciding whether to risk ONE MORE before making it back to your van.
 
 ## Current milestone
 
-**M0 — Project reset + prototype foundation**
+M1 - Core Carry Prototype
 
-This repository previously contained the old **GET IT IN!** project. The old gameplay architecture has been removed. ONE TRIP starts from a clean, prototype-first foundation.
+The repository now contains the minimum playable loop required to test:
 
-### M0 goals
+Find item -> Grab -> visible pile grows -> risk increases -> decide whether to continue -> return carefully -> unload -> receive temporary test score -> repeat
 
-- clean Rojo project structure
-- one shared source of truth for prototype tuning
-- simple 12-player graybox layout
-- eight primitive test-item definitions
-- networking namespace prepared for the carry prototype
-- no economy, persistence, rarity system, monetization, events, or final art
+### M1 includes
 
-## Locked core loop
+- server-authoritative shared-item grabbing
+- eight centrally configured test items
+- deterministic automatic carry stacking
+- separate Base Instability and Current Sway
+- Weight-based movement slowdown
+- distinct Bulk, Tall, Wide, and Compact behavior
+- movement filtering based on actual character motion
+- readable pile wobble
+- recoverable near-collapse warning
+- Partial Collapse as the active failure mode
+- owner protection for freshly dropped objects
+- temporary unload/test score
+- F3 developer telemetry
+- simple M1 graybox test room
 
-**Enter warehouse -> grab objects -> build a ridiculous carried pile -> decide whether to risk ONE MORE -> return to your van -> unload -> earn -> upgrade -> repeat.**
+### M1 intentionally excludes
 
-Only the first half of that loop belongs in the current prototype. We are proving the carrying decision before building the surrounding game.
+- DataStores
+- progression/upgrades
+- final Cash economy
+- rarity
+- collections
+- events
+- monetization
+- final UI/art
+- final 12-player warehouse
+- pets/rebirths/trading/combat/quests
 
-## Prototype question
+## Controls
 
-> Is carrying a ridiculous pile, reading its danger, and deciding whether to risk ONE MORE genuinely fun?
+E / mobile GRAB button - grab nearest valid item
 
-If primitive blocks cannot make that fun, we fix the carrying mechanic before adding progression.
+Q - drop the top carried item
 
-## Project structure
+F3 - toggle developer carry telemetry
 
-```text
-src/
-  client/
-    Main.client.lua
-  server/
-    Main.server.lua
-    Services/
-      RemoteService.lua
-      WorldService.lua
-  shared/
-    Config/
-      CarryConfig.lua
-      GameConfig.lua
-      ItemConfig.lua
-    Net/
-      RemoteNames.lua
+## Developer carry presets
 
-docs/
-  ARCHITECTURE.md
-  CORE_MECHANIC.md
-```
+Players default to Beginner.
+
+During Studio testing, change the Player attribute CarryPreset to either Beginner or Veteran. The carry service recalculates live.
 
 ## Tooling
 
-This project uses Rojo.
+Use aftman install, then rojo serve.
 
-```bash
-aftman install
-rojo serve
-```
+To build a place file, run rojo build -o OneTrip.rbxlx.
 
-Build a place file with:
-
-```bash
-rojo build -o OneTrip.rbxlx
-```
-
-## Scope rule
-
-Do not add pets, rebirths, combat, trading, crafting, multiple currencies, giant maps, quests, clans, battle passes, aggressive PvP, or unrelated minigames to solve uncertainty in the carry mechanic.
+See docs/CORE_MECHANIC.md and docs/M1_PLAYTEST.md.
