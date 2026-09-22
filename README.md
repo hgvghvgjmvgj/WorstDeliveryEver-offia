@@ -9,62 +9,70 @@ A solo-first Roblox spatial puzzle about forcing absurd oversized objects throug
 - M2 core loop: PASS
 - M3 variety: PASS
 - M4 economy + progression: PASS
-- M5 saving + reliability: CURRENT TEST
+- M5 saving + reliability: PASS
+- M6 real map + art: CURRENT TEST
 
-## M5 — Saving + Reliability
+## M6 — Real Map + Art
 
-M5 persists the progression already proven in M4 without changing the puzzle controls or economy.
+The proven puzzle loop is now presented as a colorful stylized Roblox moving-day game instead of a graybox.
 
-Saved:
-- cash
-- contract unlocks indirectly through saved cash
+### Environment
 
-Not saved yet:
-- current furniture position
-- active contract position/state
-- cosmetics
-- settings
-- map state
+Studio-built:
+- compact suburban moving-day property
+- stylized lawn, road, sidewalk, driveway and porch
+- colorful house frontage and roof
+- readable teal door trim around every active puzzle opening
+- moving truck with cab, cargo box, ramp, wheels and branding
+- moving-box stacks
+- trees, shrubs and mailbox
+- contained side boundaries so the puzzle cannot be bypassed by walking around the house
+- warmer interior flooring
+- brighter afternoon lighting with subtle color correction/bloom
 
-### Reliability rules
+### Furniture art
 
-- Data loads before the player can grab furniture.
-- Cash is sanitized before use.
-- DataStore reads/writes retry up to 3 times.
-- Progress saves after successful deliveries.
-- Dirty progress also autosaves every 60 seconds.
-- Dirty progress saves again when leaving and when the server closes.
-- If loading fails, the player can still play that session, but saving is disabled so a temporary failure cannot overwrite an existing save with $0.
-- Current cash only increases, so saves keep the larger stored value to protect against an older server overwriting newer progress.
+Furniture still uses the exact gameplay collision silhouettes that passed the earlier milestones.
 
-## Studio testing
+New visual-only pieces add:
+- couch cushions and feet
+- recognizable refrigerator doors/handles
+- sectional cushions
+- piano keyboard/lid/pedal details
 
-Roblox DataStores only persist when the experience is published and Studio/API access is available for the test environment.
+Visual-only pieces do not participate in collision, delivery checks or floor placement, so art should not secretly make puzzles harder.
 
-For the real M5 test:
-1. Publish the experience privately.
-2. Enable Studio access to API services for the test place if testing persistence from Studio.
-3. Join and earn cash.
-4. Leave completely.
-5. Rejoin.
-6. Confirm the same cash returns and the same contracts remain unlocked.
+## Studio vs Blender
 
-## M5 PASS criteria
+**No Blender is required for M6.**
 
-- Earned cash survives a full leave/rejoin.
-- Sectional/Piano unlocks rebuild correctly from loaded cash.
-- Rejoining never resets valid progress to $0.
-- A failed DataStore request does not crash the game.
-- Normal carrying, rotate, tilt, drop, delivery, and payouts still behave exactly as before.
-- Repeated deliveries do not duplicate or lose payouts unexpectedly.
+The current environment and furniture are deliberately built from clean Roblox Studio primitives because:
+- the map is collision/layout-heavy
+- silhouettes are still simple enough to read well
+- mobile performance matters
+- we should not spend Blender time before the complete visual direction passes in-game
+
+Use Blender later only for hero/special furniture or iconic rare objects whose silhouette genuinely benefits from custom modeling.
+
+## M6 PASS criteria
+
+- The game reads as a real moving-day experience immediately, not a test room.
+- The truck, house and current furniture are recognizable at a glance.
+- Colors are bright/stylized without feeling preschool-like.
+- Doorways and intended routes remain visually obvious.
+- Art does not make any previously solvable puzzle harder.
+- Furniture still rotates, tilts, drops and delivers correctly.
+- The scene remains readable and smooth in the mobile emulator.
+- The environment feels compact; scenery should support the puzzle rather than distract from it.
 
 ## Do not worry about yet
 
-- polished map/art
-- final furniture models
-- rarity / special contracts
+- final UI redesign/onboarding polish (M7)
+- sound/VFX/camera juice (M7)
+- rare/special contracts
 - social/co-op systems
 - monetization implementation
-- final UI/VFX/audio
+- custom Blender hero assets
+- huge neighborhood/open world
 
-The hint/monetization concept remains planned for the monetization milestone: one useful free hint per contract, with optional paid convenience later, without making base puzzles unfair.
+M6 is an art-direction proof, not a final content-complete map.

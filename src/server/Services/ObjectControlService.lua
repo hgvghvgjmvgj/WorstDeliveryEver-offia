@@ -128,8 +128,27 @@ local function makeBlocker(parent, name, size, cframe)
 	part.Anchored = true
 	part.CanCollide = true
 	part.Material = Enum.Material.SmoothPlastic
-	part.Color = Color3.fromRGB(255, 201, 74)
+	part.Color = Color3.fromRGB(255, 225, 172)
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
 	part:SetAttribute("MoveBlocker", true)
+	part.Parent = parent
+	return part
+end
+
+local function makeDecoration(parent, name, size, cframe, color)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = cframe
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = color
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
 	return part
 end
@@ -137,15 +156,15 @@ end
 local function makeMarker(parent, name, center, size)
 	local part = Instance.new("Part")
 	part.Name = name
-	part.Size = size
-	part.CFrame = CFrame.new(center)
+	part.Size = Vector3.new(size.X, 0.12, size.Z)
+	part.CFrame = CFrame.new(center.X, Config.FloorTopY + 0.08, center.Z)
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
 	part.Material = Enum.Material.Neon
-	part.Color = Color3.fromRGB(75, 235, 116)
-	part.Transparency = 0.72
+	part.Color = Color3.fromRGB(92, 231, 132)
+	part.Transparency = 0.48
 	part.Parent = parent
 	return part
 end
@@ -188,6 +207,32 @@ local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, to
 			CFrame.new(doorCenterX, doorHeight + headerHeight * 0.5, z)
 		)
 	end
+
+	-- Bright trim makes the opening readable without changing collision.
+	local trimColor = Color3.fromRGB(72, 177, 196)
+	local trimDepth = 0.38
+	local frontZ = z - thickness * 0.5 - trimDepth * 0.5
+	makeDecoration(
+		parent,
+		"DoorTrimLeft_" .. tostring(z),
+		Vector3.new(0.42, doorHeight + 0.3, trimDepth),
+		CFrame.new(doorLeft - 0.21, doorHeight * 0.5, frontZ),
+		trimColor
+	)
+	makeDecoration(
+		parent,
+		"DoorTrimRight_" .. tostring(z),
+		Vector3.new(0.42, doorHeight + 0.3, trimDepth),
+		CFrame.new(doorRight + 0.21, doorHeight * 0.5, frontZ),
+		trimColor
+	)
+	makeDecoration(
+		parent,
+		"DoorTrimTop_" .. tostring(z),
+		Vector3.new(doorWidth + 0.84, 0.42, trimDepth),
+		CFrame.new(doorCenterX, doorHeight + 0.21, frontZ),
+		trimColor
+	)
 end
 
 local function buildChallenge(definition)
@@ -600,18 +645,23 @@ local function spawnCurrentObject()
 		part.Name = "Piece" .. index
 		part.Size = pieceDefinition.Size
 		part.Anchored = true
-		part.CanCollide = true
-		part.Material = Enum.Material.SmoothPlastic
+		local hasCollision = pieceDefinition.Collision ~= false
+		part.CanCollide = hasCollision
+		part.CanTouch = hasCollision
+		part.CanQuery = hasCollision
+		part.Material = pieceDefinition.Material or Enum.Material.SmoothPlastic
 		part.Color = pieceDefinition.Color
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
 		part.CFrame = root.CFrame * pieceDefinition.Offset
 		part.Parent = model
 
-		table.insert(activePieceLocals, {
-			Part = part,
-			LocalCFrame = pieceDefinition.Offset,
-		})
+		if hasCollision then
+			table.insert(activePieceLocals, {
+				Part = part,
+				LocalCFrame = pieceDefinition.Offset,
+			})
+		end
 	end
 
 	activeObject = model
