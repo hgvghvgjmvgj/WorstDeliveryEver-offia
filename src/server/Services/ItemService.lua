@@ -16,8 +16,14 @@ local ItemService = {}
 local itemFolder: Folder? = nil
 local spawnFolder: Folder? = nil
 local lostVisualFolder: Folder? = nil
+local activeBySpawn: {[string]: BasePart} = {}
 
-local function makeWorldItem(itemId: string, cframe: CFrame, spawnName: string?, ownerUserId: number?): Part
+local function makeWorldItem(
+	itemId: string,
+	cframe: CFrame,
+	spawnName: string?,
+	ownerUserId: number?
+): Part
 	assert(itemFolder, "ItemService.Start must run first")
 
 	local definition = ItemConfig[itemId]
@@ -37,6 +43,7 @@ local function makeWorldItem(itemId: string, cframe: CFrame, spawnName: string?,
 	item:SetAttribute("ItemId", itemId)
 	item:SetAttribute("WorldItemId", HttpService:GenerateGUID(false))
 	item:SetAttribute("Available", true)
+	item:SetAttribute("ReservedByUserId", 0)
 	item:SetAttribute("SpawnName", spawnName or "")
 	item:SetAttribute("OwnerUserId", ownerUserId or 0)
 	item:SetAttribute("ProtectedUntil", 0)
@@ -45,9 +52,10 @@ local function makeWorldItem(itemId: string, cframe: CFrame, spawnName: string?,
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "PrototypeLabel"
 	gui.Adornee = item
-	gui.Size = UDim2.fromOffset(170, 44)
-	gui.StudsOffset = Vector3.new(0, visual.Size.Y * 0.5 + 1.3, 0)
+	gui.Size = UDim2.fromOffset(160, 40)
+	gui.StudsOffset = Vector3.new(0, visual.Size.Y * 0.5 + 1.25, 0)
 	gui.AlwaysOnTop = true
+	gui.MaxDistance = 42
 	gui.Parent = item
 
 	local label = Instance.new("TextLabel")
@@ -64,14 +72,56 @@ local function makeWorldItem(itemId: string, cframe: CFrame, spawnName: string?,
 end
 
 local function spawnStock(spawnPart: BasePart)
-	local itemId = spawnPart:GetAttribute("ItemId")
-	if typeof(itemId) ~= "string" or itemId == "" then
+	if not itemFolder then
 		return
 	end
-	makeWorldItem(itemId, spawnPart.CFrame, spawnPart.Name, nil)
+
+	local spawnName = spawnPart.Name
+	local existing = activeBySpawn[spawnName]
+	if existing and existing.Parent then
+		return
+	end
+
+	local itemId = spawnPart:GetAttribute("ItemId")
+	if typeof(itemId) ~= "string" or itemId == "" or not ItemConfig[itemId] then
+		return
+	end
+
+	local item = makeWorldItem(itemId, spawnPart.CFrame, spawnName, nil)
+	activeBySpawn[spawnName] = item
+
+	item.Destroying:Connect(function()
+		if activeBySpawn[spawnName] == item then
+			activeBySpawn[spawnName] = nil
+		end
+	end)
+end
+
+local function scheduleRestock(spawnName: string)
+	if not spawnFolder then
+		return
+	end
+
+	local sourceSpawn = spawnFolder:FindFirstChild(spawnName)
+	if not sourceSpawn or not sourceSpawn:IsA("BasePart") then
+		return
+	end
+
+	local delaySeconds = sourceSpawn:GetAttribute("RestockSeconds")
+	if typeof(delaySeconds) ~= "number" then
+		delaySeconds = 1.8
+	end
+
+	task.delay(delaySeconds, function()
+		if sourceSpawn.Parent and itemFolder then
+			spawnStock(sourceSpawn)
+		end
+	end)
 end
 
 function ItemService.Start(root: Folder)
+	table.clear(activeBySpawn)
+
 	itemFolder = Instance.new("Folder")
 	itemFolder.Name = "Items"
 	itemFolder.Parent = root
@@ -89,11 +139,30 @@ function ItemService.Start(root: Folder)
 	end
 end
 
+function ItemService.GetAvailableCount(): number
+	if not itemFolder then
+		return 0
+	end
+
+	local count = 0
+	for _, candidate in itemFolder:GetChildren() do
+		if candidate:IsA("BasePart") and candidate:GetAttribute("Available") == true then
+			count += 1
+		end
+	end
+	return count
+end
+
 function ItemService.TryTake(player: Player, candidate: Instance): (boolean, string?, CFrame?)
 	if not itemFolder or not candidate:IsA("BasePart") or candidate.Parent ~= itemFolder then
 		return false, nil, nil
 	end
+
 	if candidate:GetAttribute("Available") ~= true then
+		return false, nil, nil
+	end
+
+	if candidate:GetAttribute("ReservedByUserId") ~= 0 then
 		return false, nil, nil
 	end
 
@@ -118,24 +187,29 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 	if not root or not root:IsA("BasePart") then
 		return false, nil, nil
 	end
+
 	if (root.Position - candidate.Position).Magnitude > CarryConfig.GrabDistance then
 		return false, nil, nil
 	end
 
-	local pickupCFrame = candidate.CFrame
+	-- No yields below this point until the item has been reserved. The first
+	-- valid server request wins this shared object.
+	candidate:SetAttribute("ReservedByUserId", player.UserId)
 	candidate:SetAttribute("Available", false)
+
+	local pickupCFrame = candidate.CFrame
 	local spawnName = candidate:GetAttribute("SpawnName")
+
+	if typeof(spawnName) == "string" and spawnName ~= "" then
+		if activeBySpawn[spawnName] == candidate then
+			activeBySpawn[spawnName] = nil
+		end
+	end
+
 	candidate:Destroy()
 
-	if typeof(spawnName) == "string" and spawnName ~= "" and spawnFolder then
-		local sourceSpawn = spawnFolder:FindFirstChild(spawnName)
-		if sourceSpawn and sourceSpawn:IsA("BasePart") then
-			task.delay(GameConfig.Prototype.StockRespawnSeconds, function()
-				if sourceSpawn.Parent and itemFolder then
-					spawnStock(sourceSpawn)
-				end
-			end)
-		end
+	if typeof(spawnName) == "string" and spawnName ~= "" then
+		scheduleRestock(spawnName)
 	end
 
 	return true, itemId, pickupCFrame
@@ -181,18 +255,15 @@ function ItemService.SpawnCollapseLoss(itemId: string, startCFrame: CFrame, offs
 		math.rad(30 - offsetIndex * 7)
 	)
 
-	local scatter = TweenService:Create(
+	TweenService:Create(
 		lost,
 		TweenInfo.new(
 			CarryConfig.Failure.CollapseScatterSeconds,
 			Enum.EasingStyle.Quad,
 			Enum.EasingDirection.Out
 		),
-		{
-			CFrame = CFrame.new(destinationPosition) * spin,
-		}
-	)
-	scatter:Play()
+		{ CFrame = CFrame.new(destinationPosition) * spin }
+	):Play()
 
 	task.delay(
 		math.max(0.5, CarryConfig.Failure.LostVisualLifetimeSeconds - 0.45),
@@ -215,7 +286,12 @@ function ItemService.SpawnCollapseLoss(itemId: string, startCFrame: CFrame, offs
 	Debris:AddItem(lost, CarryConfig.Failure.LostVisualLifetimeSeconds)
 end
 
-function ItemService.SpawnDropped(itemId: string, startCFrame: CFrame, ownerUserId: number, offsetIndex: number)
+function ItemService.SpawnDropped(
+	itemId: string,
+	startCFrame: CFrame,
+	ownerUserId: number,
+	offsetIndex: number
+)
 	if not itemFolder then
 		return
 	end
@@ -223,12 +299,19 @@ function ItemService.SpawnDropped(itemId: string, startCFrame: CFrame, ownerUser
 	local angle = offsetIndex * 1.73
 	local radius = 2.8 + (offsetIndex % 3) * 0.9
 	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-	local floorPosition = Vector3.new(startCFrame.Position.X + offset.X, 0.01, startCFrame.Position.Z + offset.Z)
+	local floorPosition = Vector3.new(
+		startCFrame.Position.X + offset.X,
+		0.01,
+		startCFrame.Position.Z + offset.Z
+	)
 
 	local item = makeWorldItem(itemId, CFrame.new(floorPosition), nil, ownerUserId)
 	local destination = item.CFrame
 	item.CFrame = startCFrame
-	item:SetAttribute("ProtectedUntil", Workspace:GetServerTimeNow() + CarryConfig.DroppedItemProtectionSeconds)
+	item:SetAttribute(
+		"ProtectedUntil",
+		Workspace:GetServerTimeNow() + CarryConfig.DroppedItemProtectionSeconds
+	)
 
 	local spin = CFrame.Angles(
 		math.rad(18 + offsetIndex * 9),
