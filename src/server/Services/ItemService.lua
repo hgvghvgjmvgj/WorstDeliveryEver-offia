@@ -3,6 +3,7 @@
 local Debris = game:GetService("Debris")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
@@ -82,17 +83,17 @@ function ItemService.Start(root: Folder)
 	end
 end
 
-function ItemService.TryTake(player: Player, candidate: Instance): (boolean, string?)
+function ItemService.TryTake(player: Player, candidate: Instance): (boolean, string?, CFrame?)
 	if not itemFolder or not candidate:IsA("BasePart") or candidate.Parent ~= itemFolder then
-		return false, nil
+		return false, nil, nil
 	end
 	if candidate:GetAttribute("Available") ~= true then
-		return false, nil
+		return false, nil, nil
 	end
 
 	local itemId = candidate:GetAttribute("ItemId")
 	if typeof(itemId) ~= "string" or not ItemConfig[itemId] then
-		return false, nil
+		return false, nil, nil
 	end
 
 	local protectedUntil = candidate:GetAttribute("ProtectedUntil")
@@ -103,18 +104,19 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 		and ownerUserId ~= 0
 		and ownerUserId ~= player.UserId
 	then
-		return false, nil
+		return false, nil, nil
 	end
 
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") then
-		return false, nil
+		return false, nil, nil
 	end
 	if (root.Position - candidate.Position).Magnitude > CarryConfig.GrabDistance then
-		return false, nil
+		return false, nil, nil
 	end
 
+	local pickupCFrame = candidate.CFrame
 	candidate:SetAttribute("Available", false)
 	local spawnName = candidate:GetAttribute("SpawnName")
 	candidate:Destroy()
@@ -130,20 +132,40 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 		end
 	end
 
-	return true, itemId
+	return true, itemId, pickupCFrame
 end
 
-function ItemService.SpawnDropped(itemId: string, cframe: CFrame, ownerUserId: number, offsetIndex: number)
+function ItemService.SpawnDropped(itemId: string, startCFrame: CFrame, ownerUserId: number, offsetIndex: number)
 	if not itemFolder then
 		return
 	end
 
 	local angle = offsetIndex * 1.73
-	local radius = 2.5 + (offsetIndex % 3) * 0.8
+	local radius = 2.8 + (offsetIndex % 3) * 0.9
 	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-	local dropPosition = Vector3.new(cframe.Position.X + offset.X, 0.01, cframe.Position.Z + offset.Z)
-	local item = makeWorldItem(itemId, CFrame.new(dropPosition), nil, ownerUserId)
+	local floorPosition = Vector3.new(startCFrame.Position.X + offset.X, 0.01, startCFrame.Position.Z + offset.Z)
+
+	local item = makeWorldItem(itemId, CFrame.new(floorPosition), nil, ownerUserId)
+	local destination = item.CFrame
+	item.CFrame = startCFrame
 	item:SetAttribute("ProtectedUntil", Workspace:GetServerTimeNow() + CarryConfig.DroppedItemProtectionSeconds)
+
+	local spin = CFrame.Angles(
+		math.rad(18 + offsetIndex * 9),
+		math.rad(offsetIndex * 37),
+		math.rad(24 - offsetIndex * 5)
+	)
+
+	TweenService:Create(
+		item,
+		TweenInfo.new(
+			CarryConfig.Failure.CollapseScatterSeconds,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{ CFrame = destination * spin }
+	):Play()
+
 	Debris:AddItem(item, GameConfig.Prototype.DroppedItemLifetimeSeconds)
 end
 
