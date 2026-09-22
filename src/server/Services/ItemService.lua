@@ -88,6 +88,9 @@ local function spawnStock(spawnPart: BasePart)
 	end
 
 	local item = makeWorldItem(itemId, spawnPart.CFrame, spawnName, nil)
+	item:SetAttribute("ZoneName", spawnPart:GetAttribute("ZoneName") or "")
+	item:SetAttribute("ZoneDepth", spawnPart:GetAttribute("ZoneDepth") or 0)
+	item:SetAttribute("ClusterName", spawnPart:GetAttribute("ClusterName") or "")
 	activeBySpawn[spawnName] = item
 
 	item.Destroying:Connect(function()
