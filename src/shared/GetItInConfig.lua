@@ -1,10 +1,10 @@
 local GetItInConfig = {
 	BaseWalkSpeed = 16,
+	CarryWalkSpeed = 9,
 
-	ObjectMoveSpeed = 7.5,
-	InputSendInterval = 0.06,
 	PromptGrabLimit = 11,
-	HolderGap = 2.4,
+	MaxCarryDistance = 13,
+	MaxFrameMove = 1.25,
 
 	RotateStepDegrees = 15,
 	TiltDegrees = 90,

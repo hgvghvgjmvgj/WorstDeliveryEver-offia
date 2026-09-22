@@ -1,9 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-
-local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -86,20 +83,18 @@ local dropButton = makeButton("Drop", "DROP", "Release")
 dropButton.BackgroundColor3 = Color3.fromRGB(231, 79, 79)
 
 local desktopHint = Instance.new("TextLabel")
-desktopHint.Size = UDim2.fromOffset(460, 30)
-desktopHint.Position = UDim2.new(0.5, -230, 1, -126)
+desktopHint.Size = UDim2.fromOffset(500, 30)
+desktopHint.Position = UDim2.new(0.5, -250, 1, -126)
 desktopHint.BackgroundTransparency = 1
 desktopHint.TextColor3 = Color3.fromRGB(235, 235, 235)
 desktopHint.TextStrokeTransparency = 0.55
-desktopHint.Text = "MOVE = couch   |   Q/E rotate   |   R tilt   |   F drop"
+desktopHint.Text = "WALK NORMALLY   |   Q/E rotate couch   |   R tilt   |   F drop"
 desktopHint.TextScaled = true
 desktopHint.Font = Enum.Font.GothamBold
 desktopHint.Visible = false
 desktopHint.Parent = screenGui
 
 local holding = false
-local lastMoveSent = Vector3.zero
-local lastSendTime = 0
 
 local function send(action)
 	if holding then
@@ -123,36 +118,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
-RunService.RenderStepped:Connect(function()
-	if not holding then
-		return
-	end
-
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
-
-	local moveDirection = humanoid.MoveDirection
-	local now = os.clock()
-	local changed = (moveDirection - lastMoveSent).Magnitude > 0.03
-
-	if changed or now - lastSendTime >= Config.InputSendInterval then
-		lastMoveSent = moveDirection
-		lastSendTime = now
-		actionRemote:FireServer("Move", moveDirection)
-	end
-end)
-
 stateRemote.OnClientEvent:Connect(function(snapshot)
 	holding = snapshot.holding == true
 	controls.Visible = holding
 	desktopHint.Visible = holding and UserInputService.KeyboardEnabled
-
-	if not holding then
-		lastMoveSent = Vector3.zero
-	end
 
 	if snapshot.message and snapshot.message ~= "" then
 		objective.Text = snapshot.message
