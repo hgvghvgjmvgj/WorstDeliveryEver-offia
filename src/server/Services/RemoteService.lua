@@ -39,6 +39,7 @@ function RemoteService.Initialize()
 	ensureRemote(RemoteNames.RequestDrop)
 	ensureRemote(RemoteNames.CarryState)
 	ensureRemote(RemoteNames.PrototypeNotice)
+	ensureRemote(RemoteNames.PrototypeFeedback)
 end
 
 function RemoteService.Get(name: string): RemoteEvent
