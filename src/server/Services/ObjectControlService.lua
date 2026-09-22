@@ -15,7 +15,9 @@ local stateByPlayer = {}
 local completed = false
 local currentObjectIndex = 1
 local activeObject = nil
+local activeRoot = nil
 local activeObjectId = nil
+local activePieceLocals = {}
 local objectYawDegrees = 0
 local objectTilted = false
 
@@ -81,23 +83,148 @@ local function broadcastState(message)
 	end
 end
 
-local function getHalfHeight(cframe, size)
-	local right = cframe.RightVector
-	local up = cframe.UpVector
-	local look = cframe.LookVector
-
-	return
-		math.abs(right.Y) * size.X * 0.5
-		+ math.abs(up.Y) * size.Y * 0.5
-		+ math.abs(look.Y) * size.Z * 0.5
+local function makeBlocker(parent, name, size, cframe)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = cframe
+	part.Anchored = true
+	part.CanCollide = true
+	part.Material = Enum.Material.SmoothPlastic
+	part.Color = Color3.fromRGB(255, 201, 74)
+	part:SetAttribute("MoveBlocker", true)
+	part.Parent = parent
+	return part
 end
 
-local function placeOnFloor(cframe, size)
-	local halfHeight = getHalfHeight(cframe, size)
-	local position = cframe.Position
-	local rotationOnly = cframe - position
+local function makeMarker(parent, name, center, size)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = CFrame.new(center)
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Material = Enum.Material.Neon
+	part.Color = Color3.fromRGB(75, 235, 116)
+	part.Transparency = 0.72
+	part.Parent = parent
+	return part
+end
 
-	return CFrame.new(position.X, Config.FloorTopY + halfHeight + 0.03, position.Z) * rotationOnly
+local function addWallWithDoor(parent, z, doorCenterX, doorWidth, doorHeight, totalWidth, wallHeight)
+	totalWidth = totalWidth or 44
+	wallHeight = wallHeight or 12
+	local thickness = 2
+	local leftEdge = -totalWidth * 0.5
+	local rightEdge = totalWidth * 0.5
+	local doorLeft = doorCenterX - doorWidth * 0.5
+	local doorRight = doorCenterX + doorWidth * 0.5
+
+	local leftWidth = doorLeft - leftEdge
+	if leftWidth > 0.1 then
+		makeBlocker(
+			parent,
+			"WallLeft",
+			Vector3.new(leftWidth, wallHeight, thickness),
+			CFrame.new(leftEdge + leftWidth * 0.5, wallHeight * 0.5, z)
+		)
+	end
+
+	local rightWidth = rightEdge - doorRight
+	if rightWidth > 0.1 then
+		makeBlocker(
+			parent,
+			"WallRight",
+			Vector3.new(rightWidth, wallHeight, thickness),
+			CFrame.new(doorRight + rightWidth * 0.5, wallHeight * 0.5, z)
+		)
+	end
+
+	local headerHeight = wallHeight - doorHeight
+	if headerHeight > 0.1 then
+		makeBlocker(
+			parent,
+			"WallHeader",
+			Vector3.new(doorWidth, headerHeight, thickness),
+			CFrame.new(doorCenterX, doorHeight + headerHeight * 0.5, z)
+		)
+	end
+end
+
+local function buildChallenge(definition)
+	local world = getWorld()
+	local challengeFolder = world and world:FindFirstChild("ChallengeGeometry")
+	local markerFolder = world and world:FindFirstChild("RoundMarkers")
+	if not challengeFolder or not markerFolder then
+		return
+	end
+
+	challengeFolder:ClearAllChildren()
+	markerFolder:ClearAllChildren()
+
+	local challenge = definition.Challenge
+
+	if challenge.Kind == "NarrowDoor" or challenge.Kind == "LowDoor" then
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ,
+			0,
+			challenge.DoorWidth,
+			challenge.DoorHeight
+		)
+	elseif challenge.Kind == "OffsetEntry" then
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ,
+			challenge.FirstDoorCenterX,
+			challenge.DoorWidth,
+			challenge.DoorHeight
+		)
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ + 9,
+			challenge.SecondDoorCenterX,
+			challenge.DoorWidth,
+			challenge.DoorHeight
+		)
+	elseif challenge.Kind == "CornerHall" then
+		addWallWithDoor(
+			challengeFolder,
+			Config.DoorCenterZ,
+			0,
+			challenge.EntryWidth,
+			9.5
+		)
+
+		local halfHall = challenge.HallWidth * 0.5
+		makeBlocker(
+			challengeFolder,
+			"HallLeft",
+			Vector3.new(2, 12, 12),
+			CFrame.new(-halfHall - 1, 6, Config.DoorCenterZ + 7)
+		)
+		makeBlocker(
+			challengeFolder,
+			"HallRightShort",
+			Vector3.new(2, 12, 6),
+			CFrame.new(halfHall + 1, 6, Config.DoorCenterZ + 4)
+		)
+		makeBlocker(
+			challengeFolder,
+			"HallEnd",
+			Vector3.new(16, 12, 2),
+			CFrame.new(-4, 6, Config.DoorCenterZ + 13)
+		)
+	end
+
+	makeMarker(
+		markerFolder,
+		"SuccessZone",
+		challenge.SuccessCenter,
+		challenge.SuccessSize
+	)
 end
 
 local function buildOrientationCFrame(position, yawDegrees, tilted, definition)
@@ -114,16 +241,47 @@ local function buildOrientationCFrame(position, yawDegrees, tilted, definition)
 	return CFrame.new(position) * orientation
 end
 
-local function isBlocked(candidateCFrame, object, character)
+local function getPartHalfHeight(cframe, size)
+	local right = cframe.RightVector
+	local up = cframe.UpVector
+	local look = cframe.LookVector
+
+	return
+		math.abs(right.Y) * size.X * 0.5
+		+ math.abs(up.Y) * size.Y * 0.5
+		+ math.abs(look.Y) * size.Z * 0.5
+end
+
+local function placeModelOnFloor(candidatePivot)
+	local minimumY = math.huge
+
+	for _, entry in activePieceLocals do
+		local worldCFrame = candidatePivot * entry.LocalCFrame
+		local bottom = worldCFrame.Position.Y - getPartHalfHeight(worldCFrame, entry.Part.Size)
+		minimumY = math.min(minimumY, bottom)
+	end
+
+	if minimumY == math.huge then
+		return candidatePivot
+	end
+
+	return candidatePivot + Vector3.new(0, Config.FloorTopY + 0.03 - minimumY, 0)
+end
+
+local function isBlocked(candidatePivot, character)
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-	overlapParams.FilterDescendantsInstances = {object, character}
+	overlapParams.FilterDescendantsInstances = {activeObject, character}
 	overlapParams.RespectCanCollide = true
 
-	local parts = Workspace:GetPartBoundsInBox(candidateCFrame, object.Size * 0.965, overlapParams)
-	for _, part in parts do
-		if part:GetAttribute("MoveBlocker") then
-			return true
+	for _, entry in activePieceLocals do
+		local worldCFrame = candidatePivot * entry.LocalCFrame
+		local parts = Workspace:GetPartBoundsInBox(worldCFrame, entry.Part.Size * 0.96, overlapParams)
+
+		for _, part in parts do
+			if part:GetAttribute("MoveBlocker") then
+				return true
+			end
 		end
 	end
 
@@ -167,8 +325,8 @@ local function release(player, message)
 
 	restoreCharacter(player)
 
-	if activeObject then
-		local prompt = activeObject:FindFirstChild("GrabPrompt")
+	if activeRoot then
+		local prompt = activeRoot:FindFirstChild("GrabPrompt")
 		if prompt then
 			prompt.Enabled = not completed
 		end
@@ -177,23 +335,29 @@ local function release(player, message)
 	sendState(player, message or "Dropped. Walk around it and grab again from another side.", false)
 end
 
-local function addHolderNoCollision(character, object, state)
+local function addHolderNoCollision(character, state)
 	state.noCollisionConstraints = {}
 
-	for _, descendant in character:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			local constraint = Instance.new("NoCollisionConstraint")
-			constraint.Name = "HolderNoCollision"
-			constraint.Part0 = object
-			constraint.Part1 = descendant
-			constraint.Parent = object
-			table.insert(state.noCollisionConstraints, constraint)
+	for _, entry in activePieceLocals do
+		for _, descendant in character:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				local constraint = Instance.new("NoCollisionConstraint")
+				constraint.Name = "HolderNoCollision"
+				constraint.Part0 = entry.Part
+				constraint.Part1 = descendant
+				constraint.Parent = entry.Part
+				table.insert(state.noCollisionConstraints, constraint)
+			end
 		end
 	end
 end
 
+local function getObjectPosition()
+	return activeObject and activeObject:GetPivot().Position or Vector3.zero
+end
+
 local function grab(player)
-	if completed or holder or not activeObject then
+	if completed or holder or not activeObject or not activeRoot then
 		return
 	end
 
@@ -202,7 +366,7 @@ local function grab(player)
 		return
 	end
 
-	if (activeObject.Position - root.Position).Magnitude > Config.PromptGrabLimit then
+	if (getObjectPosition() - root.Position).Magnitude > Config.PromptGrabLimit then
 		return
 	end
 
@@ -217,12 +381,12 @@ local function grab(player)
 	state.lastRootPosition = root.Position
 	state.lastBlockedMessage = 0
 
-	addHolderNoCollision(character, activeObject, state)
+	addHolderNoCollision(character, state)
 
 	humanoid.WalkSpeed = Config.CarryWalkSpeed
 	humanoid.AutoRotate = true
 
-	local prompt = activeObject:FindFirstChild("GrabPrompt")
+	local prompt = activeRoot:FindFirstChild("GrabPrompt")
 	if prompt then
 		prompt.Enabled = false
 	end
@@ -243,20 +407,20 @@ local function notifyBlocked(player, message)
 	end
 end
 
-local function tryPlace(player, candidateCFrame, blockedMessage)
-	local object = activeObject
+local function tryPlace(player, candidatePivot, blockedMessage)
 	local character = player.Character
-	if not object or not character then
+	if not activeObject or not character then
 		return false
 	end
 
-	candidateCFrame = placeOnFloor(candidateCFrame, object.Size)
-	if isBlocked(candidateCFrame, object, character) then
+	candidatePivot = placeModelOnFloor(candidatePivot)
+
+	if isBlocked(candidatePivot, character) then
 		notifyBlocked(player, blockedMessage)
 		return false
 	end
 
-	object.CFrame = candidateCFrame
+	activeObject:PivotTo(candidatePivot)
 	return true
 end
 
@@ -271,9 +435,9 @@ local function rotate(player, direction)
 	end
 
 	local candidateYaw = objectYawDegrees + Config.RotateStepDegrees * direction
-	local candidate = buildOrientationCFrame(activeObject.Position, candidateYaw, objectTilted, definition)
+	local candidate = buildOrientationCFrame(getObjectPosition(), candidateYaw, objectTilted, definition)
 
-	if tryPlace(player, candidate, "Rotation blocked. Back away from the wall first.") then
+	if tryPlace(player, candidate, "Rotation blocked. Give it more room.") then
 		objectYawDegrees = candidateYaw
 		sendState(player, ("ROTATED %s"):format(direction < 0 and "LEFT" or "RIGHT"))
 	end
@@ -290,22 +454,22 @@ local function toggleTilt(player)
 	end
 
 	local candidateTilted = not objectTilted
-	local candidate = buildOrientationCFrame(activeObject.Position, objectYawDegrees, candidateTilted, definition)
+	local candidate = buildOrientationCFrame(getObjectPosition(), objectYawDegrees, candidateTilted, definition)
 
-	if tryPlace(player, candidate, "Tilt blocked. Give the object more space first.") then
+	if tryPlace(player, candidate, "Tilt blocked. Give it more room.") then
 		objectTilted = candidateTilted
 		sendState(player, objectTilted and "TILTED / REORIENTED" or "RETURNED FLAT")
 	end
 end
 
-local function addObjectBillboard(object, text)
+local function addObjectBillboard(root, text)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "ObjectLabel"
-	gui.Size = UDim2.fromOffset(330, 60)
-	gui.StudsOffset = Vector3.new(0, object.Size.Y * 0.5 + 1.8, 0)
+	gui.Size = UDim2.fromOffset(350, 60)
+	gui.StudsOffset = Vector3.new(0, 7.5, 0)
 	gui.AlwaysOnTop = false
-	gui.MaxDistance = 45
-	gui.Parent = object
+	gui.MaxDistance = 50
+	gui.Parent = root
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
@@ -328,6 +492,8 @@ local function spawnCurrentObject()
 
 	folder:ClearAllChildren()
 	activeObject = nil
+	activeRoot = nil
+	activePieceLocals = {}
 	holder = nil
 
 	activeObjectId = ObjectConfig.Order[currentObjectIndex]
@@ -338,35 +504,62 @@ local function spawnCurrentObject()
 
 	objectYawDegrees = 0
 	objectTilted = false
+	buildChallenge(definition)
 
-	local object = Instance.new("Part")
-	object.Name = "MoveObject"
-	object.Size = definition.Size
-	object.Anchored = true
-	object.CanCollide = true
-	object.Material = Enum.Material.SmoothPlastic
-	object.Color = definition.Color
-	object.TopSurface = Enum.SurfaceType.Smooth
-	object.BottomSurface = Enum.SurfaceType.Smooth
+	local model = Instance.new("Model")
+	model.Name = "MoveObject"
+	model.Parent = folder
 
-	local start = buildOrientationCFrame(Config.ObjectStartPosition, objectYawDegrees, objectTilted, definition)
-	object.CFrame = placeOnFloor(start, object.Size)
-	object.Parent = folder
-	activeObject = object
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Size = Vector3.new(1, 1, 1)
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanTouch = false
+	root.CanQuery = false
+	root.Transparency = 1
+	root.CFrame = CFrame.new(Config.ObjectStartPosition)
+	root.Parent = model
+	model.PrimaryPart = root
+
+	for index, pieceDefinition in definition.Pieces do
+		local part = Instance.new("Part")
+		part.Name = "Piece" .. index
+		part.Size = pieceDefinition.Size
+		part.Anchored = true
+		part.CanCollide = true
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = pieceDefinition.Color
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.CFrame = root.CFrame * pieceDefinition.Offset
+		part.Parent = model
+
+		table.insert(activePieceLocals, {
+			Part = part,
+			LocalCFrame = pieceDefinition.Offset,
+		})
+	end
+
+	activeObject = model
+	activeRoot = root
+
+	local startPivot = buildOrientationCFrame(Config.ObjectStartPosition, 0, false, definition)
+	model:PivotTo(placeModelOnFloor(startPivot))
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GrabPrompt"
 	prompt.ActionText = "GRAB"
 	prompt.ObjectText = definition.DisplayName
 	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 9
+	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.KeyboardKeyCode = Enum.KeyCode.G
 	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
-	prompt.Parent = object
+	prompt.Parent = root
 	prompt.Triggered:Connect(grab)
 
-	addObjectBillboard(object, definition.ChallengeText)
+	addObjectBillboard(root, definition.ChallengeText)
 
 	for _, state in stateByPlayer do
 		state.lastRootPosition = nil
@@ -376,12 +569,20 @@ local function spawnCurrentObject()
 	broadcastState(("OBJECT %d/%d — %s"):format(currentObjectIndex, #ObjectConfig.Order, definition.DisplayName))
 end
 
+local function pointInsideZone(point, center, size)
+	local delta = point - center
+	return
+		math.abs(delta.X) <= size.X * 0.5
+		and math.abs(delta.Y) <= size.Y * 0.5
+		and math.abs(delta.Z) <= size.Z * 0.5
+end
+
 local function advanceRound()
 	currentObjectIndex += 1
 	if currentObjectIndex > #ObjectConfig.Order then
 		currentObjectIndex = 1
 		spawnCurrentObject()
-		broadcastState("ALL 3 DELIVERED! Looping the prototype set.")
+		broadcastState("ALL 4 DELIVERED! Looping the M3 variety set.")
 		return
 	end
 
@@ -398,12 +599,14 @@ local function complete()
 
 	if player then
 		release(player, "DELIVERED!")
-		sendState(player, "DELIVERED! Next object incoming...", false)
+		sendState(player, "DELIVERED! Next problem incoming...", false)
 	end
 
-	local prompt = activeObject:FindFirstChild("GrabPrompt")
-	if prompt then
-		prompt.Enabled = false
+	if activeRoot then
+		local prompt = activeRoot:FindFirstChild("GrabPrompt")
+		if prompt then
+			prompt.Enabled = false
+		end
 	end
 
 	task.delay(Config.NextObjectDelay, function()
@@ -413,9 +616,13 @@ local function complete()
 end
 
 local function applyMirroredMovement(player, state)
-	local object = activeObject
+	if not activeObject then
+		release(player)
+		return
+	end
+
 	local _, _, root = getCharacterPieces(player)
-	if not object or not root then
+	if not root then
 		release(player)
 		return
 	end
@@ -434,28 +641,29 @@ local function applyMirroredMovement(player, state)
 	end
 
 	if delta.Magnitude > 0.001 then
-		local originalObject = object.CFrame
-		local fullCandidate = originalObject + delta
+		local originalPivot = activeObject:GetPivot()
+		local fullCandidate = originalPivot + delta
 
 		if not tryPlace(player, fullCandidate, "Jammed — back up, sidestep, rotate, or tilt.") then
 			if math.abs(delta.X) > 0.001 then
-				tryPlace(player, originalObject + Vector3.new(delta.X, 0, 0))
+				tryPlace(player, originalPivot + Vector3.new(delta.X, 0, 0))
 			end
 
 			if math.abs(delta.Z) > 0.001 then
-				tryPlace(player, object.CFrame + Vector3.new(0, 0, delta.Z))
+				tryPlace(player, activeObject:GetPivot() + Vector3.new(0, 0, delta.Z))
 			end
 		end
 	end
 
 	state.lastRootPosition = root.Position
 
-	if (root.Position - object.Position).Magnitude > Config.MaxCarryDistance then
+	if (root.Position - getObjectPosition()).Magnitude > Config.MaxCarryDistance then
 		release(player, "You let go. Grab it again from a better side.")
 		return
 	end
 
-	if object.Position.Z >= Config.SuccessZ then
+	local challenge = currentDefinition().Challenge
+	if pointInsideZone(getObjectPosition(), challenge.SuccessCenter, challenge.SuccessSize) then
 		complete()
 	end
 end
@@ -487,20 +695,22 @@ local function setupPlayer(player)
 		end
 
 		local definition = currentDefinition()
-		local message = definition
-			and ("Get the %s through the doorway."):format(definition.DisplayName)
-			or "Get the object through the doorway."
-		sendState(player, message, false)
+		sendState(
+			player,
+			definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside.",
+			false
+		)
 	end)
 
 	if player.Character then
 		task.defer(function()
 			placePlayerAtPrototypeSpawn(player)
 			local definition = currentDefinition()
-			local message = definition
-				and ("Get the %s through the doorway."):format(definition.DisplayName)
-				or "Get the object through the doorway."
-			sendState(player, message, false)
+			sendState(
+				player,
+				definition and ("Solve: %s"):format(definition.DisplayName) or "Get the object inside.",
+				false
+			)
 		end)
 	end
 end

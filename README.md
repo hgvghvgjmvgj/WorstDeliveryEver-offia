@@ -1,64 +1,46 @@
 # GET IT IN!
 
-A solo-first Roblox spatial/physics puzzle game about forcing absurd oversized objects through spaces that look too small for them.
+A solo-first Roblox spatial puzzle about forcing absurd oversized objects through spaces that look too small for them.
 
-## Locked fantasy
+## Current status
 
-**"There is no way that fits in there... unless I can figure it out."**
+- Prototype Zero controls: PASS
+- Mobile controls: PASS
+- M2 core loop: PASS
+- M3 variety: CURRENT TEST
 
-The core interaction has passed the first desktop and mobile control tests. The player moves normally while holding furniture; the object mirrors movement, can jam against geometry, and can be rotated/tilted without forcing the avatar around.
+## M3 — Variety Test
 
-## M2 — Complete Core Loop
+The carry controls are intentionally unchanged. This milestone tests whether different geometry creates different thinking.
 
-Current prototype loop:
+Current M3 set:
 
-1. A moving object appears outside the house.
-2. Grab it.
-3. Walk normally while the object follows your movement.
-4. Rotate, tilt, drop, re-grab, and reposition as needed.
-5. Get the whole object far enough inside.
-6. **DELIVERED!**
-7. The next geometry problem appears automatically.
+1. **Oversized Couch + narrow door**
+   - Wide object.
+   - Classic pivot/angle problem.
 
-Current test set:
+2. **Tall Wardrobe + low doorway**
+   - Height is the blocker instead of width.
+   - Reorientation/tilt should be necessary.
 
-- **Oversized Couch** — width problem.
-- **Tall Fridge** — height/orientation problem.
-- **Huge Dining Table** — width + depth problem.
+3. **L-Shaped Sectional + offset double entry**
+   - The furniture is genuinely non-rectangular.
+   - Two openings are offset, creating an S-like route.
 
-After all three, the prototype loops back to the first object for repeat testing.
+4. **Long Piano-ish Thing + 90-degree hallway**
+   - Long awkward silhouette.
+   - The route turns, so fitting through the first entrance is not enough.
 
-## Controls
+## M3 PASS criteria
 
-Desktop:
-- Normal movement = move the held object with your character.
-- Q / E = rotate.
-- R = tilt/reorient.
-- F = drop.
+The four rounds should not feel like reskins of one rectangle puzzle.
 
-Mobile:
-- Normal Roblox joystick = move while holding.
-- Large LEFT / TILT / RIGHT / DROP buttons.
+We want the player to think different things:
+- "turn it sideways"
+- "stand/lay it differently"
+- "I need to plan this weird L-shape"
+- "I got through the door, but now I have to make the corner"
 
-## What M2 must prove
+Do not worry about cash, upgrades, saving, rarity, final models, final map art, destruction, co-op, monetization, or polished effects yet.
 
-Expected:
-- The successful couch controls remain comfortable.
-- The 3 objects require noticeably different solutions.
-- Finishing one object makes the next one immediately understandable.
-- The transition between deliveries is fast.
-- The player wants to see what the next object is.
-
-Do not worry about yet:
-- cash
-- saving
-- upgrades
-- rarity
-- final furniture models
-- final house/map art
-- destruction
-- co-op
-- monetization
-- polished effects
-
-If all three objects feel like the exact same puzzle with different rectangles, M2 fails and we revise variety before adding progression.
+If one round is impossible or annoying because of bad dimensions, revise the geometry. If all four reduce to the same rotate-and-walk solution, M3 fails.

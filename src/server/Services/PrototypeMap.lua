@@ -1,7 +1,4 @@
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
 
 local PrototypeMap = {}
 
@@ -26,7 +23,7 @@ local function addBillboard(part, text, offset, size)
 	gui.Size = size or UDim2.fromOffset(360, 70)
 	gui.StudsOffset = offset or Vector3.new(0, 4, 0)
 	gui.AlwaysOnTop = false
-	gui.MaxDistance = 60
+	gui.MaxDistance = 65
 	gui.Parent = part
 
 	local label = Instance.new("TextLabel")
@@ -39,11 +36,6 @@ local function addBillboard(part, text, offset, size)
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBlack
 	label.Parent = gui
-end
-
-local function markBlocker(part)
-	part:SetAttribute("MoveBlocker", true)
-	return part
 end
 
 local function clearTemplateWorld()
@@ -79,15 +71,15 @@ function PrototypeMap.Build()
 	makePart(
 		world,
 		"Ground",
-		Vector3.new(76, 1, 88),
-		CFrame.new(0, -0.5, 1),
+		Vector3.new(90, 1, 100),
+		CFrame.new(0, -0.5, 5),
 		Color3.fromRGB(78, 207, 96)
 	)
 
 	makePart(
 		world,
 		"Path",
-		Vector3.new(25, 0.35, 72),
+		Vector3.new(28, 0.35, 78),
 		CFrame.new(0, 0.18, 0),
 		Color3.fromRGB(108, 116, 134)
 	)
@@ -95,7 +87,7 @@ function PrototypeMap.Build()
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PrototypeSpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.CFrame = CFrame.lookAt(Vector3.new(8, 0.6, -18), Vector3.new(0, 0.6, -12))
+	spawn.CFrame = CFrame.lookAt(Vector3.new(9, 0.6, -18), Vector3.new(0, 0.6, -12))
 	spawn.Anchored = true
 	spawn.CanCollide = false
 	spawn.Neutral = true
@@ -111,14 +103,14 @@ function PrototypeMap.Build()
 		truck,
 		"TruckBox",
 		Vector3.new(18, 10, 16),
-		CFrame.new(0, 5, -30),
+		CFrame.new(0, 5, -31),
 		Color3.fromRGB(87, 147, 255)
 	)
 	makePart(
 		truck,
 		"OpenBay",
 		Vector3.new(15, 7, 1),
-		CFrame.new(0, 4, -21.5),
+		CFrame.new(0, 4, -22.5),
 		Color3.fromRGB(42, 47, 61),
 		false
 	)
@@ -127,7 +119,7 @@ function PrototypeMap.Build()
 		truck,
 		"TruckLabelAnchor",
 		Vector3.new(1, 1, 1),
-		CFrame.new(0, 10.5, -24),
+		CFrame.new(0, 10.5, -25),
 		Color3.new(1, 1, 1),
 		false
 	)
@@ -137,79 +129,25 @@ function PrototypeMap.Build()
 	local objectiveSign = makePart(
 		world,
 		"ObjectiveSign",
-		Vector3.new(8, 1, 1),
+		Vector3.new(1, 1, 1),
 		CFrame.new(0, 7, -17),
-		Color3.fromRGB(255, 211, 55),
+		Color3.new(1, 1, 1),
 		false
 	)
 	objectiveSign.Transparency = 1
 	addBillboard(objectiveSign, "GET IT IN!", Vector3.zero, UDim2.fromOffset(340, 72))
 
-	local wallColor = Color3.fromRGB(255, 201, 74)
-	local wallThickness = 2
-	local wallHeight = 12
-	local totalWallWidth = 42
-	local sideWidth = (totalWallWidth - Config.DoorWidth) / 2
-	local leftX = -(Config.DoorWidth / 2 + sideWidth / 2)
-	local rightX = -leftX
-
-	markBlocker(makePart(
-		world,
-		"WallLeft",
-		Vector3.new(sideWidth, wallHeight, wallThickness),
-		CFrame.new(leftX, wallHeight / 2, Config.DoorCenterZ),
-		wallColor
-	))
-
-	markBlocker(makePart(
-		world,
-		"WallRight",
-		Vector3.new(sideWidth, wallHeight, wallThickness),
-		CFrame.new(rightX, wallHeight / 2, Config.DoorCenterZ),
-		wallColor
-	))
-
-	local headerHeight = wallHeight - Config.DoorHeight
-	markBlocker(makePart(
-		world,
-		"WallHeader",
-		Vector3.new(Config.DoorWidth, headerHeight, wallThickness),
-		CFrame.new(0, Config.DoorHeight + headerHeight / 2, Config.DoorCenterZ),
-		wallColor
-	))
-
-	local doorMarker = makePart(
-		world,
-		"DoorMarker",
-		Vector3.new(Config.DoorWidth - 0.25, 0.2, 4),
-		CFrame.new(0, 0.3, Config.DoorCenterZ),
-		Color3.fromRGB(88, 174, 255),
-		false
-	)
-	doorMarker.Transparency = 0.25
-
-	makePart(
-		world,
-		"InsideFloor",
-		Vector3.new(28, 0.4, 26),
-		CFrame.new(0, 0.2, 21.5),
-		Color3.fromRGB(213, 219, 231)
-	)
-
-	local finish = makePart(
-		world,
-		"SuccessZone",
-		Vector3.new(22, 1, 6),
-		CFrame.new(0, 0.6, Config.SuccessZ),
-		Color3.fromRGB(77, 235, 116),
-		false
-	)
-	finish.Transparency = 0.55
-	addBillboard(finish, "INSIDE", Vector3.new(0, 2.2, 0), UDim2.fromOffset(180, 48))
-
 	local objectFolder = Instance.new("Folder")
 	objectFolder.Name = "RoundObject"
 	objectFolder.Parent = world
+
+	local challengeFolder = Instance.new("Folder")
+	challengeFolder.Name = "ChallengeGeometry"
+	challengeFolder.Parent = world
+
+	local markerFolder = Instance.new("Folder")
+	markerFolder.Name = "RoundMarkers"
+	markerFolder.Parent = world
 
 	return world
 end
