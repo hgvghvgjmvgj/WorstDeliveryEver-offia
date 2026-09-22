@@ -1,54 +1,64 @@
 # GET IT IN!
 
-A solo-first Roblox physics/puzzle game about forcing absurd oversized objects through spaces that look too small for them.
+A solo-first Roblox spatial/physics puzzle game about forcing absurd oversized objects through spaces that look too small for them.
 
 ## Locked fantasy
 
 **"There is no way that fits in there... unless I can figure it out."**
 
-The fun must come from manipulating the object and solving the physical space. Progression is not allowed to rescue a boring core mechanic.
+The core interaction has passed the first desktop and mobile control tests. The player moves normally while holding furniture; the object mirrors movement, can jam against geometry, and can be rotated/tilted without forcing the avatar around.
 
-## Five-pass design review
+## M2 — Complete Core Loop
 
-1. **Fantasy:** the oversized-object/too-small-space problem is visually obvious and creates curiosity before rewards exist.
-2. **Mobile:** no hold-to-drag control. Use tap/proximity grab plus assisted movement and large rotate/tilt buttons.
-3. **Solo-first:** every job must be fully completable alone. Co-op can later make jobs funnier/faster, never required.
-4. **Progression:** future cash unlocks new objects, contracts, spaces, and optional tools—not permanent strength stats that erase the puzzle.
-5. **Scope:** Prototype Zero contains one couch and one doorway. No economy, saving, rarity, final art, destruction, soft-body furniture, or required multiplayer.
+Current prototype loop:
 
-## Prototype Zero
+1. A moving object appears outside the house.
+2. Grab it.
+3. Walk normally while the object follows your movement.
+4. Rotate, tilt, drop, re-grab, and reposition as needed.
+5. Get the whole object far enough inside.
+6. **DELIVERED!**
+7. The next geometry problem appears automatically.
 
-The server generates a tiny test room at runtime.
+Current test set:
 
-Goal:
+- **Oversized Couch** — width problem.
+- **Tall Fridge** — height/orientation problem.
+- **Huge Dining Table** — width + depth problem.
 
-**Get the red couch through the doorway.**
+After all three, the prototype loops back to the first object for repeat testing.
 
-Controls:
-- Approach the couch and use the GRAB prompt.
-- Move normally; the couch follows with limited physical force so walls can stop it.
-- Rotate left/right in 15-degree steps.
-- Tilt the couch 90 degrees when useful.
-- Drop/re-grab whenever you need to reposition.
+## Controls
 
 Desktop:
-- Q = rotate left
-- E = rotate right
-- R = tilt
-- F = drop
+- Normal movement = move the held object with your character.
+- Q / E = rotate.
+- R = tilt/reorient.
+- F = drop.
 
 Mobile:
-- Large on-screen Rotate Left / Tilt / Rotate Right / Drop buttons.
+- Normal Roblox joystick = move while holding.
+- Large LEFT / TILT / RIGHT / DROP buttons.
 
-## PASS criteria
+## What M2 must prove
 
-Do not build progression until all of these are true:
+Expected:
+- The successful couch controls remain comfortable.
+- The 3 objects require noticeably different solutions.
+- Finishing one object makes the next one immediately understandable.
+- The transition between deliveries is fast.
+- The player wants to see what the next object is.
 
-- A new player understands the objective in seconds.
-- Grabbing/releasing is comfortable on mobile and desktop.
-- The couch can genuinely get stuck instead of clipping through the doorway.
-- The player can intentionally rotate/reposition to solve the doorway.
-- Failure feels caused by geometry/approach, not an invisible meter.
-- Getting the couch through feels satisfying enough that a differently-shaped second object sounds fun.
+Do not worry about yet:
+- cash
+- saving
+- upgrades
+- rarity
+- final furniture models
+- final house/map art
+- destruction
+- co-op
+- monetization
+- polished effects
 
-If moving one placeholder couch through one placeholder doorway is not entertaining, stop development.
+If all three objects feel like the exact same puzzle with different rectangles, M2 fails and we revise variety before adding progression.

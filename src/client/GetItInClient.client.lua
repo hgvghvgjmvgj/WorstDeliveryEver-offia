@@ -26,16 +26,27 @@ title.TextScaled = true
 title.Font = Enum.Font.GothamBlack
 title.Parent = screenGui
 
+local roundLabel = Instance.new("TextLabel")
+roundLabel.Size = UDim2.fromOffset(230, 34)
+roundLabel.Position = UDim2.new(0.5, -115, 0, 66)
+roundLabel.BackgroundTransparency = 0.22
+roundLabel.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
+roundLabel.TextColor3 = Color3.fromRGB(255, 222, 86)
+roundLabel.Text = "OBJECT 1/3"
+roundLabel.TextScaled = true
+roundLabel.Font = Enum.Font.GothamBlack
+roundLabel.Parent = screenGui
+
 local objective = Instance.new("TextLabel")
-objective.Size = UDim2.new(0.72, 0, 0, 60)
-objective.Position = UDim2.new(0.14, 0, 0, 70)
+objective.Size = UDim2.new(0.72, 0, 0, 54)
+objective.Position = UDim2.new(0.14, 0, 0, 108)
 objective.BackgroundTransparency = 0.18
 objective.BackgroundColor3 = Color3.fromRGB(28, 29, 36)
 objective.TextColor3 = Color3.new(1, 1, 1)
 objective.TextWrapped = true
 objective.TextScaled = true
 objective.Font = Enum.Font.GothamBold
-objective.Text = "Grab the couch. Get it through the doorway."
+objective.Text = "Get the object through the doorway."
 objective.Parent = screenGui
 
 local controls = Instance.new("Frame")
@@ -88,7 +99,7 @@ desktopHint.Position = UDim2.new(0.5, -250, 1, -126)
 desktopHint.BackgroundTransparency = 1
 desktopHint.TextColor3 = Color3.fromRGB(235, 235, 235)
 desktopHint.TextStrokeTransparency = 0.55
-desktopHint.Text = "WALK NORMALLY   |   Q/E rotate couch   |   R tilt   |   F drop"
+desktopHint.Text = "WALK NORMALLY   |   Q/E rotate   |   R tilt   |   F drop"
 desktopHint.TextScaled = true
 desktopHint.Font = Enum.Font.GothamBold
 desktopHint.Visible = false
@@ -122,6 +133,11 @@ stateRemote.OnClientEvent:Connect(function(snapshot)
 	holding = snapshot.holding == true
 	controls.Visible = holding
 	desktopHint.Visible = holding and UserInputService.KeyboardEnabled
+
+	local index = snapshot.roundIndex or 1
+	local count = snapshot.roundCount or 1
+	local objectName = snapshot.objectName or "Object"
+	roundLabel.Text = string.format("OBJECT %d/%d — %s", index, count, string.upper(objectName))
 
 	if snapshot.message and snapshot.message ~= "" then
 		objective.Text = snapshot.message

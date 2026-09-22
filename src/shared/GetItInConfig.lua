@@ -3,22 +3,21 @@ local GetItInConfig = {
 	CarryWalkSpeed = 9,
 
 	PromptGrabLimit = 11,
-	MaxCarryDistance = 13,
+	MaxCarryDistance = 14,
 	MaxFrameMove = 1.25,
 
 	RotateStepDegrees = 15,
 	TiltDegrees = 90,
 
 	FloorTopY = 0.4,
-	CouchStartCFrame = CFrame.new(0, 2.1, -12),
-	CouchSize = Vector3.new(10, 4, 3.2),
+	ObjectStartPosition = Vector3.new(0, 0, -12),
 
 	DoorCenterZ = 10,
 	DoorWidth = 5.5,
 	DoorHeight = 8.5,
 
 	SuccessZ = 24,
-	ResetDelay = 2.2,
+	NextObjectDelay = 1.8,
 }
 
 return GetItInConfig

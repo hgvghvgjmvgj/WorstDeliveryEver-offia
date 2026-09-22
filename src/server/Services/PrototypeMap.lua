@@ -26,7 +26,7 @@ local function addBillboard(part, text, offset, size)
 	gui.Size = size or UDim2.fromOffset(360, 70)
 	gui.StudsOffset = offset or Vector3.new(0, 4, 0)
 	gui.AlwaysOnTop = false
-	gui.MaxDistance = 55
+	gui.MaxDistance = 60
 	gui.Parent = part
 
 	local label = Instance.new("TextLabel")
@@ -64,39 +64,70 @@ function PrototypeMap.Build()
 	makePart(
 		world,
 		"Ground",
-		Vector3.new(70, 1, 80),
-		CFrame.new(0, -0.5, 3),
+		Vector3.new(76, 1, 88),
+		CFrame.new(0, -0.5, 1),
 		Color3.fromRGB(78, 207, 96)
 	)
 
 	makePart(
 		world,
 		"Path",
-		Vector3.new(25, 0.35, 66),
-		CFrame.new(0, 0.18, 2),
+		Vector3.new(25, 0.35, 72),
+		CFrame.new(0, 0.18, 0),
 		Color3.fromRGB(108, 116, 134)
 	)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PrototypeSpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.CFrame = CFrame.lookAt(Vector3.new(0, 1, -27), Vector3.new(0, 1, -12))
+	spawn.CFrame = CFrame.lookAt(Vector3.new(8, 1, -20), Vector3.new(0, 1, -12))
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Transparency = 0.5
 	spawn.Color = Color3.fromRGB(78, 170, 255)
 	spawn.Parent = world
 
+	local truck = Instance.new("Model")
+	truck.Name = "MovingTruck"
+	truck.Parent = world
+
+	makePart(
+		truck,
+		"TruckBox",
+		Vector3.new(18, 10, 16),
+		CFrame.new(0, 5, -30),
+		Color3.fromRGB(87, 147, 255)
+	)
+	makePart(
+		truck,
+		"OpenBay",
+		Vector3.new(15, 7, 1),
+		CFrame.new(0, 4, -21.5),
+		Color3.fromRGB(42, 47, 61),
+		false
+	)
+
+	local truckLabel = makePart(
+		truck,
+		"TruckLabelAnchor",
+		Vector3.new(1, 1, 1),
+		CFrame.new(0, 10.5, -24),
+		Color3.new(1, 1, 1),
+		false
+	)
+	truckLabel.Transparency = 1
+	addBillboard(truckLabel, "MOVING DAY", Vector3.zero, UDim2.fromOffset(270, 60))
+
 	local objectiveSign = makePart(
 		world,
 		"ObjectiveSign",
 		Vector3.new(8, 1, 1),
-		CFrame.new(0, 6, -20),
+		CFrame.new(0, 7, -17),
 		Color3.fromRGB(255, 211, 55),
 		false
 	)
 	objectiveSign.Transparency = 1
-	addBillboard(objectiveSign, "GET THE COUCH THROUGH THE DOOR", Vector3.zero, UDim2.fromOffset(460, 80))
+	addBillboard(objectiveSign, "GET IT IN!", Vector3.zero, UDim2.fromOffset(340, 72))
 
 	local wallColor = Color3.fromRGB(255, 201, 74)
 	local wallThickness = 2
@@ -144,8 +175,8 @@ function PrototypeMap.Build()
 	makePart(
 		world,
 		"InsideFloor",
-		Vector3.new(28, 0.4, 25),
-		CFrame.new(0, 0.2, 21),
+		Vector3.new(28, 0.4, 26),
+		CFrame.new(0, 0.2, 21.5),
 		Color3.fromRGB(213, 219, 231)
 	)
 
@@ -160,30 +191,9 @@ function PrototypeMap.Build()
 	finish.Transparency = 0.55
 	addBillboard(finish, "INSIDE", Vector3.new(0, 2.2, 0), UDim2.fromOffset(180, 48))
 
-	local couch = Instance.new("Part")
-	couch.Name = "Couch"
-	couch.Size = Config.CouchSize
-	couch.CFrame = Config.CouchStartCFrame
-	couch.Anchored = true
-	couch.CanCollide = true
-	couch.Material = Enum.Material.SmoothPlastic
-	couch.Color = Color3.fromRGB(239, 73, 78)
-	couch.TopSurface = Enum.SurfaceType.Smooth
-	couch.BottomSurface = Enum.SurfaceType.Smooth
-	couch.Parent = world
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "GrabPrompt"
-	prompt.ActionText = "GRAB"
-	prompt.ObjectText = "Oversized Couch"
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = 9
-	prompt.RequiresLineOfSight = false
-	prompt.KeyboardKeyCode = Enum.KeyCode.G
-	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
-	prompt.Parent = couch
-
-	addBillboard(couch, "THIS DOES NOT FIT... RIGHT?", Vector3.new(0, 3.4, 0), UDim2.fromOffset(300, 55))
+	local objectFolder = Instance.new("Folder")
+	objectFolder.Name = "RoundObject"
+	objectFolder.Parent = world
 
 	return world
 end

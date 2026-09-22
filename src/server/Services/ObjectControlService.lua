@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage:WaitForChild("GetItInConfig"))
+local ObjectConfig = require(ReplicatedStorage:WaitForChild("ObjectConfig"))
 
 local ObjectControlService = {}
 
@@ -12,14 +13,12 @@ local stateRemote
 local holder = nil
 local stateByPlayer = {}
 local completed = false
+local currentObjectIndex = 1
+local activeObject = nil
+local activeObjectId = nil
 
 local function getWorld()
 	return Workspace:FindFirstChild("GetItInPrototype")
-end
-
-local function getCouch()
-	local world = getWorld()
-	return world and world:FindFirstChild("Couch")
 end
 
 local function getCharacterPieces(player)
@@ -31,8 +30,12 @@ local function getCharacterPieces(player)
 	return character, character:FindFirstChildOfClass("Humanoid"), character:FindFirstChild("HumanoidRootPart")
 end
 
+local function currentDefinition()
+	return activeObjectId and ObjectConfig.Get(activeObjectId) or nil
+end
+
 local function sendState(player, message, overrideHolding)
-	if not player or not player.Parent then
+	if not player or not player.Parent or not stateRemote then
 		return
 	end
 
@@ -42,11 +45,22 @@ local function sendState(player, message, overrideHolding)
 		isHolding = holder == player
 	end
 
+	local definition = currentDefinition()
+
 	stateRemote:FireClient(player, {
 		holding = isHolding,
 		message = message,
 		tilted = state and state.tilted or false,
+		objectName = definition and definition.DisplayName or "",
+		roundIndex = currentObjectIndex,
+		roundCount = #ObjectConfig.Order,
 	})
+end
+
+local function broadcastState(message)
+	for _, player in Players:GetPlayers() do
+		sendState(player, message, false)
+	end
 end
 
 local function getHalfHeight(cframe, size)
@@ -68,13 +82,13 @@ local function placeOnFloor(cframe, size)
 	return CFrame.new(position.X, Config.FloorTopY + halfHeight + 0.03, position.Z) * rotationOnly
 end
 
-local function isBlocked(candidateCFrame, couch, character)
+local function isBlocked(candidateCFrame, object, character)
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-	overlapParams.FilterDescendantsInstances = {couch, character}
+	overlapParams.FilterDescendantsInstances = {object, character}
 	overlapParams.RespectCanCollide = true
 
-	local parts = Workspace:GetPartBoundsInBox(candidateCFrame, couch.Size * 0.965, overlapParams)
+	local parts = Workspace:GetPartBoundsInBox(candidateCFrame, object.Size * 0.965, overlapParams)
 	for _, part in parts do
 		if part:GetAttribute("MoveBlocker") then
 			return true
@@ -82,20 +96,6 @@ local function isBlocked(candidateCFrame, couch, character)
 	end
 
 	return false
-end
-
-local function resetCouch()
-	local couch = getCouch()
-	if not couch then
-		return
-	end
-
-	couch.CFrame = Config.CouchStartCFrame
-
-	local prompt = couch:FindFirstChild("GrabPrompt")
-	if prompt then
-		prompt.Enabled = true
-	end
 end
 
 local function clearNoCollision(state)
@@ -135,44 +135,42 @@ local function release(player, message)
 
 	restoreCharacter(player)
 
-	local couch = getCouch()
-	if couch then
-		local prompt = couch:FindFirstChild("GrabPrompt")
+	if activeObject then
+		local prompt = activeObject:FindFirstChild("GrabPrompt")
 		if prompt then
-			prompt.Enabled = true
+			prompt.Enabled = not completed
 		end
 	end
 
 	sendState(player, message or "Dropped. Walk around it and grab again from another side.", false)
 end
 
-local function addHolderNoCollision(character, couch, state)
+local function addHolderNoCollision(character, object, state)
 	state.noCollisionConstraints = {}
 
 	for _, descendant in character:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local constraint = Instance.new("NoCollisionConstraint")
 			constraint.Name = "HolderNoCollision"
-			constraint.Part0 = couch
+			constraint.Part0 = object
 			constraint.Part1 = descendant
-			constraint.Parent = couch
+			constraint.Parent = object
 			table.insert(state.noCollisionConstraints, constraint)
 		end
 	end
 end
 
 local function grab(player)
-	if completed or holder then
+	if completed or holder or not activeObject then
 		return
 	end
 
-	local couch = getCouch()
 	local character, humanoid, root = getCharacterPieces(player)
-	if not couch or not character or not humanoid or not root then
+	if not character or not humanoid or not root then
 		return
 	end
 
-	if (couch.Position - root.Position).Magnitude > Config.PromptGrabLimit then
+	if (activeObject.Position - root.Position).Magnitude > Config.PromptGrabLimit then
 		return
 	end
 
@@ -184,21 +182,21 @@ local function grab(player)
 		stateByPlayer[player] = state
 	end
 
-	state.tilted = math.abs(couch.CFrame.RightVector.Y) > 0.5
+	state.tilted = false
 	state.lastRootPosition = root.Position
 	state.lastBlockedMessage = 0
 
-	addHolderNoCollision(character, couch, state)
+	addHolderNoCollision(character, activeObject, state)
 
 	humanoid.WalkSpeed = Config.CarryWalkSpeed
 	humanoid.AutoRotate = true
 
-	local prompt = couch:FindFirstChild("GrabPrompt")
+	local prompt = activeObject:FindFirstChild("GrabPrompt")
 	if prompt then
 		prompt.Enabled = false
 	end
 
-	sendState(player, "Walk normally. The couch moves with you; rotate or tilt only when you need to.", true)
+	sendState(player, "Walk normally. Rotate, tilt, drop, and re-grab whenever you need.", true)
 end
 
 local function notifyBlocked(player, message)
@@ -215,62 +213,150 @@ local function notifyBlocked(player, message)
 end
 
 local function trySetCFrame(player, candidateCFrame, blockedMessage)
-	local couch = getCouch()
+	local object = activeObject
 	local character = player.Character
-	if not couch or not character then
+	if not object or not character then
 		return false
 	end
 
-	candidateCFrame = placeOnFloor(candidateCFrame, couch.Size)
-	if isBlocked(candidateCFrame, couch, character) then
+	candidateCFrame = placeOnFloor(candidateCFrame, object.Size)
+	if isBlocked(candidateCFrame, object, character) then
 		notifyBlocked(player, blockedMessage)
 		return false
 	end
 
-	couch.CFrame = candidateCFrame
+	object.CFrame = candidateCFrame
 	return true
 end
 
 local function rotate(player, direction)
-	if holder ~= player then
+	if holder ~= player or not activeObject then
 		return
 	end
 
-	local couch = getCouch()
-	if not couch then
-		return
-	end
-
-	local candidate = couch.CFrame * CFrame.Angles(0, math.rad(Config.RotateStepDegrees * direction), 0)
+	local candidate = activeObject.CFrame * CFrame.Angles(0, math.rad(Config.RotateStepDegrees * direction), 0)
 	trySetCFrame(player, candidate, "No room to rotate there. Back up first.")
 end
 
+local function getTiltRotation(definition, direction)
+	local angle = math.rad(Config.TiltDegrees * direction)
+	if definition.TiltAxis == "X" then
+		return CFrame.Angles(angle, 0, 0)
+	end
+
+	return CFrame.Angles(0, 0, angle)
+end
+
 local function toggleTilt(player)
-	if holder ~= player then
+	if holder ~= player or not activeObject then
 		return
 	end
 
-	local couch = getCouch()
 	local state = stateByPlayer[player]
-	if not couch or not state then
+	local definition = currentDefinition()
+	if not state or not definition then
 		return
 	end
 
-	local candidate
-	if state.tilted then
-		candidate = couch.CFrame * CFrame.Angles(0, 0, math.rad(-Config.TiltDegrees))
-	else
-		candidate = couch.CFrame * CFrame.Angles(0, 0, math.rad(Config.TiltDegrees))
-	end
+	local direction = state.tilted and -1 or 1
+	local candidate = activeObject.CFrame * getTiltRotation(definition, direction)
 
 	if trySetCFrame(player, candidate, "No room to tilt here. Back away from the wall.") then
 		state.tilted = not state.tilted
-		sendState(player, state.tilted and "Couch stood upright." or "Couch laid back down.")
+		sendState(player, state.tilted and "Reoriented." or "Returned to the starting orientation.")
 	end
 end
 
+local function addObjectBillboard(object, text)
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "ObjectLabel"
+	gui.Size = UDim2.fromOffset(330, 60)
+	gui.StudsOffset = Vector3.new(0, object.Size.Y * 0.5 + 1.8, 0)
+	gui.AlwaysOnTop = false
+	gui.MaxDistance = 45
+	gui.Parent = object
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 0.16
+	label.BackgroundColor3 = Color3.fromRGB(27, 28, 35)
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.Text = text
+	label.TextWrapped = true
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBlack
+	label.Parent = gui
+end
+
+local function spawnCurrentObject()
+	local world = getWorld()
+	local folder = world and world:FindFirstChild("RoundObject")
+	if not folder then
+		return
+	end
+
+	folder:ClearAllChildren()
+	activeObject = nil
+	holder = nil
+
+	activeObjectId = ObjectConfig.Order[currentObjectIndex]
+	local definition = ObjectConfig.Get(activeObjectId)
+	if not definition then
+		return
+	end
+
+	local object = Instance.new("Part")
+	object.Name = "MoveObject"
+	object.Size = definition.Size
+	object.Anchored = true
+	object.CanCollide = true
+	object.Material = Enum.Material.SmoothPlastic
+	object.Color = definition.Color
+	object.TopSurface = Enum.SurfaceType.Smooth
+	object.BottomSurface = Enum.SurfaceType.Smooth
+
+	local start = CFrame.new(Config.ObjectStartPosition)
+	object.CFrame = placeOnFloor(start, object.Size)
+	object.Parent = folder
+	activeObject = object
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "GrabPrompt"
+	prompt.ActionText = "GRAB"
+	prompt.ObjectText = definition.DisplayName
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.KeyboardKeyCode = Enum.KeyCode.G
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+	prompt.Parent = object
+	prompt.Triggered:Connect(grab)
+
+	addObjectBillboard(object, definition.ChallengeText)
+
+	for _, state in stateByPlayer do
+		state.tilted = false
+		state.lastRootPosition = nil
+		clearNoCollision(state)
+	end
+
+	broadcastState(("OBJECT %d/%d — %s"):format(currentObjectIndex, #ObjectConfig.Order, definition.DisplayName))
+end
+
+local function advanceRound()
+	currentObjectIndex += 1
+	if currentObjectIndex > #ObjectConfig.Order then
+		currentObjectIndex = 1
+		spawnCurrentObject()
+		broadcastState("ALL 3 DELIVERED! Looping the prototype set.")
+		return
+	end
+
+	spawnCurrentObject()
+end
+
 local function complete()
-	if completed then
+	if completed or not activeObject then
 		return
 	end
 
@@ -278,20 +364,25 @@ local function complete()
 	local player = holder
 
 	if player then
-		release(player, "IT FIT! That is the Prototype Zero win.")
-		sendState(player, "IT FIT! The couch will reset in a moment.", false)
+		release(player, "DELIVERED!")
+		sendState(player, "DELIVERED! Next object incoming...", false)
 	end
 
-	task.delay(Config.ResetDelay, function()
-		resetCouch()
+	local prompt = activeObject:FindFirstChild("GrabPrompt")
+	if prompt then
+		prompt.Enabled = false
+	end
+
+	task.delay(Config.NextObjectDelay, function()
 		completed = false
+		advanceRound()
 	end)
 end
 
 local function applyMirroredMovement(player, state)
-	local couch = getCouch()
+	local object = activeObject
 	local _, _, root = getCharacterPieces(player)
-	if not couch or not root then
+	if not object or not root then
 		release(player)
 		return
 	end
@@ -310,42 +401,30 @@ local function applyMirroredMovement(player, state)
 	end
 
 	if delta.Magnitude > 0.001 then
-		local originalCouch = couch.CFrame
-		local actualDelta = Vector3.zero
+		local originalObject = object.CFrame
 
-		local fullCandidate = originalCouch + delta
-		if trySetCFrame(player, fullCandidate, "Jammed — you can move freely. Back up, sidestep, rotate, or tilt.") then
-			actualDelta = delta
-		else
+		local fullCandidate = originalObject + delta
+		if not trySetCFrame(player, fullCandidate, "Jammed — you can move freely. Back up, sidestep, rotate, or tilt.") then
 			if math.abs(delta.X) > 0.001 then
 				local xDelta = Vector3.new(delta.X, 0, 0)
-				if trySetCFrame(player, originalCouch + xDelta) then
-					actualDelta += xDelta
-				end
+				trySetCFrame(player, originalObject + xDelta)
 			end
 
 			if math.abs(delta.Z) > 0.001 then
 				local zDelta = Vector3.new(0, 0, delta.Z)
-				local zStart = couch.CFrame
-				if trySetCFrame(player, zStart + zDelta) then
-					actualDelta += zDelta
-				end
+				trySetCFrame(player, object.CFrame + zDelta)
 			end
 		end
-
-		-- Important: never shove the player backward when the couch jams.
-		-- The couch simply stays where collision stopped it while the player
-		-- keeps normal movement freedom to back up, sidestep, rotate, or drop.
 	end
 
 	state.lastRootPosition = root.Position
 
-	if (root.Position - couch.Position).Magnitude > Config.MaxCarryDistance then
+	if (root.Position - object.Position).Magnitude > Config.MaxCarryDistance then
 		release(player, "You let go. Grab it again from a better side.")
 		return
 	end
 
-	if couch.Position.Z >= Config.SuccessZ then
+	if object.Position.Z >= Config.SuccessZ then
 		complete()
 	end
 end
@@ -363,26 +442,32 @@ local function setupPlayer(player)
 		if holder == player then
 			holder = nil
 		end
+
 		local state = stateByPlayer[player]
 		if state then
 			clearNoCollision(state)
 			state.lastRootPosition = nil
 		end
-		sendState(player, "Grab the couch. Figure out how to get it through the doorway.", false)
+
+		local definition = currentDefinition()
+		local message = definition
+			and ("Get the %s through the doorway."):format(definition.DisplayName)
+			or "Get the object through the doorway."
+		sendState(player, message, false)
 	end)
 
 	if player.Character then
 		task.defer(function()
-			sendState(player, "Grab the couch. Figure out how to get it through the doorway.", false)
+			local definition = currentDefinition()
+			local message = definition
+				and ("Get the %s through the doorway."):format(definition.DisplayName)
+				or "Get the object through the doorway."
+			sendState(player, message, false)
 		end)
 	end
 end
 
 function ObjectControlService.Start()
-	local world = getWorld()
-	local couch = world:WaitForChild("Couch")
-	local prompt = couch:WaitForChild("GrabPrompt")
-
 	local remotes = ReplicatedStorage:FindFirstChild("GetItInRemotes")
 	if not remotes then
 		remotes = Instance.new("Folder")
@@ -404,25 +489,12 @@ function ObjectControlService.Start()
 		stateRemote.Parent = remotes
 	end
 
-	prompt.Triggered:Connect(grab)
-
-	actionRemote.OnServerEvent:Connect(function(player, action)
-		if action == "RotateLeft" then
-			rotate(player, -1)
-		elseif action == "RotateRight" then
-			rotate(player, 1)
-		elseif action == "Tilt" then
-			toggleTilt(player)
-		elseif action == "Release" then
-			release(player)
-		end
-	end)
-
 	Players.PlayerAdded:Connect(setupPlayer)
 	Players.PlayerRemoving:Connect(function(player)
 		if holder == player then
 			holder = nil
 		end
+
 		local state = stateByPlayer[player]
 		if state then
 			clearNoCollision(state)
@@ -433,6 +505,8 @@ function ObjectControlService.Start()
 	for _, player in Players:GetPlayers() do
 		setupPlayer(player)
 	end
+
+	spawnCurrentObject()
 
 	RunService.Heartbeat:Connect(function()
 		local player = holder
