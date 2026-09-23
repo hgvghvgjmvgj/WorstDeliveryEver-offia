@@ -7,11 +7,13 @@ local PrototypeUIController = require(Controllers:WaitForChild("PrototypeUIContr
 local CameraProtectionController = require(Controllers:WaitForChild("CameraProtectionController"))
 local FeelFeedbackController = require(Controllers:WaitForChild("FeelFeedbackController"))
 local BayController = require(Controllers:WaitForChild("BayController"))
+local EconomyController = require(Controllers:WaitForChild("EconomyController"))
 
 PrototypeUIController.Start()
+EconomyController.Start()
 InteractionController.Start(PrototypeUIController)
 CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M2.3 client loaded")
+print("[ONE TRIP] M3 client loaded")
