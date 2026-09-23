@@ -4,108 +4,83 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M2.2 - Warehouse + Player Bay / Base Redesign / awaiting Studio validation**
+**M2.3 — Drop / Load Pressure Reset Exploit Fix — awaiting Studio validation**
 
-M1/M1.1 carry feel, M2 multiplayer ownership, and M2.1 Carry Strain remain locked.
+M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, and the approved-enough M2.2 warehouse/base structure remain preserved.
 
-## M2.2 structure
+M3 economy has **not** started.
 
-- 12-player concentric shared warehouse
-- 500 x 500 stud overall graybox footprint
-- structured Near / Mid / Deep risk gradient
+## M2.3 — ditching is a sacrifice
+
+The intentional drop action is now a **ditch** rather than recoverable temporary storage.
+
+- Q / ButtonB ditches exactly the top / most recently grabbed carried item.
+- The item is removed from authoritative carried inventory first.
+- Weight, Bulk, Run Value, Base Instability, and load severity are recomputed from what remains.
+- The ditched object becomes a short presentation-only abandoned visual.
+- Ditch visuals never enter the shared `Items` folder and are not grabbable by the owner or other players.
+- Ditched items cannot contribute to delivery score.
+- Repeated Q presses can sacrifice the whole load, but there is no separate full-dump action.
+- Load Pressure does not instantly reset when the final item is ditched.
+- With no carried items, residual Strain decays at `0.140` per second until it reaches zero.
+- The Load Pressure HUD stays visible during that residual recovery period.
+- Successful delivery and death/respawn still perform their intended hard trip reset.
+
+See `docs/M2_3_PLAYTEST.md` for the M2.3 validation gate.
+
+## Existing warehouse/base foundation
+
+- 12-player shared warehouse
+- 560 x 560 stud current graybox footprint
+- Near / Mid / Deep travel-depth structure
 - 36 authoritative shared item positions
-- open sightlines instead of narrow aisle mazes
-- 12 open loading/resale bays around the outer ring
+- open social sightlines and large-stack routes
+- 12 loading/resale bays around the outer perimeter
 - owner-only delivery processing zones
 - 3 visible future stock/display positions per bay
 - 10 total reserved stock positions per bay for future expansion
 - future Quick Sell and Bay Upgrade anchors
-- 4 reserved future warehouse expansion points
 - 46-stud nonblocking ceiling-clearance reference
 - player-facing LOAD PRESSURE meter
 
-## Warehouse depth
-
-### Near / General Goods
-
-Mostly Boxes, Microwaves, Lamps, Chairs, and ordinary TVs.
-
-Closest safe opportunity layer.
-
-### Mid Warehouse
-
-More TVs, Couches, Chairs, and Safes.
-
-Longer return route with more meaningful carry pressure.
-
-### Deep / High Value Test
-
-Mostly Safes, Couches, and TVs using the existing prototype item set.
-
-Designed to make the return trip long enough for dangerous loads and Load Pressure to matter.
-
-## Approximate distance measurements
-
-Measured from bay unload locations to the nearest stock opportunity:
-
-- Near: about 63-88 studs depending on bay/cluster alignment
-- Mid: about 113-151 studs
-- Deep: about 180-199 studs
-
-At normal 16-stud walk speed this is roughly:
-
-- Near: about 3.9-5.5 seconds
-- Mid: about 7.1-9.4 seconds
-- Deep: about 11.3-12.4 seconds
-
-At the current heavily-loaded 9.5-stud minimum movement speed:
-
-- Near: about 6.6-9.3 seconds
-- Mid: about 11.9-15.9 seconds
-- Deep: about 18.9-20.9 seconds
-
-These are geometry estimates, not forced timers.
-
-## Bay foundation
-
-Each bay remains session-owned and contains:
-
-- SpawnMarker
-- Delivery / Processing area
-- owner-only UnloadZone
-- placeholder van
-- StockSlots folder
-- visible StockSlot01-03
-- reserved StockSlot04-10 expansion anchors
-- FutureQuickSellAnchor
-- FutureBayUpgradeAnchor
-
-No selling, Cash, offline earnings, timers, or upgrades are implemented yet.
+No selling, Cash, offline earnings, stock timers, or upgrades are implemented yet.
 
 ## LOAD PRESSURE
 
-The underlying server system is still called Strain internally.
-
-Normal players now see LOAD PRESSURE as a simple meter with:
+The server system is called Strain internally. Normal players see LOAD PRESSURE as:
 
 - LOW
 - BUILDING
 - HIGH
 - CRITICAL
 
-The bar shows holding pressure only. It is **not collapse chance** and it does not show an exact percentage/countdown.
+The meter represents accumulated holding pressure. It is **not collapse chance** and exposes no exact percentage/countdown during normal play.
 
-Collapse still depends on the existing Base Instability, Current Sway, movement, recovery, stack composition, and Strain-modified difficulty.
+Collapse still depends on Base Instability, Current Sway, movement, recovery, stack composition, and Strain-modified difficulty.
 
-F3 developer telemetry still exposes exact internal Strain values for tuning.
+F3 developer telemetry exposes exact internal Strain values for tuning.
 
-## Prototype stock distribution
+## Item-loss states
 
-- Near: 16 positions, average prototype item value about 39
-- Mid: 12 positions, average prototype item value about 74
-- Deep: 8 positions, average prototype item value about 93
+### Successful delivery
 
-This uses existing items only and does not implement rarity or personal Luck.
+Items reaching the player's bay are delivered. Future M3 systems will decide Cash / Stock behavior.
+
+### Collapse loss
+
+Failure removes the affected items from the current trip. Their visible debris is presentation-only and cannot be reclaimed.
+
+### Intentional ditch
+
+The player deliberately sacrifices the top item to reduce the remaining load. The abandoned visual is also presentation-only and cannot be reclaimed.
+
+Untouched warehouse stock remains normal shared loot.
+
+## Controls
+
+- **E / mobile GRAB** — grab nearest highlighted available warehouse item
+- **Q / ButtonB** — ditch the top / most recently grabbed carried item; it is lost from the trip
+- **F3** — developer telemetry
 
 ## Still excluded
 
@@ -127,10 +102,7 @@ This uses existing items only and does not implement rarity or personal Luck.
 - pets / workers / helpers
 - rebirths
 
-## Controls
+## Current validation docs
 
-- **E / mobile GRAB** - grab nearest highlighted available item
-- **Q** - intentionally drop the top item
-- **F3** - developer telemetry
-
-See `docs/M2_2_PLAYTEST.md` for the M2.2 validation gate.
+- `docs/M2_2_PLAYTEST.md` — warehouse/base structure validation
+- `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure exploit validation
