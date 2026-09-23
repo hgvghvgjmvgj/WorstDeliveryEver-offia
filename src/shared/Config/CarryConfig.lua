@@ -87,6 +87,7 @@ return table.freeze({
 		MaxAccumulationPerSecond = 0.070,
 		AccumulationExponent = 1.25,
 		ComfortDecayPerSecond = 0.080,
+		UnloadedRecoveryPerSecond = 0.140,
 
 		Moderate = 0.30,
 		High = 0.62,
@@ -102,6 +103,12 @@ return table.freeze({
 
 		VisualShakeAtMax = 0.065,
 		TutorialMessageStrain = 0.12,
+	}),
+
+	Ditch = table.freeze({
+		ScatterSeconds = 0.34,
+		VisualLifetimeSeconds = 2.4,
+		FadeSeconds = 0.40,
 	}),
 
 	Failure = table.freeze({
