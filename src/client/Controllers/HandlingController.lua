@@ -15,6 +15,7 @@ local previewRemote: RemoteEvent
 local currentNearest: BasePart? = nil
 local lastRequested: BasePart? = nil
 local scanAccumulator = 0
+local previewRefreshAccumulator = 0
 local previewFrame: Frame
 local previewLabel: TextLabel
 local rigFrame: Frame
@@ -217,10 +218,13 @@ function Controller.Start()
 
 	RunService.RenderStepped:Connect(function(dt)
 		scanAccumulator += dt
+		previewRefreshAccumulator += dt
 		if scanAccumulator < 0.10 then return end
 		scanAccumulator = 0
 		currentNearest = nearestItem()
-		requestPreview(false)
+		local forceRefresh = previewRefreshAccumulator >= 0.45
+		if forceRefresh then previewRefreshAccumulator = 0 end
+		requestPreview(forceRefresh)
 	end)
 end
 
