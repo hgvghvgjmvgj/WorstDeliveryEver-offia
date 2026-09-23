@@ -2,9 +2,9 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Keep the existing M4.2 test namespace during M5B so persistence/legacy
-	-- Stock compatibility can be validated instead of hiding migration problems.
-	DataStoreName = "OneTripPlayerData_M4_2PassiveTest_v1",
+	-- Temporary fresh namespace for the M5B.1 starter sequence-break and
+	-- handling-progression tests. Older M4/M5 test data remains untouched.
+	DataStoreName = "OneTripPlayerData_M5B_1HandlingTest_v1",
 	KeyPrefix = "player_",
 
 	AutosaveSeconds = 60,
@@ -16,8 +16,6 @@ return table.freeze({
 
 	-- M5B produces much larger passive values. Until the wider M5 progression
 	-- economy exists, cap offline accrual to five minutes of live Stock output.
-	-- This keeps persistence testable without one reconnect skipping the current
-	-- finite upgrade tree. Revisit when M5 progression sinks are finalized.
 	OfflineEarningsCapSeconds = 5 * 60,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
