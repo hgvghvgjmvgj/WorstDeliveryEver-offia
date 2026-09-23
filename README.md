@@ -4,156 +4,164 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M3 — Delivery Economy: SELL vs KEEP — awaiting Studio validation**
+**M3 CORRECTION — Economy Scale + Warehouse Architecture — awaiting Studio validation**
 
-M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, M2.2 warehouse/base structure, and M2.3 ditch sacrifice remain preserved.
+M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, M2.3 ditch sacrifice, and the M3 SELL/KEEP passive-Stock concept remain preserved.
 
 M4 persistence/offline progression has **not** started.
 
-## M3 delivery economy
+## Economy correction
 
-Successful delivery creates a second decision instead of instantly converting everything to Cash.
+The economy now supports a deliberately larger Roblox-style presentation scale while balancing around **time/effort to improvement**, not arbitrary big numbers.
 
-The player gets a fast Delivery Review:
+Each item config defines:
 
-- **SELL ALL** — one-button large immediate Cash payout.
-- select valuable items to **KEEP** — consumes limited bay Stock Slots and generates slow passive Cash.
-- **SELL REST** — immediately sells everything not kept.
+- `PassivePerMinute`
+- `TargetBreakEvenMinutes`
 
-The authoritative rule is:
+Immediate SELL value is derived centrally as:
 
-> SELL = money now.
->
-> KEEP = long-term passive income, occupying a Stock Slot until the player deliberately sells it.
+`PassivePerMinute × TargetBreakEvenMinutes`
 
-Kept Stock never auto-sells, never disappears on a timer, and never frees its slot by itself.
+This keeps SELL and KEEP economically related instead of inventing two unrelated values.
 
-Server owns all Cash, delivered-item state, Stock slots, passive-income calculation, and Stock sales. Clients only send action intent using server-issued review/Stock IDs.
+Current correction-pass test values:
+
+- Box: SELL $600 / KEEP +$50/min / ~12m break-even
+- Microwave: SELL $1.8K / KEEP +$120/min / ~15m
+- Lamp: SELL $1.35K / KEEP +$90/min / ~15m
+- Chair: SELL $3.96K / KEEP +$220/min / ~18m
+- Tire: SELL $3.24K / KEEP +$180/min / ~18m
+- TV: SELL $10K / KEEP +$500/min / ~20m
+- Couch: SELL $18.7K / KEEP +$850/min / ~22m
+- Safe: SELL $30K / KEEP +$1.2K/min / ~25m
+
+These are NOT final balance numbers. The architecture also documents progression bands from tens/hundreds per minute through millions per minute without implementing progression purchases yet.
+
+### Stock liquidation / no double-dipping
+
+Choosing KEEP sacrifices the original full immediate SELL opportunity.
+
+If the player later removes a kept item through **MANAGE STOCK**, the item pays a configurable salvage value instead of its original full SELL value.
+
+Current default salvage is **20%** of original SELL value.
+
+This prevents:
+
+`KEEP → earn passive forever → later receive the original full SELL value anyway`.
+
+Stock remains physical, permanent for the session, limited by Stock Slots, and server-authoritative.
+
+## Large-number presentation
+
+`src/shared/NumberFormat.lua` formats economy values using readable suffixes such as:
+
+- K
+- M
+- B
+- T
+
+The game does not need an infinite-number system yet; this simply prevents values like `1045238297` from cluttering the UI when `1.05B` is clearer.
+
+## Warehouse architecture correction
+
+The old radial structure is removed.
+
+The active graybox is now **620 × 620 studs** with all 12 player loading/resale bays placed along a common front loading side.
+
+The warehouse is organized as a navigable facility rather than concentric loot rings:
+
+1. **Receiving / Dispatch apron** — shared social/readability area in front of all bays.
+2. **General Goods sector** — flexible low/medium objects.
+3. **Appliances / Electronics sector** — microwaves, TVs, mixed-value goods.
+4. **Furniture / Oversized sector** — chairs, couches, wide/bulky objects.
+5. **Industrial / Heavy sector** — tires, safes, weight-heavy objects.
+6. **Cross-Aisle 1** — early/mid lateral social connection.
+7. **Cross-Aisle 2** — deeper lateral social connection.
+8. **Deep storage band** — separate deep opportunities in every sector, not one center loot pile.
+
+Players are not assigned to sectors.
+
+Near / Mid / Deep now describe **travel depth inside sectors**, not literal circular rings.
+
+## Current route geometry
+
+Approximate straight-line bay-unload distance to the nearest opportunity at each depth:
+
+- Near: ~76–101 studs
+- Mid: ~163–176 studs
+- Deep: ~275–283 studs
+
+At 16 studs/s unloaded speed:
+
+- Near: ~4.8–6.3s
+- Mid: ~10.2–11.0s
+- Deep: ~17.2–17.7s
+
+At the current heavily-loaded 9.5 studs/s minimum speed:
+
+- Near: ~8.0–10.7s
+- Mid: ~17.1–18.5s
+- Deep: ~28.9–29.7s
+
+These are geometry estimates. Rack avoidance, turns, sway management and route choice can make actual Studio times longer.
+
+## Loot distribution
+
+There are currently **36 authoritative shared opportunities**, spread as nine opportunities per sector rather than dense mixed-item clusters.
+
+Opportunities are represented as rack bays, receiving pallets, floor staging, oversized zones and secure/deep positions.
+
+The graybox uses solid rack rows for partial occlusion so players cannot see the entire warehouse from spawn, while wide freight lanes and cross-aisles preserve multiplayer visibility.
+
+## Route choice foundation
+
+Each sector exposes:
+
+- a broad freight route intended to be readable for giant piles
+- a narrower, turn-heavier service route
+- two shared cross-aisles for changing sectors
+
+This is still graybox geometry and MUST be Studio-tested for dominant-route problems before approval.
 
 ## Stock foundation
 
 - default: **3 Stock Slots**
-- development capacities: **3 / 5 / 7 / 10** using the server Player `StockSlotCapacity` attribute
-- `DevPassiveIncomeMultiplier` can accelerate passive earnings for Studio testing without changing displayed base `+$X/min` rates
-- SELL/passive-rate tuning is centralized in `src/shared/Config/EconomyConfig.lua`
-- kept objects physically remain in the owner's bay
-- Stock display objects are anchored, non-colliding, non-queryable, and cannot be stolen
-- other players can see another player's kept objects
-- Stock remains indefinitely until explicitly sold
-- passive income is calculated centrally; there is no independent loop per stocked object
+- development capacities: **3 / 5 / 7 / 10** using server Player `StockSlotCapacity`
+- `DevPassiveIncomeMultiplier` accelerates passive earnings for Studio testing
+- kept items remain physically visible in the owner's bay
+- Stock objects are anchored, non-colliding, non-queryable and cannot be stolen
+- passive income is calculated centrally; there is no loop per kept item
 
-## Replacement rule
+## Preserved carry / loss behavior
 
-M3 uses an explicit sell-first replacement flow.
-
-If all Stock Slots are full and the player delivers something better:
-
-1. open **MANAGE STOCK**
-2. choose an existing kept item
-3. sell it for its normal immediate Sell Value
-4. its passive contribution stops and its physical display disappears
-5. the slot becomes free
-6. return to Delivery Review and KEEP the stronger item
-
-No valuable kept object is silently deleted or automatically replaced.
-
-## Current item lifecycle
-
-Normal warehouse item:
-
-`World → Carried → Delivered Review → Sold`
-
-or:
-
-`World → Carried → Delivered Review → Kept in Stock → deliberately Sold later`
-
-Collapse and intentional ditch remain separate terminal trip-loss paths and never enter the economy review.
-
-## Current prototype economics
-
-All values below are temporary M3 balance targets:
-
-- Box: SELL $150 / KEEP +$1/min
-- Microwave: SELL $400 / KEEP +$2/min
-- Lamp: SELL $400 / KEEP +$2/min
-- Chair: SELL $550 / KEEP +$3/min
-- Tire: SELL $300 / KEEP +$2/min
-- TV: SELL $700 / KEEP +$4/min
-- Couch: SELL $1000 / KEEP +$5/min
-- Safe: SELL $1000 / KEEP +$6/min
-
-At base rates, a kept object takes roughly 150–200 minutes to generate the same Cash as selling immediately. This intentionally keeps active runs important and makes KEEP a long-term decision instead of an obvious short-term upgrade.
-
-## Passive-income architecture
-
-Each kept Stock entry records:
-
-- unique Stock ID
-- item identifier
-- Stock Slot index
-- source Delivery Review item ID
-- Unix timestamp when kept
-- passive rate per minute
-
-The server periodically sums each player's Stock into one Total Passive Rate, accumulates fractional earnings, and only credits whole Cash when enough has accrued. This avoids one loop per item and avoids Cash/UI spam every frame.
-
-M4 can later persist Stock contents plus timestamps and apply an offline earning cap without replacing the Stock data model.
-
-M3 itself intentionally has no DataStores and no offline income. Disconnecting clears temporary session economy state.
-
-## Existing warehouse/base foundation
-
-- 12-player shared warehouse
-- 560 x 560 stud current graybox footprint
-- Near / Mid / Deep travel-depth structure
-- 36 authoritative shared item positions
-- open social sightlines and large-stack routes
-- 12 loading/resale bays around the outer perimeter
-- owner-only delivery processing zones
-- 10 reserved physical Stock positions per bay
-- player-facing LOAD PRESSURE meter
-
-## LOAD PRESSURE / trip-loss behavior
-
-The server system is called Strain internally. Normal players see LOAD PRESSURE as:
-
-- LOW
-- BUILDING
-- HIGH
-- CRITICAL
-
-Intentional Q / ButtonB ditching sacrifices the top item and cannot be used as recoverable temporary storage. Collapse loss and ditch loss remain non-grabbable presentation-only trip losses.
-
-## Controls / economy UI
-
-- **E / mobile GRAB** — grab nearest highlighted available warehouse item
-- **Q / ButtonB** — ditch the top / most recently grabbed carried item; it is lost from the trip
-- Delivery Review — tap/click delivered rows to mark KEEP candidates
-- **MANAGE STOCK** — inspect current Stock and explicitly sell an old kept item
-- **F3** — developer carry telemetry
+- GRAB / carrying feel
+- Base Instability
+- Current Sway
+- Load Pressure
+- collapse consequence
+- intentional Q / ButtonB ditch sacrifice
+- multiplayer item authority
 
 ## Still excluded
 
 - DataStore persistence
 - true offline income
-- Carry upgrades
+- progression purchases
+- Carry Rig progression
 - Stock Slot purchases
-- passive-income upgrades
-- buyer contracts
-- final rarity system
-- collection
+- rarity ladder
 - Secret deliveries
+- buyer contracts
 - traditional Luck
-- monetization
-- workers
-- pets
-- rebirths
-- final bay art
 - final warehouse art
-- polished final UI
+- final prop set
+- monetization
+- pets/workers
+- rebirths
 
 ## Current validation docs
 
-- `docs/M2_2_PLAYTEST.md` — warehouse/base structure validation
 - `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure validation
-- `docs/M3_PLAYTEST.md` — corrected SELL / KEEP passive Stock validation
+- `docs/M3_PLAYTEST.md` — SELL / KEEP passive Stock validation
+- `docs/CORRECTION_ECONOMY_WAREHOUSE_PLAYTEST.md` — big-number economy + new sector warehouse validation
