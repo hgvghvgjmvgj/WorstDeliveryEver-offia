@@ -142,17 +142,17 @@ The client clock must have no effect.
 
 ## TEST J — Offline cap
 
-Current temporary cap: **4 hours**.
+Current temporary cap: **2 hours**.
 
 Using controlled test data / sufficient elapsed time:
 
-1. Test an absence longer than four hours.
-2. Verify only four hours are credited.
+1. Test an absence longer than two hours.
+2. Verify only two hours are credited.
 3. Test zero elapsed time → zero offline payout.
 4. Test a LastSeen timestamp in the future → zero offline payout.
 5. Test an absurd/stale elapsed time beyond the trusted window → zero payout rather than an enormous grant.
 
-The four-hour value is M4 tuning, not final live balance.
+The two-hour value is M4 tuning, not final live balance.
 
 ## TEST K — SELL / KEEP / liquidation still correct
 
