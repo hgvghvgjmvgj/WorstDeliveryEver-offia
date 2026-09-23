@@ -1,23 +1,210 @@
 --!strict
 
-return table.freeze({
-	-- V2 macro-layout stays locked in M4. This milestone only increases authored
-	-- loot population inside the existing facility.
-	FootprintSize = Vector3.new(660, 1, 420),
+local function frozen<T>(value: T): T
+	return table.freeze(value)
+end
+
+local function structure(name: string, kind: string, size: Vector3, position: Vector3)
+	return frozen({ Name = name, Kind = kind, Size = size, Position = position })
+end
+
+local OPPORTUNITY_SLOTS = frozen({
+	frozen({ X = -270, Z = 30, Kind = "OuterStorage" }),
+	frozen({ X = -110, Z = 28, Kind = "InnerStorage" }),
+	frozen({ X = 110, Z = 30, Kind = "InnerStorage" }),
+	frozen({ X = 270, Z = 26, Kind = "OuterStorage" }),
+	frozen({ X = -250, Z = 8, Kind = "StagingPocket" }),
+	frozen({ X = -88, Z = 6, Kind = "InnerBay" }),
+	frozen({ X = 88, Z = 8, Kind = "InnerBay" }),
+	frozen({ X = 250, Z = 4, Kind = "StagingPocket" }),
+	frozen({ X = -270, Z = -18, Kind = "OuterStorage" }),
+	frozen({ X = -112, Z = -20, Kind = "InnerStorage" }),
+	frozen({ X = 112, Z = -18, Kind = "InnerStorage" }),
+	frozen({ X = 270, Z = -22, Kind = "OuterStorage" }),
+	frozen({ X = -232, Z = -36, Kind = "RearStaging" }),
+	frozen({ X = -68, Z = -34, Kind = "RearInnerBay" }),
+	frozen({ X = 68, Z = -36, Kind = "RearInnerBay" }),
+	frozen({ X = 232, Z = -32, Kind = "RearStaging" }),
+})
+
+local function opportunities(prefix: string, centerZ: number, supplyDepth: number, itemIds: {string})
+	local result = {}
+	for index, slot in OPPORTUNITY_SLOTS do
+		local itemId = itemIds[((index - 1) % #itemIds) + 1]
+		table.insert(result, frozen({
+			Name = ("%s_%02d"):format(prefix, index),
+			Position = Vector3.new(slot.X, 0.18, centerZ + slot.Z),
+			SupplyDepth = supplyDepth,
+			ItemId = itemId,
+			Kind = slot.Kind,
+		}))
+	end
+	return frozen(result)
+end
+
+local function receivingStructures(centerZ: number)
+	return frozen({
+		structure("LeftReceivingPadA", "Low", Vector3.new(58, 1.2, 24), Vector3.new(-258, 0.6, centerZ + 24)),
+		structure("LeftReceivingPadB", "Low", Vector3.new(48, 1.2, 22), Vector3.new(-105, 0.6, centerZ - 24)),
+		structure("RightReceivingPadA", "Low", Vector3.new(52, 1.2, 24), Vector3.new(105, 0.6, centerZ + 24)),
+		structure("RightReceivingPadB", "Low", Vector3.new(58, 1.2, 22), Vector3.new(258, 0.6, centerZ - 24)),
+		structure("LeftRackEnd", "Rack", Vector3.new(16, 12, 28), Vector3.new(-300, 6, centerZ - 8)),
+		structure("RightRackEnd", "Rack", Vector3.new(16, 12, 28), Vector3.new(300, 6, centerZ + 8)),
+	})
+end
+
+local function applianceStructures(centerZ: number)
+	return frozen({
+		structure("LeftOuterBayA", "Block", Vector3.new(42, 11, 28), Vector3.new(-276, 5.5, centerZ + 26)),
+		structure("LeftInnerBayA", "Block", Vector3.new(34, 11, 30), Vector3.new(-108, 5.5, centerZ + 24)),
+		structure("RightInnerBayA", "Block", Vector3.new(34, 11, 30), Vector3.new(108, 5.5, centerZ - 24)),
+		structure("RightOuterBayA", "Block", Vector3.new(42, 11, 28), Vector3.new(276, 5.5, centerZ - 26)),
+		structure("LeftDisplay", "Low", Vector3.new(50, 1.4, 18), Vector3.new(-110, 0.7, centerZ - 28)),
+		structure("RightDisplay", "Low", Vector3.new(50, 1.4, 18), Vector3.new(110, 0.7, centerZ + 28)),
+	})
+end
+
+local function furnitureStructures(centerZ: number)
+	return frozen({
+		structure("LeftStageA", "Staging", Vector3.new(66, 0.6, 32), Vector3.new(-265, 0.3, centerZ + 24)),
+		structure("LeftStageB", "Staging", Vector3.new(58, 0.6, 30), Vector3.new(-105, 0.3, centerZ - 24)),
+		structure("RightStageA", "Staging", Vector3.new(58, 0.6, 30), Vector3.new(105, 0.3, centerZ + 24)),
+		structure("RightStageB", "Staging", Vector3.new(66, 0.6, 32), Vector3.new(265, 0.3, centerZ - 24)),
+		structure("LeftDivider", "Divider", Vector3.new(5, 9, 34), Vector3.new(-225, 4.5, centerZ - 2)),
+		structure("RightDivider", "Divider", Vector3.new(5, 9, 34), Vector3.new(225, 4.5, centerZ + 2)),
+	})
+end
+
+local function heavyStructures(centerZ: number)
+	return frozen({
+		structure("LeftCageA", "Cage", Vector3.new(48, 11, 30), Vector3.new(-275, 5.5, centerZ + 24)),
+		structure("LeftHeavyPad", "Low", Vector3.new(48, 1.8, 26), Vector3.new(-105, 0.9, centerZ - 24)),
+		structure("RightHeavyPad", "Low", Vector3.new(48, 1.8, 26), Vector3.new(105, 0.9, centerZ + 24)),
+		structure("RightCageA", "Cage", Vector3.new(48, 11, 30), Vector3.new(275, 5.5, centerZ - 24)),
+		structure("LeftToolWall", "Rack", Vector3.new(14, 13, 34), Vector3.new(-296, 6.5, centerZ - 16)),
+		structure("RightToolWall", "Rack", Vector3.new(14, 13, 34), Vector3.new(296, 6.5, centerZ + 16)),
+	})
+end
+
+local function industrialStructures(centerZ: number)
+	return frozen({
+		structure("LeftMachineBayA", "MachineBay", Vector3.new(54, 9, 30), Vector3.new(-270, 4.5, centerZ + 24)),
+		structure("LeftMachineBayB", "MachineBay", Vector3.new(42, 9, 28), Vector3.new(-108, 4.5, centerZ - 24)),
+		structure("RightMachineBayA", "MachineBay", Vector3.new(42, 9, 28), Vector3.new(108, 4.5, centerZ + 24)),
+		structure("RightMachineBayB", "MachineBay", Vector3.new(54, 9, 30), Vector3.new(270, 4.5, centerZ - 24)),
+		structure("LeftReinforcedRack", "Rack", Vector3.new(14, 15, 32), Vector3.new(-300, 7.5, centerZ - 14)),
+		structure("RightReinforcedRack", "Rack", Vector3.new(14, 15, 32), Vector3.new(300, 7.5, centerZ + 14)),
+	})
+end
+
+local function secureStructures(centerZ: number)
+	return frozen({
+		structure("LeftSecureCageA", "Cage", Vector3.new(54, 13, 30), Vector3.new(-272, 6.5, centerZ + 24)),
+		structure("LeftSecureCageB", "Cage", Vector3.new(42, 13, 28), Vector3.new(-108, 6.5, centerZ - 24)),
+		structure("RightSecureCageA", "Cage", Vector3.new(42, 13, 28), Vector3.new(108, 6.5, centerZ + 24)),
+		structure("RightSecureCageB", "Cage", Vector3.new(54, 13, 30), Vector3.new(272, 6.5, centerZ - 24)),
+		structure("LeftSecurityDivider", "Divider", Vector3.new(6, 12, 30), Vector3.new(-222, 6, centerZ)),
+		structure("RightSecurityDivider", "Divider", Vector3.new(6, 12, 30), Vector3.new(222, 6, centerZ)),
+	})
+end
+
+local sectionDefinitions = {
+	Receiving = {
+		Index = 1,
+		DisplayName = "RECEIVING & GENERAL STORAGE",
+		FrontZ = 292,
+		BackZ = 202,
+		CenterZ = 247,
+		SupplyDepth = 1,
+		Color = Color3.fromRGB(76, 92, 104),
+		Style = "OpenReceiving",
+		Structures = receivingStructures(247),
+		Opportunities = opportunities("RCV", 247, 1, { "Box", "Lamp", "Box", "Microwave", "Box", "Chair" }),
+	},
+	Appliances = {
+		Index = 2,
+		DisplayName = "APPLIANCES & ELECTRONICS",
+		FrontZ = 192,
+		BackZ = 102,
+		CenterZ = 147,
+		SupplyDepth = 1,
+		Color = Color3.fromRGB(70, 91, 116),
+		Style = "StorageBays",
+		Structures = applianceStructures(147),
+		Opportunities = opportunities("APP", 147, 1, { "Microwave", "Box", "TV", "Microwave", "Lamp", "TV" }),
+	},
+	Furniture = {
+		Index = 3,
+		DisplayName = "FURNITURE & OVERSIZED",
+		FrontZ = 92,
+		BackZ = 2,
+		CenterZ = 47,
+		SupplyDepth = 2,
+		Color = Color3.fromRGB(104, 83, 68),
+		Style = "OpenStaging",
+		Structures = furnitureStructures(47),
+		Opportunities = opportunities("FUR", 47, 2, { "Chair", "Lamp", "Couch", "Chair", "Box", "Couch" }),
+	},
+	HeavyGoods = {
+		Index = 4,
+		DisplayName = "HEAVY GOODS & EQUIPMENT",
+		FrontZ = -8,
+		BackZ = -98,
+		CenterZ = -53,
+		SupplyDepth = 2,
+		Color = Color3.fromRGB(93, 89, 73),
+		Style = "HeavyCages",
+		Structures = heavyStructures(-53),
+		Opportunities = opportunities("HVG", -53, 2, { "Tire", "Chair", "Safe", "Tire", "Box", "TV" }),
+	},
+	Industrial = {
+		Index = 5,
+		DisplayName = "INDUSTRIAL STORAGE",
+		FrontZ = -108,
+		BackZ = -198,
+		CenterZ = -153,
+		SupplyDepth = 3,
+		Color = Color3.fromRGB(82, 86, 78),
+		Style = "MachineBays",
+		Structures = industrialStructures(-153),
+		Opportunities = opportunities("IND", -153, 3, { "Tire", "Safe", "TV", "Tire", "Chair", "Safe" }),
+	},
+	Secure = {
+		Index = 6,
+		DisplayName = "SECURE HIGH-VALUE STORAGE",
+		FrontZ = -208,
+		BackZ = -298,
+		CenterZ = -253,
+		SupplyDepth = 3,
+		Color = Color3.fromRGB(79, 73, 70),
+		Style = "SecureCages",
+		Structures = secureStructures(-253),
+		Opportunities = opportunities("SEC", -253, 3, { "Safe", "TV", "Couch", "Safe", "TV", "Couch" }),
+	},
+}
+
+for key, value in sectionDefinitions do
+	sectionDefinitions[key] = frozen(value)
+end
+
+return frozen({
+	-- M5A shell: deliberately longer than the currently playable storage run so
+	-- later expansion can continue behind Secure without moving the 12 bay front.
+	FootprintSize = Vector3.new(700, 1, 900),
 	WallHeight = 32,
 	CeilingClearance = 50,
 
-	LoadingApron = table.freeze({
-		Center = Vector3.new(0, 0.06, 135),
-		Size = Vector3.new(640, 0.12, 70),
-		FreightCrossingZ = 118,
+	LoadingApron = frozen({
+		Center = Vector3.new(0, 0.06, 352),
+		Size = Vector3.new(670, 0.12, 76),
+		FreightCrossingZ = 308,
 	}),
 
-	Bay = table.freeze({
+	Bay = frozen({
 		Count = 12,
 		StartX = -275,
 		Spacing = 50,
-		Z = 178,
+		Z = 410,
 		PadSize = Vector3.new(44, 0.35, 34),
 		UnloadSize = Vector3.new(20, 0.25, 10),
 		ProcessingSize = Vector3.new(25, 0.16, 12),
@@ -31,7 +218,7 @@ return table.freeze({
 		InitialStockSlots = 3,
 		MaxPlannedStockSlots = 10,
 		StockSlotSize = Vector3.new(7.5, 0.18, 5.5),
-		StockSlotPositions = table.freeze({
+		StockSlotPositions = frozen({
 			CFrame.new(-11.5, 0.30, 2.0),
 			CFrame.new(0, 0.30, 4.5),
 			CFrame.new(11.5, 0.30, 2.0),
@@ -45,187 +232,75 @@ return table.freeze({
 		}),
 	}),
 
-	CrossAisles = table.freeze({
-		table.freeze({ Name = "MID_CROSS_AISLE", Z = 18, Width = 30 }),
-		table.freeze({ Name = "DEEP_CROSS_AISLE", Z = -92, Width = 34 }),
+	Routes = frozen({
+		MainFreight = frozen({
+			Start = Vector3.new(0, 0, 308),
+			Finish = Vector3.new(0, 0, -310),
+			Width = 34,
+		}),
+		ServiceWidth = 18,
+		LeftService = frozen({
+			Vector3.new(-180, 0, 300),
+			Vector3.new(-215, 0, 247),
+			Vector3.new(-172, 0, 197),
+			Vector3.new(-214, 0, 147),
+			Vector3.new(-174, 0, 97),
+			Vector3.new(-216, 0, 47),
+			Vector3.new(-174, 0, -3),
+			Vector3.new(-216, 0, -53),
+			Vector3.new(-174, 0, -103),
+			Vector3.new(-216, 0, -153),
+			Vector3.new(-174, 0, -203),
+			Vector3.new(-214, 0, -253),
+			Vector3.new(-180, 0, -304),
+		}),
+		RightService = frozen({
+			Vector3.new(180, 0, 300),
+			Vector3.new(215, 0, 247),
+			Vector3.new(172, 0, 197),
+			Vector3.new(214, 0, 147),
+			Vector3.new(174, 0, 97),
+			Vector3.new(216, 0, 47),
+			Vector3.new(174, 0, -3),
+			Vector3.new(216, 0, -53),
+			Vector3.new(174, 0, -103),
+			Vector3.new(216, 0, -153),
+			Vector3.new(174, 0, -203),
+			Vector3.new(214, 0, -253),
+			Vector3.new(180, 0, -304),
+		}),
 	}),
 
-	Sector = table.freeze({
-		FrontZ = 105,
-		BackZ = -190,
-		Width = 140,
-		FreightLaneWidth = 30,
+	CrossAisles = frozen({
+		frozen({ Name = "CROSS_AISLE_A", Z = 197, Width = 22 }),
+		frozen({ Name = "CROSS_AISLE_B", Z = 97, Width = 22 }),
+		frozen({ Name = "CROSS_AISLE_C", Z = -3, Width = 22 }),
+		frozen({ Name = "CROSS_AISLE_D", Z = -103, Width = 22 }),
+		frozen({ Name = "CROSS_AISLE_E", Z = -203, Width = 22 }),
+	}),
+
+	Section = frozen({
+		Width = 620,
+		FreightLaneWidth = 34,
 		ServiceLaneWidth = 18,
+		InternalConnectorWidth = 14,
 	}),
 
-	Density = table.freeze({
+	SectionOrder = frozen({ "Receiving", "Appliances", "Furniture", "HeavyGoods", "Industrial", "Secure" }),
+	Sectors = frozen(sectionDefinitions),
+
+	-- Supply remains the M4.1 centralized controller. M5A only supplies more
+	-- authored positions because the playable warehouse now has six sections.
+	Density = frozen({
 		MinActivePerSector = 12,
 		MaxActivePerSector = 16,
 		FullServerPlayers = 12,
 		ReconcileDelaySeconds = 0.45,
 	}),
 
-	Sectors = table.freeze({
-		General = table.freeze({
-			DisplayName = "GENERAL GOODS",
-			CenterX = -240,
-			Color = Color3.fromRGB(76, 92, 104),
-			Style = "OpenRacks",
-			Structures = table.freeze({
-				table.freeze({ Name = "Rack_A", Kind = "Rack", Size = Vector3.new(12, 16, 46), Position = Vector3.new(-282, 8, 76) }),
-				table.freeze({ Name = "Rack_B", Kind = "Rack", Size = Vector3.new(12, 16, 42), Position = Vector3.new(-198, 8, 50) }),
-				table.freeze({ Name = "Rack_C", Kind = "Rack", Size = Vector3.new(12, 16, 44), Position = Vector3.new(-282, 8, -34) }),
-				table.freeze({ Name = "Rack_D", Kind = "Rack", Size = Vector3.new(12, 16, 42), Position = Vector3.new(-198, 8, -142) }),
-				table.freeze({ Name = "Pallet_A", Kind = "Low", Size = Vector3.new(24, 2, 18), Position = Vector3.new(-202, 1, 94) }),
-				table.freeze({ Name = "Pallet_B", Kind = "Low", Size = Vector3.new(28, 2, 18), Position = Vector3.new(-278, 1, -118) }),
-			}),
-			ServiceRoute = table.freeze({
-				Vector3.new(-206, 0, 98),
-				Vector3.new(-286, 0, 52),
-				Vector3.new(-205, 0, 3),
-				Vector3.new(-282, 0, -70),
-				Vector3.new(-210, 0, -176),
-			}),
-			Opportunities = table.freeze({
-				table.freeze({ Name = "GEN_NEAR_A", Position = Vector3.new(-252, 0.18, 88), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
-				table.freeze({ Name = "GEN_NEAR_B", Position = Vector3.new(-207, 0.18, 72), Depth = 1, ItemId = "Lamp", Kind = "RackBay" }),
-				table.freeze({ Name = "GEN_NEAR_C", Position = Vector3.new(-274, 0.18, 48), Depth = 1, ItemId = "Box", Kind = "SidePallet" }),
-				table.freeze({ Name = "GEN_NEAR_D", Position = Vector3.new(-231, 0.18, 101), Depth = 1, ItemId = "Box", Kind = "ReceivingLane" }),
-				table.freeze({ Name = "GEN_NEAR_E", Position = Vector3.new(-194, 0.18, 34), Depth = 1, ItemId = "Lamp", Kind = "RackEnd" }),
-				table.freeze({ Name = "GEN_MID_A", Position = Vector3.new(-222, 0.18, 5), Depth = 2, ItemId = "Microwave", Kind = "RackBay" }),
-				table.freeze({ Name = "GEN_MID_B", Position = Vector3.new(-273, 0.18, -32), Depth = 2, ItemId = "Chair", Kind = "SideAisle" }),
-				table.freeze({ Name = "GEN_MID_C", Position = Vector3.new(-210, 0.18, -68), Depth = 2, ItemId = "TV", Kind = "PalletBay" }),
-				table.freeze({ Name = "GEN_MID_D", Position = Vector3.new(-247, 0.18, -10), Depth = 2, ItemId = "Box", Kind = "CrossAislePallet" }),
-				table.freeze({ Name = "GEN_MID_E", Position = Vector3.new(-194, 0.18, -22), Depth = 2, ItemId = "Microwave", Kind = "RackEnd" }),
-				table.freeze({ Name = "GEN_MID_F", Position = Vector3.new(-247, 0.18, -84), Depth = 2, ItemId = "Chair", Kind = "SideStaging" }),
-				table.freeze({ Name = "GEN_DEEP_A", Position = Vector3.new(-267, 0.18, -118), Depth = 3, ItemId = "TV", Kind = "DeepRack" }),
-				table.freeze({ Name = "GEN_DEEP_B", Position = Vector3.new(-215, 0.18, -151), Depth = 3, ItemId = "Couch", Kind = "DeepStaging" }),
-				table.freeze({ Name = "GEN_DEEP_C", Position = Vector3.new(-258, 0.18, -180), Depth = 3, ItemId = "Safe", Kind = "SecurePallet" }),
-				table.freeze({ Name = "GEN_DEEP_D", Position = Vector3.new(-292, 0.18, -145), Depth = 3, ItemId = "TV", Kind = "DeepRackEnd" }),
-				table.freeze({ Name = "GEN_DEEP_E", Position = Vector3.new(-232, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
-			}),
-		}),
-
-		Appliances = table.freeze({
-			DisplayName = "APPLIANCES / ELECTRONICS",
-			CenterX = -80,
-			Color = Color3.fromRGB(70, 91, 116),
-			Style = "StorageBays",
-			Structures = table.freeze({
-				table.freeze({ Name = "Bay_A", Kind = "Block", Size = Vector3.new(30, 11, 30), Position = Vector3.new(-124, 5.5, 72) }),
-				table.freeze({ Name = "Bay_B", Kind = "Block", Size = Vector3.new(26, 11, 34), Position = Vector3.new(-38, 5.5, 38) }),
-				table.freeze({ Name = "Bay_C", Kind = "Block", Size = Vector3.new(30, 11, 36), Position = Vector3.new(-121, 5.5, -41) }),
-				table.freeze({ Name = "Bay_D", Kind = "Block", Size = Vector3.new(28, 11, 38), Position = Vector3.new(-39, 5.5, -133) }),
-				table.freeze({ Name = "Display_A", Kind = "Low", Size = Vector3.new(32, 1.5, 18), Position = Vector3.new(-48, 0.75, 91) }),
-				table.freeze({ Name = "Display_B", Kind = "Low", Size = Vector3.new(34, 1.5, 18), Position = Vector3.new(-111, 0.75, -106) }),
-			}),
-			ServiceRoute = table.freeze({
-				Vector3.new(-42, 0, 98),
-				Vector3.new(-122, 0, 58),
-				Vector3.new(-43, 0, 10),
-				Vector3.new(-118, 0, -61),
-				Vector3.new(-48, 0, -176),
-			}),
-			Opportunities = table.freeze({
-				table.freeze({ Name = "APP_NEAR_A", Position = Vector3.new(-91, 0.18, 91), Depth = 1, ItemId = "Microwave", Kind = "DisplayBay" }),
-				table.freeze({ Name = "APP_NEAR_B", Position = Vector3.new(-45, 0.18, 68), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
-				table.freeze({ Name = "APP_NEAR_C", Position = Vector3.new(-115, 0.18, 43), Depth = 1, ItemId = "Microwave", Kind = "StorageBay" }),
-				table.freeze({ Name = "APP_NEAR_D", Position = Vector3.new(-70, 0.18, 101), Depth = 1, ItemId = "Microwave", Kind = "ReceivingDisplay" }),
-				table.freeze({ Name = "APP_NEAR_E", Position = Vector3.new(-36, 0.18, 31), Depth = 1, ItemId = "Box", Kind = "BayEnd" }),
-				table.freeze({ Name = "APP_MID_A", Position = Vector3.new(-49, 0.18, 5), Depth = 2, ItemId = "TV", Kind = "DisplayBay" }),
-				table.freeze({ Name = "APP_MID_B", Position = Vector3.new(-112, 0.18, -37), Depth = 2, ItemId = "TV", Kind = "StorageBay" }),
-				table.freeze({ Name = "APP_MID_C", Position = Vector3.new(-46, 0.18, -67), Depth = 2, ItemId = "Chair", Kind = "SideBay" }),
-				table.freeze({ Name = "APP_MID_D", Position = Vector3.new(-79, 0.18, -12), Depth = 2, ItemId = "Microwave", Kind = "CrossAisleDisplay" }),
-				table.freeze({ Name = "APP_MID_E", Position = Vector3.new(-127, 0.18, -73), Depth = 2, ItemId = "TV", Kind = "StorageEnd" }),
-				table.freeze({ Name = "APP_MID_F", Position = Vector3.new(-72, 0.18, -86), Depth = 2, ItemId = "Chair", Kind = "SideDisplay" }),
-				table.freeze({ Name = "APP_DEEP_A", Position = Vector3.new(-111, 0.18, -121), Depth = 3, ItemId = "TV", Kind = "SecureElectronics" }),
-				table.freeze({ Name = "APP_DEEP_B", Position = Vector3.new(-48, 0.18, -150), Depth = 3, ItemId = "Safe", Kind = "SecureBay" }),
-				table.freeze({ Name = "APP_DEEP_C", Position = Vector3.new(-97, 0.18, -181), Depth = 3, ItemId = "Couch", Kind = "DeepStaging" }),
-				table.freeze({ Name = "APP_DEEP_D", Position = Vector3.new(-132, 0.18, -154), Depth = 3, ItemId = "TV", Kind = "SecureRackEnd" }),
-				table.freeze({ Name = "APP_DEEP_E", Position = Vector3.new(-67, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
-			}),
-		}),
-
-		Furniture = table.freeze({
-			DisplayName = "FURNITURE / OVERSIZED",
-			CenterX = 80,
-			Color = Color3.fromRGB(104, 83, 68),
-			Style = "OpenStaging",
-			Structures = table.freeze({
-				table.freeze({ Name = "Stage_A", Kind = "Staging", Size = Vector3.new(44, 0.5, 34), Position = Vector3.new(37, 0.25, 75) }),
-				table.freeze({ Name = "Stage_B", Kind = "Staging", Size = Vector3.new(40, 0.5, 42), Position = Vector3.new(121, 0.25, 25) }),
-				table.freeze({ Name = "Stage_C", Kind = "Staging", Size = Vector3.new(46, 0.5, 38), Position = Vector3.new(37, 0.25, -58) }),
-				table.freeze({ Name = "Divider_A", Kind = "Divider", Size = Vector3.new(5, 10, 45), Position = Vector3.new(124, 5, -119) }),
-				table.freeze({ Name = "Stage_D", Kind = "Staging", Size = Vector3.new(42, 0.5, 32), Position = Vector3.new(43, 0.25, -151) }),
-			}),
-			ServiceRoute = table.freeze({
-				Vector3.new(122, 0, 98),
-				Vector3.new(43, 0, 70),
-				Vector3.new(120, 0, 6),
-				Vector3.new(45, 0, -54),
-				Vector3.new(112, 0, -176),
-			}),
-			Opportunities = table.freeze({
-				table.freeze({ Name = "FUR_NEAR_A", Position = Vector3.new(65, 0.18, 91), Depth = 1, ItemId = "Chair", Kind = "FrontDisplay" }),
-				table.freeze({ Name = "FUR_NEAR_B", Position = Vector3.new(115, 0.18, 68), Depth = 1, ItemId = "Lamp", Kind = "OpenStaging" }),
-				table.freeze({ Name = "FUR_NEAR_C", Position = Vector3.new(44, 0.18, 42), Depth = 1, ItemId = "Chair", Kind = "SideDisplay" }),
-				table.freeze({ Name = "FUR_NEAR_D", Position = Vector3.new(83, 0.18, 102), Depth = 1, ItemId = "Lamp", Kind = "FrontStaging" }),
-				table.freeze({ Name = "FUR_NEAR_E", Position = Vector3.new(126, 0.18, 39), Depth = 1, ItemId = "Chair", Kind = "DisplayEnd" }),
-				table.freeze({ Name = "FUR_MID_A", Position = Vector3.new(112, 0.18, 5), Depth = 2, ItemId = "Couch", Kind = "OversizedStaging" }),
-				table.freeze({ Name = "FUR_MID_B", Position = Vector3.new(48, 0.18, -35), Depth = 2, ItemId = "Chair", Kind = "SideStaging" }),
-				table.freeze({ Name = "FUR_MID_C", Position = Vector3.new(111, 0.18, -68), Depth = 2, ItemId = "Couch", Kind = "OversizedStaging" }),
-				table.freeze({ Name = "FUR_MID_D", Position = Vector3.new(73, 0.18, -12), Depth = 2, ItemId = "Lamp", Kind = "CrossAisleDisplay" }),
-				table.freeze({ Name = "FUR_MID_E", Position = Vector3.new(35, 0.18, -80), Depth = 2, ItemId = "Chair", Kind = "SideDisplay" }),
-				table.freeze({ Name = "FUR_MID_F", Position = Vector3.new(84, 0.18, -88), Depth = 2, ItemId = "Couch", Kind = "OversizedBay" }),
-				table.freeze({ Name = "FUR_DEEP_A", Position = Vector3.new(50, 0.18, -119), Depth = 3, ItemId = "Couch", Kind = "DeepDisplay" }),
-				table.freeze({ Name = "FUR_DEEP_B", Position = Vector3.new(111, 0.18, -151), Depth = 3, ItemId = "TV", Kind = "SecureDisplay" }),
-				table.freeze({ Name = "FUR_DEEP_C", Position = Vector3.new(62, 0.18, -181), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
-				table.freeze({ Name = "FUR_DEEP_D", Position = Vector3.new(132, 0.18, -132), Depth = 3, ItemId = "Couch", Kind = "DeepOversized" }),
-				table.freeze({ Name = "FUR_DEEP_E", Position = Vector3.new(92, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureDisplay" }),
-			}),
-		}),
-
-		Industrial = table.freeze({
-			DisplayName = "INDUSTRIAL / HEAVY",
-			CenterX = 240,
-			Color = Color3.fromRGB(91, 91, 76),
-			Style = "HeavyCages",
-			Structures = table.freeze({
-				table.freeze({ Name = "HeavyPad_A", Kind = "Staging", Size = Vector3.new(38, 0.6, 30), Position = Vector3.new(198, 0.3, 80) }),
-				table.freeze({ Name = "CageWall_A", Kind = "Cage", Size = Vector3.new(5, 13, 48), Position = Vector3.new(282, 6.5, 49) }),
-				table.freeze({ Name = "HeavyPad_B", Kind = "Staging", Size = Vector3.new(42, 0.6, 32), Position = Vector3.new(281, 0.3, -28) }),
-				table.freeze({ Name = "CageWall_B", Kind = "Cage", Size = Vector3.new(5, 13, 54), Position = Vector3.new(198, 6.5, -92) }),
-				table.freeze({ Name = "HeavyPad_C", Kind = "Staging", Size = Vector3.new(42, 0.6, 34), Position = Vector3.new(279, 0.3, -154) }),
-			}),
-			ServiceRoute = table.freeze({
-				Vector3.new(201, 0, 98),
-				Vector3.new(281, 0, 58),
-				Vector3.new(204, 0, 6),
-				Vector3.new(282, 0, -57),
-				Vector3.new(208, 0, -176),
-			}),
-			Opportunities = table.freeze({
-				table.freeze({ Name = "IND_NEAR_A", Position = Vector3.new(224, 0.18, 91), Depth = 1, ItemId = "Tire", Kind = "HeavyPad" }),
-				table.freeze({ Name = "IND_NEAR_B", Position = Vector3.new(278, 0.18, 68), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
-				table.freeze({ Name = "IND_NEAR_C", Position = Vector3.new(201, 0.18, 43), Depth = 1, ItemId = "Tire", Kind = "HeavyRack" }),
-				table.freeze({ Name = "IND_NEAR_D", Position = Vector3.new(244, 0.18, 102), Depth = 1, ItemId = "Tire", Kind = "FrontHeavyPad" }),
-				table.freeze({ Name = "IND_NEAR_E", Position = Vector3.new(291, 0.18, 35), Depth = 1, ItemId = "Box", Kind = "ReceivingEnd" }),
-				table.freeze({ Name = "IND_MID_A", Position = Vector3.new(278, 0.18, 5), Depth = 2, ItemId = "Safe", Kind = "HeavyStaging" }),
-				table.freeze({ Name = "IND_MID_B", Position = Vector3.new(207, 0.18, -38), Depth = 2, ItemId = "Tire", Kind = "CageBay" }),
-				table.freeze({ Name = "IND_MID_C", Position = Vector3.new(277, 0.18, -68), Depth = 2, ItemId = "TV", Kind = "HeavyDisplay" }),
-				table.freeze({ Name = "IND_MID_D", Position = Vector3.new(242, 0.18, -12), Depth = 2, ItemId = "Tire", Kind = "CrossAisleHeavy" }),
-				table.freeze({ Name = "IND_MID_E", Position = Vector3.new(193, 0.18, -74), Depth = 2, ItemId = "Safe", Kind = "CageEnd" }),
-				table.freeze({ Name = "IND_MID_F", Position = Vector3.new(248, 0.18, -87), Depth = 2, ItemId = "TV", Kind = "HeavySideBay" }),
-				table.freeze({ Name = "IND_DEEP_A", Position = Vector3.new(210, 0.18, -120), Depth = 3, ItemId = "Safe", Kind = "SecureCage" }),
-				table.freeze({ Name = "IND_DEEP_B", Position = Vector3.new(279, 0.18, -151), Depth = 3, ItemId = "Couch", Kind = "HeavyStaging" }),
-				table.freeze({ Name = "IND_DEEP_C", Position = Vector3.new(222, 0.18, -181), Depth = 3, ItemId = "Safe", Kind = "SecureCage" }),
-				table.freeze({ Name = "IND_DEEP_D", Position = Vector3.new(294, 0.18, -125), Depth = 3, ItemId = "Safe", Kind = "SecureHeavyPad" }),
-				table.freeze({ Name = "IND_DEEP_E", Position = Vector3.new(251, 0.18, -174), Depth = 3, ItemId = "Couch", Kind = "DeepHeavyStaging" }),
-			}),
-		}),
-	}),
-
-	RestockSeconds = table.freeze({
+	-- Retained for compatibility/debug metadata. ItemService no longer performs
+	-- independent per-spawn timer restocks.
+	RestockSeconds = frozen({
 		Box = 1.20,
 		Microwave = 1.55,
 		Lamp = 1.45,
@@ -236,16 +311,15 @@ return table.freeze({
 		Safe = 2.50,
 	}),
 
-	ExpectedAvailableAtFullServer = 64,
+	ExpectedAvailableAtFullServer = 96,
 
-	ExpansionPoints = table.freeze({
-		CFrame.new(-240, 0.5, -202),
-		CFrame.new(-80, 0.5, -202),
-		CFrame.new(80, 0.5, -202),
-		CFrame.new(240, 0.5, -202),
-		CFrame.new(-320, 0.5, -92),
-		CFrame.new(320, 0.5, -92),
+	ExpansionPoints = frozen({
+		CFrame.new(-240, 0.5, -326),
+		CFrame.new(0, 0.5, -326),
+		CFrame.new(240, 0.5, -326),
+		CFrame.new(-330, 0.5, -153),
+		CFrame.new(330, 0.5, -153),
 	}),
 
-	FallbackSpawnPosition = Vector3.new(0, 0.6, 154),
+	FallbackSpawnPosition = Vector3.new(0, 0.6, 382),
 })
