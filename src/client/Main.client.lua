@@ -16,4 +16,4 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M3 correction economy + warehouse client loaded")
+print("[ONE TRIP] M3 Map Architecture V2 client loaded")
