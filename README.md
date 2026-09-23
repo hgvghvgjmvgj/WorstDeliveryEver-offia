@@ -4,7 +4,7 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M3 — Delivery Economy: Quick Sell vs Stock/List — awaiting Studio validation**
+**M3 — Delivery Economy: SELL vs KEEP — awaiting Studio validation**
 
 M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, M2.2 warehouse/base structure, and M2.3 ditch sacrifice remain preserved.
 
@@ -12,69 +12,94 @@ M4 persistence/offline progression has **not** started.
 
 ## M3 delivery economy
 
-Successful delivery no longer ends as a pure instant-money loop.
+Successful delivery creates a second decision instead of instantly converting everything to Cash.
 
-The player now gets a fast Delivery Review:
+The player gets a fast Delivery Review:
 
-- **QUICK SELL ALL** — one-button immediate Cash using existing prototype item Value.
-- select valuable items to **STOCK** — consumes limited bay slots for a larger delayed payout.
-- **QUICK SELL REST** — immediately resolves everything that was not Stocked.
+- **SELL ALL** — one-button large immediate Cash payout.
+- select valuable items to **KEEP** — consumes limited bay Stock Slots and generates slow passive Cash.
+- **SELL REST** — immediately sells everything not kept.
 
-Server owns all Cash, delivered-item state, stock slots, listing timers, payouts, and sale completion. Clients only send action intent using server-issued review/item IDs.
+The authoritative rule is:
+
+> SELL = money now.
+>
+> KEEP = long-term passive income, occupying a Stock Slot until the player deliberately sells it.
+
+Kept Stock never auto-sells, never disappears on a timer, and never frees its slot by itself.
+
+Server owns all Cash, delivered-item state, Stock slots, passive-income calculation, and Stock sales. Clients only send action intent using server-issued review/Stock IDs.
 
 ## Stock foundation
 
 - default: **3 Stock Slots**
 - development capacities: **3 / 5 / 7 / 10** using the server Player `StockSlotCapacity` attribute
-- server Player `DevSaleSpeedMultiplier` accelerates newly-created listings for timer testing
-- Stock payout/timer tuning is centralized in `src/shared/Config/EconomyConfig.lua`
-- Stock objects physically appear in the owner's bay
+- `DevPassiveIncomeMultiplier` can accelerate passive earnings for Studio testing without changing displayed base `+$X/min` rates
+- SELL/passive-rate tuning is centralized in `src/shared/Config/EconomyConfig.lua`
+- kept objects physically remain in the owner's bay
 - Stock display objects are anchored, non-colliding, non-queryable, and cannot be stolen
-- other players can see another player's listed objects
-- listings sell once, grant Cash once, free their slot, and remove their physical display
-- Stock does **not** generate permanent cash-per-second income
+- other players can see another player's kept objects
+- Stock remains indefinitely until explicitly sold
+- passive income is calculated centrally; there is no independent loop per stocked object
+
+## Replacement rule
+
+M3 uses an explicit sell-first replacement flow.
+
+If all Stock Slots are full and the player delivers something better:
+
+1. open **MANAGE STOCK**
+2. choose an existing kept item
+3. sell it for its normal immediate Sell Value
+4. its passive contribution stops and its physical display disappears
+5. the slot becomes free
+6. return to Delivery Review and KEEP the stronger item
+
+No valuable kept object is silently deleted or automatically replaced.
 
 ## Current item lifecycle
 
 Normal warehouse item:
 
-`World → Carried → Delivered Review → Quick Sold`
+`World → Carried → Delivered Review → Sold`
 
 or:
 
-`World → Carried → Delivered Review → Stocked → Sold`
+`World → Carried → Delivered Review → Kept in Stock → deliberately Sold later`
 
 Collapse and intentional ditch remain separate terminal trip-loss paths and never enter the economy review.
 
 ## Current prototype economics
 
-Quick Sell starts from the existing `ItemConfig.Value`.
+All values below are temporary M3 balance targets:
 
-Current Stock tuning:
+- Box: SELL $150 / KEEP +$1/min
+- Microwave: SELL $400 / KEEP +$2/min
+- Lamp: SELL $400 / KEEP +$2/min
+- Chair: SELL $550 / KEEP +$3/min
+- Tire: SELL $300 / KEEP +$2/min
+- TV: SELL $700 / KEEP +$4/min
+- Couch: SELL $1000 / KEEP +$5/min
+- Safe: SELL $1000 / KEEP +$6/min
 
-- Box: $15 now / ~$20 later / ~20s
-- Microwave: $40 now / ~$55 later / ~30s
-- Lamp: $40 now / ~$59 later / ~38s
-- Chair: $55 now / ~$74 later / ~42s
-- Tire: $30 now / ~$45 later / ~32s
-- TV: $70 now / ~$102 later / ~50s
-- Couch: $100 now / ~$140 later / ~65s
-- Safe: $100 now / ~$155 later / ~75s
+At base rates, a kept object takes roughly 150–200 minutes to generate the same Cash as selling immediately. This intentionally keeps active runs important and makes KEEP a long-term decision instead of an obvious short-term upgrade.
 
-These are prototype values only, not final economy balance.
+## Passive-income architecture
 
-## Persistence readiness
+Each kept Stock entry records:
 
-M3 stores active listing data in a shape that can later be persisted:
-
+- unique Stock ID
 - item identifier
-- listing start Unix timestamp
-- effective sale duration
-- expected payout
 - Stock Slot index
-- unique listing ID
+- source Delivery Review item ID
+- Unix timestamp when kept
+- passive rate per minute
 
-M3 intentionally does not use DataStores and does not simulate offline sales. Disconnecting clears temporary economy state. M4 will add persistence/offline elapsed-time handling.
+The server periodically sums each player's Stock into one Total Passive Rate, accumulates fractional earnings, and only credits whole Cash when enough has accrued. This avoids one loop per item and avoids Cash/UI spam every frame.
+
+M4 can later persist Stock contents plus timestamps and apply an offline earning cap without replacing the Stock data model.
+
+M3 itself intentionally has no DataStores and no offline income. Disconnecting clears temporary session economy state.
 
 ## Existing warehouse/base foundation
 
@@ -85,7 +110,7 @@ M3 intentionally does not use DataStores and does not simulate offline sales. Di
 - open social sightlines and large-stack routes
 - 12 loading/resale bays around the outer perimeter
 - owner-only delivery processing zones
-- 10 reserved physical stock positions per bay
+- 10 reserved physical Stock positions per bay
 - player-facing LOAD PRESSURE meter
 
 ## LOAD PRESSURE / trip-loss behavior
@@ -99,20 +124,21 @@ The server system is called Strain internally. Normal players see LOAD PRESSURE 
 
 Intentional Q / ButtonB ditching sacrifices the top item and cannot be used as recoverable temporary storage. Collapse loss and ditch loss remain non-grabbable presentation-only trip losses.
 
-## Controls
+## Controls / economy UI
 
 - **E / mobile GRAB** — grab nearest highlighted available warehouse item
 - **Q / ButtonB** — ditch the top / most recently grabbed carried item; it is lost from the trip
-- Delivery Review — tap/click delivered rows to mark Stock candidates
+- Delivery Review — tap/click delivered rows to mark KEEP candidates
+- **MANAGE STOCK** — inspect current Stock and explicitly sell an old kept item
 - **F3** — developer carry telemetry
 
 ## Still excluded
 
 - DataStore persistence
-- true offline selling
+- true offline income
 - Carry upgrades
 - Stock Slot purchases
-- sale-speed upgrades
+- passive-income upgrades
 - buyer contracts
 - final rarity system
 - collection
@@ -130,4 +156,4 @@ Intentional Q / ButtonB ditching sacrifices the top item and cannot be used as r
 
 - `docs/M2_2_PLAYTEST.md` — warehouse/base structure validation
 - `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure validation
-- `docs/M3_PLAYTEST.md` — Quick Sell / Stock delivery economy validation
+- `docs/M3_PLAYTEST.md` — corrected SELL / KEEP passive Stock validation
