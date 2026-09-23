@@ -4,9 +4,7 @@ local Debris = game:GetService("Debris")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local Workspace = game:GetService("Workspace")
 
-local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
 local CarryConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("CarryConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ItemConfig"))
 local PrototypeVisualConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PrototypeVisualConfig"))
@@ -122,6 +120,87 @@ local function scheduleRestock(spawnName: string)
 	end)
 end
 
+local function spawnLostVisual(
+	itemId: string,
+	startCFrame: CFrame,
+	offsetIndex: number,
+	lostKind: string,
+	ownerUserId: number?,
+	scatterSeconds: number,
+	lifetimeSeconds: number,
+	fadeSeconds: number
+)
+	if not lostVisualFolder then
+		return
+	end
+
+	local visual = PrototypeVisualConfig.Items[itemId]
+	if not visual then
+		return
+	end
+
+	local angle = offsetIndex * 1.73
+	local radius = 3.0 + (offsetIndex % 3) * 1.05
+	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+	local destinationPosition = Vector3.new(
+		startCFrame.Position.X + offset.X,
+		visual.Size.Y * 0.5 + 0.06,
+		startCFrame.Position.Z + offset.Z
+	)
+
+	local lost = Instance.new("Part")
+	lost.Name = ("%s_%s"):format(lostKind, itemId)
+	lost.Size = visual.Size
+	lost.CFrame = startCFrame
+	lost.Anchored = true
+	lost.CanCollide = false
+	lost.CanTouch = false
+	lost.CanQuery = false
+	lost.Material = Enum.Material.SmoothPlastic
+	lost.Color = visual.Color
+	lost:SetAttribute("ItemId", itemId)
+	lost:SetAttribute("Available", false)
+	lost:SetAttribute("TripLossKind", lostKind)
+	lost:SetAttribute("AbandonedByUserId", ownerUserId or 0)
+	lost.Parent = lostVisualFolder
+
+	local spin = CFrame.Angles(
+		math.rad(24 + offsetIndex * 11),
+		math.rad(offsetIndex * 43),
+		math.rad(30 - offsetIndex * 7)
+	)
+
+	TweenService:Create(
+		lost,
+		TweenInfo.new(
+			scatterSeconds,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{ CFrame = CFrame.new(destinationPosition) * spin }
+	):Play()
+
+	task.delay(
+		math.max(0.15, lifetimeSeconds - fadeSeconds),
+		function()
+			if not lost.Parent then
+				return
+			end
+
+			TweenService:Create(
+				lost,
+				TweenInfo.new(fadeSeconds, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+				{
+					Transparency = 1,
+					Size = lost.Size * 0.82,
+				}
+			):Play()
+		end
+	)
+
+	Debris:AddItem(lost, lifetimeSeconds)
+end
+
 function ItemService.Start(root: Folder)
 	table.clear(activeBySpawn)
 
@@ -132,7 +211,7 @@ function ItemService.Start(root: Folder)
 	spawnFolder = root:WaitForChild("ItemSpawns") :: Folder
 
 	lostVisualFolder = Instance.new("Folder")
-	lostVisualFolder.Name = "LostCollapseItems"
+	lostVisualFolder.Name = "LostTripItems"
 	lostVisualFolder.Parent = root
 
 	for _, spawnPart in spawnFolder:GetChildren() do
@@ -174,17 +253,6 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 		return false, nil, nil
 	end
 
-	local protectedUntil = candidate:GetAttribute("ProtectedUntil")
-	local ownerUserId = candidate:GetAttribute("OwnerUserId")
-	if typeof(protectedUntil) == "number"
-		and protectedUntil > Workspace:GetServerTimeNow()
-		and typeof(ownerUserId) == "number"
-		and ownerUserId ~= 0
-		and ownerUserId ~= player.UserId
-	then
-		return false, nil, nil
-	end
-
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root or not root:IsA("BasePart") then
@@ -219,120 +287,38 @@ function ItemService.TryTake(player: Player, candidate: Instance): (boolean, str
 end
 
 function ItemService.SpawnCollapseLoss(itemId: string, startCFrame: CFrame, offsetIndex: number)
-	if not lostVisualFolder then
-		return
-	end
-
-	local visual = PrototypeVisualConfig.Items[itemId]
-	if not visual then
-		return
-	end
-
-	local angle = offsetIndex * 1.73
-	local radius = 3.0 + (offsetIndex % 3) * 1.05
-	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-	local destinationPosition = Vector3.new(
-		startCFrame.Position.X + offset.X,
-		visual.Size.Y * 0.5 + 0.06,
-		startCFrame.Position.Z + offset.Z
+	spawnLostVisual(
+		itemId,
+		startCFrame,
+		offsetIndex,
+		"Collapse",
+		nil,
+		CarryConfig.Failure.CollapseScatterSeconds,
+		CarryConfig.Failure.LostVisualLifetimeSeconds,
+		0.40
 	)
-
-	local lost = Instance.new("Part")
-	lost.Name = ("Lost_%s"):format(itemId)
-	lost.Size = visual.Size
-	lost.CFrame = startCFrame
-	lost.Anchored = true
-	lost.CanCollide = false
-	lost.CanTouch = false
-	lost.CanQuery = false
-	lost.Material = Enum.Material.SmoothPlastic
-	lost.Color = visual.Color
-	lost:SetAttribute("ItemId", itemId)
-	lost:SetAttribute("Available", false)
-	lost:SetAttribute("LostFromCollapse", true)
-	lost.Parent = lostVisualFolder
-
-	local spin = CFrame.Angles(
-		math.rad(24 + offsetIndex * 11),
-		math.rad(offsetIndex * 43),
-		math.rad(30 - offsetIndex * 7)
-	)
-
-	TweenService:Create(
-		lost,
-		TweenInfo.new(
-			CarryConfig.Failure.CollapseScatterSeconds,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-		{ CFrame = CFrame.new(destinationPosition) * spin }
-	):Play()
-
-	task.delay(
-		math.max(0.5, CarryConfig.Failure.LostVisualLifetimeSeconds - 0.45),
-		function()
-			if not lost.Parent then
-				return
-			end
-
-			TweenService:Create(
-				lost,
-				TweenInfo.new(0.40, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-				{
-					Transparency = 1,
-					Size = lost.Size * 0.82,
-				}
-			):Play()
-		end
-	)
-
-	Debris:AddItem(lost, CarryConfig.Failure.LostVisualLifetimeSeconds)
 end
 
+-- M2.3: despite the legacy method name, a manual drop is now an intentional
+-- ditch. It never enters the shared Items folder, so neither the owner nor
+-- another player can reclaim it. The source warehouse spawn already handles
+-- normal restocking independently from this presentation-only loss visual.
 function ItemService.SpawnDropped(
 	itemId: string,
 	startCFrame: CFrame,
 	ownerUserId: number,
 	offsetIndex: number
 )
-	if not itemFolder then
-		return
-	end
-
-	local angle = offsetIndex * 1.73
-	local radius = 2.8 + (offsetIndex % 3) * 0.9
-	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
-	local floorPosition = Vector3.new(
-		startCFrame.Position.X + offset.X,
-		0.01,
-		startCFrame.Position.Z + offset.Z
+	spawnLostVisual(
+		itemId,
+		startCFrame,
+		offsetIndex,
+		"Ditch",
+		ownerUserId,
+		CarryConfig.Ditch.ScatterSeconds,
+		CarryConfig.Ditch.VisualLifetimeSeconds,
+		CarryConfig.Ditch.FadeSeconds
 	)
-
-	local item = makeWorldItem(itemId, CFrame.new(floorPosition), nil, ownerUserId)
-	local destination = item.CFrame
-	item.CFrame = startCFrame
-	item:SetAttribute(
-		"ProtectedUntil",
-		Workspace:GetServerTimeNow() + CarryConfig.DroppedItemProtectionSeconds
-	)
-
-	local spin = CFrame.Angles(
-		math.rad(18 + offsetIndex * 9),
-		math.rad(offsetIndex * 37),
-		math.rad(24 - offsetIndex * 5)
-	)
-
-	TweenService:Create(
-		item,
-		TweenInfo.new(
-			CarryConfig.Failure.CollapseScatterSeconds,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-		{ CFrame = destination * spin }
-	):Play()
-
-	Debris:AddItem(item, GameConfig.Prototype.DroppedItemLifetimeSeconds)
 end
 
 return ItemService
