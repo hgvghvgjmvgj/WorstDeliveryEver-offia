@@ -201,10 +201,10 @@ local function handleRemoved(instance: Instance)
 		return
 	end
 
-	-- A normal authoritative grab reserves the item before destroying it. Only
-	-- those removals start the warehouse-wide premium replacement gate.
+	-- A normal authoritative grab reserves the item before destroying it. Studio
+	-- test players may use negative UserIds, so any nonzero reservation counts.
 	local reservedBy = instance:GetAttribute("ReservedByUserId")
-	if typeof(reservedBy) == "number" and reservedBy > 0 then
+	if typeof(reservedBy) == "number" and reservedBy ~= 0 then
 		startReplacementGate(itemId)
 	end
 	updateTelemetry()
