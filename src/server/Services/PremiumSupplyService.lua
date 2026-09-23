@@ -232,6 +232,15 @@ function PremiumSupplyService.Start(root: Folder)
 	Players.PlayerRemoving:Connect(function()
 		task.defer(updateTelemetry)
 	end)
+
+	-- Debug attributes should count down live while testing premium replacement
+	-- gates. This loop only scans the capped <=64 authoritative world items.
+	task.spawn(function()
+		while itemFolder and itemFolder.Parent do
+			updateTelemetry()
+			task.wait(1)
+		end
+	end)
 	updateTelemetry()
 end
 
