@@ -278,7 +278,13 @@ local function updateStrain(player: Player, state: CarryState, dt: number)
 	local severity = state.StrainLoadSeverity
 
 	if #state.Items == 0 then
-		state.Strain = 0
+		-- M2.3: ditching the final item must not magically erase accumulated
+		-- fatigue. With no load left there is no new pressure generation, but
+		-- residual Load Pressure decays for a short, readable recovery period.
+		state.Strain = math.max(
+			0,
+			state.Strain - tuning.UnloadedRecoveryPerSecond * dt
+		)
 	elseif severity >= tuning.MinimumLoadSeverity then
 		local rate = tuning.MaxAccumulationPerSecond
 			* (severity ^ tuning.AccumulationExponent)
@@ -305,7 +311,6 @@ local function updateStrain(player: Player, state: CarryState, dt: number)
 		})
 	end
 end
-
 
 local function ensureRig(state: CarryState)
 	local character = state.Character
@@ -900,7 +905,17 @@ local function handleDrop(player: Player)
 		return
 	end
 
-	removeEntries(player, state, #state.Items, "Dropped the top item.", false)
+	local topEntry = state.Items[#state.Items]
+	local topDefinition = topEntry and ItemConfig[topEntry.ItemId]
+	local topName = if topDefinition then topDefinition.Name else "TOP ITEM"
+
+	removeEntries(
+		player,
+		state,
+		#state.Items,
+		("DITCHED %s - LOST FOR THIS TRIP."):format(topName),
+		false
+	)
 end
 
 local function updateLayerVisuals(state: CarryState, risk: number, dt: number)
