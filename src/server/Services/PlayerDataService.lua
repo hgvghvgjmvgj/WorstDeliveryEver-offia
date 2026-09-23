@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local CollectionConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("CollectionConfig"))
 local DataConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("DataConfig"))
 local EconomyConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("EconomyConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ItemConfig"))
@@ -72,6 +73,7 @@ local function defaultProfile(nowUnix: number): any
 			CarryRigTier = ProgressionConfig.DefaultCarryRigTier,
 		},
 		Stock = { Slots = {} },
+		Collection = CollectionConfig.NewProfile(),
 		PassiveRemainder = 0,
 		LastSeenUnix = nowUnix,
 		Session = nil,
@@ -127,6 +129,8 @@ local function migrateAndSanitize(raw: any, nowUnix: number): (any?, string?)
 	result.Progression.StockSlotLevel = sanitizeLevel(sourceProgression.StockSlotLevel, "StockSlots")
 	result.Progression.CarryRigTier = math.max(1, math.floor(finiteNumber(sourceProgression.CarryRigTier, ProgressionConfig.DefaultCarryRigTier) + 0.5))
 	result.Stock = sanitizeStock(raw.Stock, nowUnix)
+	result.Collection = CollectionConfig.Sanitize(raw.Collection, nowUnix)
+	CollectionConfig.BackfillFromStock(result.Collection, result.Stock, nowUnix)
 	result.PassiveRemainder = math.clamp(finiteNumber(raw.PassiveRemainder, 0), 0, 0.999999)
 	result.LastSeenUnix = math.max(0, math.floor(finiteNumber(raw.LastSeenUnix, nowUnix)))
 	result.SchemaVersion = DataConfig.SchemaVersion
@@ -277,7 +281,6 @@ local function savePlayerInternal(player: Player, releaseSession: boolean): bool
 			saveAgain[player] = true
 			return false
 		end
-		-- Final save/release must not be dropped just because an autosave is in flight.
 		local waitStarted = os.clock()
 		while saving[player] and os.clock() - waitStarted < 10 do
 			task.wait(0.05)
