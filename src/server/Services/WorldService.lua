@@ -141,7 +141,6 @@ local function buildLoadingApron(root: Folder)
 	crossing.CanCollide = false
 	crossing.CanTouch = false
 
-	-- Deliberate open staging pockets explain why the apron is wider than an aisle.
 	for index, x in { -292, 292 } do
 		local staging = makePart(
 			folder,
@@ -268,12 +267,23 @@ local function buildServiceRoute(model: Model, sectorKey: string, sector)
 	folder.Name = "ServiceRoute"
 	folder.Parent = model
 
-	for index = 1, #sector.ServiceRoute - 1 do
+	-- This path deliberately spans slightly less depth than the full freight route
+	-- and cuts diagonally between storage masses. It is shorter, but its narrower
+	-- width and repeated direction changes create more Sway risk for giant loads.
+	local inward = if sector.CenterX < 0 then 1 else -1
+	local points = {
+		Vector3.new(sector.CenterX + inward * 20, 0, 98),
+		Vector3.new(sector.CenterX + inward * 25, 0, 30),
+		Vector3.new(sector.CenterX + inward * 15, 0, -55),
+		Vector3.new(sector.CenterX + inward * 30, 0, -176),
+	}
+
+	for index = 1, #points - 1 do
 		local segment = laneBetween(
 			folder,
 			("Service_%02d"):format(index),
-			sector.ServiceRoute[index],
-			sector.ServiceRoute[index + 1],
+			points[index],
+			points[index + 1],
 			WarehouseConfig.Sector.ServiceLaneWidth,
 			Color3.fromRGB(145, 122, 82),
 			0.56
@@ -320,8 +330,6 @@ local function buildSector(
 	freight.CanTouch = false
 	freight:SetAttribute("RouteType", "Freight")
 
-	-- Short side branches visually/physically connect off-axis loot pockets to the
-	-- main route instead of making them feel randomly scattered on the floor.
 	local branchFolder = Instance.new("Folder")
 	branchFolder.Name = "SideBranches"
 	branchFolder.Parent = model
