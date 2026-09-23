@@ -236,6 +236,9 @@ local function inspect(itemId: string)
 	currentRoot:SetAttribute("DevInspectSection", definition.SectionId or "Legacy")
 	currentRoot:SetAttribute("DevInspectRarityMultiplier", tuning.RarityMultiplier or 1)
 	currentRoot:SetAttribute("DevInspectSectionMultiplier", tuning.SectionMultiplier or 1)
+	currentRoot:SetAttribute("DevInspectWeight", definition.Weight)
+	currentRoot:SetAttribute("DevInspectBulk", definition.Bulk)
+	currentRoot:SetAttribute("DevInspectShape", definition.ShapeTag)
 end
 
 local function debugSpawnNow()
