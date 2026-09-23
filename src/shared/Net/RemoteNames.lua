@@ -8,4 +8,7 @@ return table.freeze({
 	CarryState = "CarryState",
 	PrototypeNotice = "PrototypeNotice",
 	PrototypeFeedback = "PrototypeFeedback",
+
+	EconomyState = "EconomyState",
+	EconomyAction = "EconomyAction",
 })
