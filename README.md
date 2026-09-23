@@ -4,17 +4,17 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M3 CORRECTION — Economy Scale + Warehouse Architecture — awaiting Studio validation**
+**M3 MAP ARCHITECTURE V2 — Full-Footprint Long-Form Warehouse — awaiting Studio validation**
 
-M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, M2.3 ditch sacrifice, and the M3 SELL/KEEP passive-Stock concept remain preserved.
+The previous warehouse correction was rejected after playtesting/visual review because gameplay still occupied one compressed region inside a much larger empty frame.
+
+M1/M1.1 carry feel, M2 multiplayer authority, M2.1 Load Pressure/Strain, M2.3 ditch sacrifice, and the corrected M3 SELL/KEEP passive-Stock economy remain preserved.
 
 M4 persistence/offline progression has **not** started.
 
-## Economy correction
+## M3 economy foundation preserved
 
-The economy now supports a deliberately larger Roblox-style presentation scale while balancing around **time/effort to improvement**, not arbitrary big numbers.
-
-Each item config defines:
+Each item economy config defines:
 
 - `PassivePerMinute`
 - `TargetBreakEvenMinutes`
@@ -23,131 +23,139 @@ Immediate SELL value is derived centrally as:
 
 `PassivePerMinute × TargetBreakEvenMinutes`
 
-This keeps SELL and KEEP economically related instead of inventing two unrelated values.
+Current test values are intentionally large and temporary:
 
-Current correction-pass test values:
+- Box: SELL $600 / KEEP +$50/min
+- Microwave: SELL $1.8K / KEEP +$120/min
+- Lamp: SELL $1.35K / KEEP +$90/min
+- Chair: SELL $3.96K / KEEP +$220/min
+- Tire: SELL $3.24K / KEEP +$180/min
+- TV: SELL $10K / KEEP +$500/min
+- Couch: SELL $18.7K / KEEP +$850/min
+- Safe: SELL $30K / KEEP +$1.2K/min
 
-- Box: SELL $600 / KEEP +$50/min / ~12m break-even
-- Microwave: SELL $1.8K / KEEP +$120/min / ~15m
-- Lamp: SELL $1.35K / KEEP +$90/min / ~15m
-- Chair: SELL $3.96K / KEEP +$220/min / ~18m
-- Tire: SELL $3.24K / KEEP +$180/min / ~18m
-- TV: SELL $10K / KEEP +$500/min / ~20m
-- Couch: SELL $18.7K / KEEP +$850/min / ~22m
-- Safe: SELL $30K / KEEP +$1.2K/min / ~25m
+KEEP permanently sacrifices the original full SELL opportunity. Later Stock liquidation currently pays a configurable 20% salvage value so players cannot KEEP for passive earnings and later double-dip the full original sale price.
 
-These are NOT final balance numbers. The architecture also documents progression bands from tens/hundreds per minute through millions per minute without implementing progression purchases yet.
+`src/shared/NumberFormat.lua` supports readable K / M / B / T economy presentation.
 
-### Stock liquidation / no double-dipping
+## Map Architecture V2
 
-Choosing KEEP sacrifices the original full immediate SELL opportunity.
+The old radial map and the first compressed-sector correction are no longer the active architecture.
 
-If the player later removes a kept item through **MANAGE STOCK**, the item pays a configurable salvage value instead of its original full SELL value.
+Current facility footprint:
 
-Current default salvage is **20%** of original SELL value.
+**660 × 420 studs**
 
-This prevents:
+The long dimension runs across the loading face; depth runs from the player bays into the warehouse. This lets the playable facility use nearly the entire frame while keeping Deep travel within useful gameplay timings.
 
-`KEEP → earn passive forever → later receive the original full SELL value anyway`.
+### Loading side
 
-Stock remains physical, permanent for the session, limited by Stock Slots, and server-authoritative.
+- 12 player loading/resale bays across the primary loading side
+- shared Receiving / Dispatch apron: approximately `640 × 70`
+- freight crossing area
+- two purposeful oversized receiving/staging pockets
+- visible Stock and returning giant piles remain part of the shared social area
 
-## Large-number presentation
+### Four long sectors
 
-`src/shared/NumberFormat.lua` formats economy values using readable suffixes such as:
+Each sector is approximately `140 × 295` studs and runs from Receiving toward Deep storage.
 
-- K
-- M
-- B
-- T
+1. **General Goods** — open racks and pallets
+2. **Appliances / Electronics** — larger storage-bay masses
+3. **Furniture / Oversized** — broad open staging areas
+4. **Industrial / Heavy** — heavy pads and cage-like storage
 
-The game does not need an infinite-number system yet; this simply prevents values like `1045238297` from cluttering the UI when `1.05B` is clearer.
+The layouts intentionally use different primitive geometry so the graybox does not read as one copied aisle repeated four times.
 
-## Warehouse architecture correction
+Players are never assigned to a sector.
 
-The old radial structure is removed.
+### Travel depth
 
-The active graybox is now **620 × 620 studs** with all 12 player loading/resale bays placed along a common front loading side.
+Near / Mid / Deep are physical route depth, not rooms or circular rings.
 
-The warehouse is organized as a navigable facility rather than concentric loot rings:
+Current coordinate-audit estimates for each bay's closest practical opportunities:
 
-1. **Receiving / Dispatch apron** — shared social/readability area in front of all bays.
-2. **General Goods sector** — flexible low/medium objects.
-3. **Appliances / Electronics sector** — microwaves, TVs, mixed-value goods.
-4. **Furniture / Oversized sector** — chairs, couches, wide/bulky objects.
-5. **Industrial / Heavy sector** — tires, safes, weight-heavy objects.
-6. **Cross-Aisle 1** — early/mid lateral social connection.
-7. **Cross-Aisle 2** — deeper lateral social connection.
-8. **Deep storage band** — separate deep opportunities in every sector, not one center loot pile.
+- Near: roughly `90–122` route studs
+- Mid: roughly `185–230` route studs
+- Deep: roughly `317–347` route studs
 
-Players are not assigned to sectors.
+At 16 studs/s before normal player movement/turning costs:
 
-Near / Mid / Deep now describe **travel depth inside sectors**, not literal circular rings.
+- Near: ~5.6–7.6s
+- Mid: ~11.5–14.4s
+- Deep: ~19.8–21.7s
 
-## Current route geometry
+At the current 9.5 studs/s heavily-loaded minimum speed:
 
-Approximate straight-line bay-unload distance to the nearest opportunity at each depth:
+- Near: ~9.5–12.8s
+- Mid: ~19.4–24.2s
+- Deep: ~33.3–36.5s
 
-- Near: ~76–101 studs
-- Mid: ~163–176 studs
-- Deep: ~275–283 studs
+Studio timing still needs validation.
 
-At 16 studs/s unloaded speed:
+### Cross-aisles
 
-- Near: ~4.8–6.3s
-- Mid: ~10.2–11.0s
-- Deep: ~17.2–17.7s
+- Mid Cross-Aisle at `Z = 18`, approximately 30 studs wide
+- Deep Cross-Aisle at `Z = -92`, approximately 34 studs wide
 
-At the current heavily-loaded 9.5 studs/s minimum speed:
+They connect all four sectors, support route switching, and are intended as recurring social intersections for the 12-player server.
 
-- Near: ~8.0–10.7s
-- Mid: ~17.1–18.5s
-- Deep: ~28.9–29.7s
+### Freight vs Service
 
-These are geometry estimates. Rack avoidance, turns, sway management and route choice can make actual Studio times longer.
+Each sector has:
 
-## Loot distribution
+- **Main Freight Route** — ~295 studs full depth, 30 studs wide, straight/readable
+- **Service Route** — ~276 studs end-to-end, 18 studs wide, shorter but with more directional changes
 
-There are currently **36 authoritative shared opportunities**, spread as nine opportunities per sector rather than dense mixed-item clusters.
+The goal is a natural carrying tradeoff: giant unstable piles prefer the wider route, while a smaller/controlled load can save some distance through the service path.
 
-Opportunities are represented as rack bays, receiving pallets, floor staging, oversized zones and secure/deep positions.
+This tradeoff still requires Studio playtesting.
 
-The graybox uses solid rack rows for partial occlusion so players cannot see the entire warehouse from spawn, while wide freight lanes and cross-aisles preserve multiplayer visibility.
+### Loot distribution
 
-## Route choice foundation
+There are still 36 authoritative shared opportunities: nine per sector.
 
-Each sector exposes:
+They are now spread through receiving positions, racks, storage bays, side branches, staging areas, cages and deep positions instead of sitting on obvious loot pads.
 
-- a broad freight route intended to be readable for giant piles
-- a narrower, turn-heavier service route
-- two shared cross-aisles for changing sectors
+Spawn markers are invisible. Visible architecture provides the spatial context.
 
-This is still graybox geometry and MUST be Studio-tested for dominant-route problems before approval.
+The target search rhythm is a meaningful opportunity/decision approximately every 3–6 seconds rather than constant dense loot or long empty walking.
 
-## Stock foundation
+### Full-footprint use
 
-- default: **3 Stock Slots**
-- development capacities: **3 / 5 / 7 / 10** using server Player `StockSlotCapacity`
-- `DevPassiveIncomeMultiplier` accelerates passive earnings for Studio testing
-- kept items remain physically visible in the owner's bay
-- Stock objects are anchored, non-colliding, non-queryable and cannot be stolen
-- passive income is calculated centrally; there is no loop per kept item
+The meaningful coordinate envelope currently spans approximately:
 
-## Preserved carry / loss behavior
+- X: `-320` to `+320`
+- Z: about `-199` to `+195`
+
+inside a `660 × 420` footprint.
+
+That is roughly 91% of the total floor by bounding-envelope coverage. This is not a claim that 91% is covered by solid props; it means gameplay/intentional spaces now occupy nearly the whole usable frame rather than being squeezed into one corner.
+
+Large open regions now have explicit purposes: Receiving / Dispatch, cross-aisles, freight routes, oversized staging, or future Secure Storage connections.
+
+## Preserved systems
+
+Map V2 did not redesign:
 
 - GRAB / carrying feel
 - Base Instability
 - Current Sway
 - Load Pressure
 - collapse consequence
-- intentional Q / ButtonB ditch sacrifice
-- multiplayer item authority
+- intentional ditch sacrifice
+- SELL / KEEP
+- passive Stock
+- Cash
+- bay Stock logic
+- authoritative multiplayer item ownership
 
 ## Still excluded
 
 - DataStore persistence
 - true offline income
 - progression purchases
+- movement upgrades
 - Carry Rig progression
 - Stock Slot purchases
 - rarity ladder
@@ -164,4 +172,7 @@ This is still graybox geometry and MUST be Studio-tested for dominant-route prob
 
 - `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure validation
 - `docs/M3_PLAYTEST.md` — SELL / KEEP passive Stock validation
-- `docs/CORRECTION_ECONOMY_WAREHOUSE_PLAYTEST.md` — big-number economy + new sector warehouse validation
+- `docs/CORRECTION_ECONOMY_WAREHOUSE_PLAYTEST.md` — earlier correction gate
+- `docs/MAP_ARCHITECTURE_V2_PLAYTEST.md` — active full-footprint warehouse validation gate
+
+Do not begin M4 until Map Architecture V2 is reviewed in Studio.
