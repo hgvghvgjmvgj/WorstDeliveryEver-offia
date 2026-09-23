@@ -15,11 +15,21 @@ local function itemIdFromPart(part: BasePart): string?
 	return nil
 end
 
+local function fixWorldLabel(part: BasePart)
+	local gui = part:FindFirstChild("PrototypeLabel")
+	if gui and gui:IsA("BillboardGui") then
+		gui.StudsOffset = Vector3.new(0, part.Size.Y * 0.5 + 1.25, 0)
+		gui.Size = UDim2.fromOffset(180, 52)
+	end
+end
+
 local function applyPart(part: BasePart)
 	local itemId = itemIdFromPart(part)
 	if not itemId then return end
-	if part:GetAttribute("PresentationAppliedItemId") == itemId then return end
-	LootPresentation.Apply(part, itemId, false)
+	if part:GetAttribute("PresentationAppliedItemId") ~= itemId then
+		LootPresentation.Apply(part, itemId, false)
+	end
+	fixWorldLabel(part)
 end
 
 local function deferredApply(instance: Instance)
@@ -46,8 +56,6 @@ function LootPresentationService.Start(root: Folder)
 	for _, player in Players:GetPlayers() do watchPlayer(player) end
 	Players.PlayerAdded:Connect(watchPlayer)
 
-	-- Stock displays and any presentation-only loot under the warehouse inherit
-	-- the same rarity/model treatment as carried objects.
 	for _, descendant in root:GetDescendants() do
 		if descendant:IsA("BasePart") then applyPart(descendant) end
 	end
