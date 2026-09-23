@@ -4,29 +4,77 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M2.3 — Drop / Load Pressure Reset Exploit Fix — awaiting Studio validation**
+**M3 — Delivery Economy: Quick Sell vs Stock/List — awaiting Studio validation**
 
-M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, and the approved-enough M2.2 warehouse/base structure remain preserved.
+M1/M1.1 carry feel, M2 multiplayer ownership, M2.1 Load Pressure/Strain, M2.2 warehouse/base structure, and M2.3 ditch sacrifice remain preserved.
 
-M3 economy has **not** started.
+M4 persistence/offline progression has **not** started.
 
-## M2.3 — ditching is a sacrifice
+## M3 delivery economy
 
-The intentional drop action is now a **ditch** rather than recoverable temporary storage.
+Successful delivery no longer ends as a pure instant-money loop.
 
-- Q / ButtonB ditches exactly the top / most recently grabbed carried item.
-- The item is removed from authoritative carried inventory first.
-- Weight, Bulk, Run Value, Base Instability, and load severity are recomputed from what remains.
-- The ditched object becomes a short presentation-only abandoned visual.
-- Ditch visuals never enter the shared `Items` folder and are not grabbable by the owner or other players.
-- Ditched items cannot contribute to delivery score.
-- Repeated Q presses can sacrifice the whole load, but there is no separate full-dump action.
-- Load Pressure does not instantly reset when the final item is ditched.
-- With no carried items, residual Strain decays at `0.140` per second until it reaches zero.
-- The Load Pressure HUD stays visible during that residual recovery period.
-- Successful delivery and death/respawn still perform their intended hard trip reset.
+The player now gets a fast Delivery Review:
 
-See `docs/M2_3_PLAYTEST.md` for the M2.3 validation gate.
+- **QUICK SELL ALL** — one-button immediate Cash using existing prototype item Value.
+- select valuable items to **STOCK** — consumes limited bay slots for a larger delayed payout.
+- **QUICK SELL REST** — immediately resolves everything that was not Stocked.
+
+Server owns all Cash, delivered-item state, stock slots, listing timers, payouts, and sale completion. Clients only send action intent using server-issued review/item IDs.
+
+## Stock foundation
+
+- default: **3 Stock Slots**
+- development capacities: **3 / 5 / 7 / 10** using the server Player `StockSlotCapacity` attribute
+- server Player `DevSaleSpeedMultiplier` accelerates newly-created listings for timer testing
+- Stock payout/timer tuning is centralized in `src/shared/Config/EconomyConfig.lua`
+- Stock objects physically appear in the owner's bay
+- Stock display objects are anchored, non-colliding, non-queryable, and cannot be stolen
+- other players can see another player's listed objects
+- listings sell once, grant Cash once, free their slot, and remove their physical display
+- Stock does **not** generate permanent cash-per-second income
+
+## Current item lifecycle
+
+Normal warehouse item:
+
+`World → Carried → Delivered Review → Quick Sold`
+
+or:
+
+`World → Carried → Delivered Review → Stocked → Sold`
+
+Collapse and intentional ditch remain separate terminal trip-loss paths and never enter the economy review.
+
+## Current prototype economics
+
+Quick Sell starts from the existing `ItemConfig.Value`.
+
+Current Stock tuning:
+
+- Box: $15 now / ~$20 later / ~20s
+- Microwave: $40 now / ~$55 later / ~30s
+- Lamp: $40 now / ~$59 later / ~38s
+- Chair: $55 now / ~$74 later / ~42s
+- Tire: $30 now / ~$45 later / ~32s
+- TV: $70 now / ~$102 later / ~50s
+- Couch: $100 now / ~$140 later / ~65s
+- Safe: $100 now / ~$155 later / ~75s
+
+These are prototype values only, not final economy balance.
+
+## Persistence readiness
+
+M3 stores active listing data in a shape that can later be persisted:
+
+- item identifier
+- listing start Unix timestamp
+- effective sale duration
+- expected payout
+- Stock Slot index
+- unique listing ID
+
+M3 intentionally does not use DataStores and does not simulate offline sales. Disconnecting clears temporary economy state. M4 will add persistence/offline elapsed-time handling.
 
 ## Existing warehouse/base foundation
 
@@ -37,15 +85,10 @@ See `docs/M2_3_PLAYTEST.md` for the M2.3 validation gate.
 - open social sightlines and large-stack routes
 - 12 loading/resale bays around the outer perimeter
 - owner-only delivery processing zones
-- 3 visible future stock/display positions per bay
-- 10 total reserved stock positions per bay for future expansion
-- future Quick Sell and Bay Upgrade anchors
-- 46-stud nonblocking ceiling-clearance reference
+- 10 reserved physical stock positions per bay
 - player-facing LOAD PRESSURE meter
 
-No selling, Cash, offline earnings, stock timers, or upgrades are implemented yet.
-
-## LOAD PRESSURE
+## LOAD PRESSURE / trip-loss behavior
 
 The server system is called Strain internally. Normal players see LOAD PRESSURE as:
 
@@ -54,55 +97,37 @@ The server system is called Strain internally. Normal players see LOAD PRESSURE 
 - HIGH
 - CRITICAL
 
-The meter represents accumulated holding pressure. It is **not collapse chance** and exposes no exact percentage/countdown during normal play.
-
-Collapse still depends on Base Instability, Current Sway, movement, recovery, stack composition, and Strain-modified difficulty.
-
-F3 developer telemetry exposes exact internal Strain values for tuning.
-
-## Item-loss states
-
-### Successful delivery
-
-Items reaching the player's bay are delivered. Future M3 systems will decide Cash / Stock behavior.
-
-### Collapse loss
-
-Failure removes the affected items from the current trip. Their visible debris is presentation-only and cannot be reclaimed.
-
-### Intentional ditch
-
-The player deliberately sacrifices the top item to reduce the remaining load. The abandoned visual is also presentation-only and cannot be reclaimed.
-
-Untouched warehouse stock remains normal shared loot.
+Intentional Q / ButtonB ditching sacrifices the top item and cannot be used as recoverable temporary storage. Collapse loss and ditch loss remain non-grabbable presentation-only trip losses.
 
 ## Controls
 
 - **E / mobile GRAB** — grab nearest highlighted available warehouse item
 - **Q / ButtonB** — ditch the top / most recently grabbed carried item; it is lost from the trip
-- **F3** — developer telemetry
+- Delivery Review — tap/click delivered rows to mark Stock candidates
+- **F3** — developer carry telemetry
 
 ## Still excluded
 
-- Quick Sell economy
-- stock/list sale timers
-- offline earnings
-- Cash balancing
-- base upgrade purchases
-- DataStores
-- final progression
-- final rarity
+- DataStore persistence
+- true offline selling
+- Carry upgrades
+- Stock Slot purchases
+- sale-speed upgrades
+- buyer contracts
+- final rarity system
 - collection
-- contracts
+- Secret deliveries
 - traditional Luck
 - monetization
-- final map art
-- detailed models
-- final UI polish
-- pets / workers / helpers
+- workers
+- pets
 - rebirths
+- final bay art
+- final warehouse art
+- polished final UI
 
 ## Current validation docs
 
 - `docs/M2_2_PLAYTEST.md` — warehouse/base structure validation
-- `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure exploit validation
+- `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure validation
+- `docs/M3_PLAYTEST.md` — Quick Sell / Stock delivery economy validation
