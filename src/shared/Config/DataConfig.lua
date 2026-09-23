@@ -14,11 +14,11 @@ return table.freeze({
 	SessionLockTimeoutSeconds = 180,
 	BindToCloseTimeoutSeconds = 25,
 
-	-- M5B produces much larger passive values. Offline Stock remains rewarding,
-	-- but earns at a reduced fraction of live passive and stops after 20 minutes.
-	-- This is a test value, not a permanent live-service promise.
-	OfflineEarningsCapSeconds = 20 * 60,
-	OfflineEarningsMultiplier = 0.20,
+	-- M5B produces much larger passive values. Until the wider M5 progression
+	-- economy exists, cap offline accrual to five minutes of live Stock output.
+	-- This keeps persistence testable without one reconnect skipping the current
+	-- finite upgrade tree. Revisit when M5 progression sinks are finalized.
+	OfflineEarningsCapSeconds = 5 * 60,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
 	FailOpenInStudio = true,
