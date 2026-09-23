@@ -16,6 +16,8 @@ local progressionStateRemote: RemoteEvent
 local progressionActionRemote: RemoteEvent
 local noticeRemote: RemoteEvent
 local lastActionAt: {[Player]: number} = {}
+local lastStateRequestAt: {[Player]: number} = {}
+local STATE_REQUEST_COOLDOWN_SECONDS = 0.20
 
 local function levelValue(trackName: string, levelIndex: number): number
 	local track = ProgressionConfig.Tracks[trackName]
@@ -161,6 +163,10 @@ local function handleAction(player: Player, action: any, payload: any)
 	end
 
 	if action == "RequestState" then
+		local now = os.clock()
+		local previous = lastStateRequestAt[player] or -math.huge
+		if now - previous < STATE_REQUEST_COOLDOWN_SECONDS then return end
+		lastStateRequestAt[player] = now
 		sendState(player)
 		return
 	end
@@ -200,6 +206,7 @@ function ProgressionService.Start()
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastActionAt[player] = nil
+		lastStateRequestAt[player] = nil
 	end)
 end
 
