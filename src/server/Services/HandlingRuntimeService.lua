@@ -19,6 +19,7 @@ type RuntimeState = {
 	GripDuration: number,
 	GripWarned: boolean,
 	GripItemCount: number,
+	LastPreviewAt: number,
 }
 
 local runtime: {[Player]: RuntimeState} = {}
@@ -27,6 +28,7 @@ local worldRoot: Folder? = nil
 local previewRemote: RemoteEvent
 local noticeRemote: RemoteEvent
 local accumulator = 0
+local PREVIEW_COOLDOWN_SECONDS = 0.08
 
 local function setAttributeIfChanged(player: Player, name: string, value: any)
 	local current = player:GetAttribute(name)
@@ -215,7 +217,14 @@ end
 
 local function initializePlayer(player: Player)
 	if runtime[player] then return end
-	runtime[player] = { PenaltyKey = "", GripStartedAt = nil, GripDuration = 0, GripWarned = false, GripItemCount = 0 }
+	runtime[player] = {
+		PenaltyKey = "",
+		GripStartedAt = nil,
+		GripDuration = 0,
+		GripWarned = false,
+		GripItemCount = 0,
+		LastPreviewAt = -math.huge,
+	}
 	setAttributeIfChanged(player, "HandlingBand", "READY")
 	setAttributeIfChanged(player, "HandlingWeakness", "")
 	setAttributeIfChanged(player, "HandlingRatio", 1)
@@ -250,6 +259,12 @@ local function validPreviewCandidate(player: Player, candidate: any): BasePart?
 end
 
 local function handlePreview(player: Player, candidate: any)
+	local state = runtime[player]
+	if not state or player:GetAttribute("ProfileLoaded") ~= true then return end
+	local now = os.clock()
+	if now - state.LastPreviewAt < PREVIEW_COOLDOWN_SECONDS then return end
+	state.LastPreviewAt = now
+
 	local part = validPreviewCandidate(player, candidate)
 	if not part then
 		previewRemote:FireClient(player, { clear = true })
