@@ -17,6 +17,8 @@ local HandlingRuntimeService = require(Services:WaitForChild("HandlingRuntimeSer
 local PlayerDataService = require(Services:WaitForChild("PlayerDataService"))
 local ProgressionService = require(Services:WaitForChild("ProgressionService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local TrophyService = require(Services:WaitForChild("TrophyService"))
+local CollectionService = require(Services:WaitForChild("CollectionService"))
 local UnloadService = require(Services:WaitForChild("UnloadService"))
 
 RemoteService.Initialize()
@@ -32,13 +34,14 @@ LootPresentationService.Start(world)
 CarryService.Start(ItemService)
 HandlingRuntimeService.Start(world, CarryService)
 
--- PlayerData owns the earliest PlayerRemoving connection. Progression/Economy
--- register OnLoaded callbacks immediately afterward; OnLoaded also replays any
--- profile that happened to finish loading during this startup window.
+-- PlayerData owns persistence/session lifecycle. The later services register
+-- OnLoaded callbacks; OnLoaded safely replays profiles that already completed.
 PlayerDataService.Start()
 ProgressionService.Start()
 EconomyService.Start()
+TrophyService.Start()
+CollectionService.Start()
 
-UnloadService.Start(world, CarryService, EconomyService)
+UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print("[ONE TRIP] M5B.1 natural handling progression loaded")
+print("[ONE TRIP] M5C collection + section mastery + rare finds loaded")
