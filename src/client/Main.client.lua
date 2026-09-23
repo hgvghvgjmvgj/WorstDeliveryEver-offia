@@ -16,4 +16,4 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M3 client loaded")
+print("[ONE TRIP] M3 SELL vs KEEP economy client loaded")
