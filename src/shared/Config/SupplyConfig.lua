@@ -1,8 +1,7 @@
 --!strict
 
--- M4.1/M4.2 warehouse supply tuning. This stays separate from warehouse
--- geometry so future rarity/section systems can evolve supply without
--- rewriting the approved V2 map.
+-- Warehouse supply tuning. Geometry stays in WarehouseConfig so supply,
+-- depletion, and later rarity work can evolve without rewriting the map.
 return table.freeze({
 	FullServerPlayers = 12,
 
@@ -30,10 +29,10 @@ return table.freeze({
 		LowRatio = 0.30,
 	}),
 
-	-- Current value bands use immediate SELL value. M5 can replace/extend this
-	-- with section baseline + rarity without changing the controller API.
-	-- Playtest feedback: original 15-30 / 30-60 / 45-90 windows felt good but
-	-- just slightly slow, so each band is shortened by about four seconds.
+	-- Value bands still drive vacancy pacing underneath M5 rarity. They classify
+	-- the final picked-up ItemId when a slot becomes vacant. Refill selection is
+	-- currently layered with the M5 transform service and should be unified in a
+	-- later supply-architecture cleanup.
 	ValueBands = table.freeze({
 		Ordinary = table.freeze({
 			MaxSellValue = 4_999,
@@ -55,46 +54,12 @@ return table.freeze({
 		}),
 	}),
 
-	-- M4.2 opportunity-economy correction. These are warehouse-wide simultaneous
-	-- availability budgets, NOT rarity tiers. A healthy solo warehouse still has
-	-- 48 visible objects, but premium substitutes cannot fill every aisle at once.
-	-- Budgets scale only modestly for 12 players so premium finds retain competition.
-	PremiumInventory = table.freeze({
-		TV = table.freeze({
-			SoloCap = 3,
-			FullServerCap = 6,
-			MinReplacementSeconds = 35,
-			MaxReplacementSeconds = 55,
-		}),
-		Couch = table.freeze({
-			SoloCap = 2,
-			FullServerCap = 3,
-			MinReplacementSeconds = 55,
-			MaxReplacementSeconds = 80,
-		}),
-		Safe = table.freeze({
-			SoloCap = 1,
-			FullServerCap = 2,
-			MinReplacementSeconds = 70,
-			MaxReplacementSeconds = 105,
-		}),
-	}),
-
-	-- If the underlying sector controller proposes a premium item while its
-	-- warehouse-wide budget/gate is unavailable, the visible slot is converted
-	-- into a believable lower-value substitute instead of leaving the map empty.
-	PremiumFallbacksByDepth = table.freeze({
-		[1] = table.freeze({ "Box", "Lamp", "Microwave" }),
-		[2] = table.freeze({ "Chair", "Tire", "Microwave", "Lamp" }),
-		[3] = table.freeze({ "Chair", "Tire", "Microwave" }),
-	}),
-
 	-- The item just removed from a location is intentionally unlikely to be
 	-- selected when that vacancy eventually refills.
 	SameItemAtSameSpawnWeight = 0.06,
 
 	-- When a section is badly depleted, ordinary/mid goods receive recovery
-	-- pressure. Premium objects are not used as emergency filler.
+	-- pressure. High-value objects are not used as emergency filler.
 	SevereDepletionOrdinaryWeightMultiplier = 1.60,
 	SevereDepletionStrongWeightMultiplier = 1.15,
 	SevereDepletionHighWeightMultiplier = 0.15,
