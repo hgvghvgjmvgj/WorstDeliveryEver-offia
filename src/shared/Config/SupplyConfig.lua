@@ -32,23 +32,25 @@ return table.freeze({
 
 	-- Current M4.1 value bands use immediate SELL value. M5 can replace/extend
 	-- this with section baseline + rarity without changing the controller API.
+	-- Playtest feedback: original 15-30 / 30-60 / 45-90 windows felt good but
+	-- just slightly slow, so each band is shortened by about four seconds.
 	ValueBands = table.freeze({
 		Ordinary = table.freeze({
 			MaxSellValue = 4_999,
-			MinVacancySeconds = 15,
-			MaxVacancySeconds = 30,
+			MinVacancySeconds = 11,
+			MaxVacancySeconds = 26,
 			SelectionWeight = 1.00,
 		}),
 		Strong = table.freeze({
 			MaxSellValue = 11_999,
-			MinVacancySeconds = 30,
-			MaxVacancySeconds = 60,
+			MinVacancySeconds = 26,
+			MaxVacancySeconds = 56,
 			SelectionWeight = 0.55,
 		}),
 		High = table.freeze({
 			MaxSellValue = math.huge,
-			MinVacancySeconds = 45,
-			MaxVacancySeconds = 90,
+			MinVacancySeconds = 41,
+			MaxVacancySeconds = 86,
 			SelectionWeight = 0.22,
 		}),
 	}),
