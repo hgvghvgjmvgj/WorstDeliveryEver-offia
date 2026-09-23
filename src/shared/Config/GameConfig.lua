@@ -2,7 +2,7 @@
 
 return table.freeze({
 	GameName = "ONE TRIP",
-	PrototypeVersion = "M4.1-SUPPLY",
+	PrototypeVersion = "M4.2-PASSIVE-ECONOMY",
 
 	MaxPlayersTarget = 12,
 
