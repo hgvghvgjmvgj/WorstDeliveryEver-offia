@@ -14,4 +14,4 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M2.2 client loaded")
+print("[ONE TRIP] M2.3 client loaded")
