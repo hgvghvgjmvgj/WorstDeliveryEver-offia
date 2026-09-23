@@ -100,7 +100,9 @@ local function updatePressure(snapshot)
 	local strain = math.clamp(tonumber(snapshot.strain) or 0, 0, 1)
 	local displayState = pressureDisplayState(snapshot.strainStage)
 
-	pressureFrame.Visible = itemCount > 0
+	-- M2.3: residual fatigue remains readable even after the last carried item
+	-- is intentionally ditched. Hide only once both load and pressure are gone.
+	pressureFrame.Visible = itemCount > 0 or strain > 0.001
 	pressureFill.Size = UDim2.new(strain, 0, 1, 0)
 	pressureFill.BackgroundColor3 = PRESSURE_COLORS[displayState]
 	pressureStateLabel.Text = displayState
