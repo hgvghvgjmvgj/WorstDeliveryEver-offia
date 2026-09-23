@@ -4,26 +4,93 @@ ONE TRIP is a Roblox game about carrying an increasingly ridiculous pile of obje
 
 ## Current milestone
 
-**M3 MAP ARCHITECTURE V2 — Full-Footprint Long-Form Warehouse — awaiting Studio validation**
+**M4 — Persistence + Real Progression Foundation — awaiting Studio validation**
 
-The previous warehouse correction was rejected after playtesting/visual review because gameplay still occupied one compressed region inside a much larger empty frame.
+The Map Architecture V2 macro-layout is locked for this milestone. M4 adds persistence, real Cash upgrades, offline Stock earnings and denser warehouse population without redesigning the approved carry/map systems.
 
-M1/M1.1 carry feel, M2 multiplayer authority, M2.1 Load Pressure/Strain, M2.3 ditch sacrifice, and the corrected M3 SELL/KEEP passive-Stock economy remain preserved.
+M5 has **not** started.
 
-M4 persistence/offline progression has **not** started.
+## Persistent profile
 
-## M3 economy foundation preserved
+`src/server/Services/PlayerDataService.lua` owns persistent player data through Roblox DataStoreService.
 
-Each item economy config defines:
+Current saved schema (version 1) contains:
 
-- `PassivePerMinute`
-- `TargetBreakEvenMinutes`
+- Cash
+- Strength Level
+- Carry Space Level
+- Control Level
+- Mobility Level
+- Stock Slot Level
+- future-facing Carry Rig Tier
+- every occupied Stock Slot and its economic metadata
+- passive fractional remainder
+- trusted last-seen timestamp
+- session ownership record while connected
 
-Immediate SELL value is derived centrally as:
+Safety includes UpdateAsync session claiming, retries/backoff, sanitization/default repair, schema version checks, autosave, PlayerRemoving final save/session release and BindToClose saving.
 
-`PassivePerMinute × TargetBreakEvenMinutes`
+If Studio API Services are unavailable, Studio uses a clearly marked temporary profile rather than pretending persistence passed.
 
-Current test values are intentionally large and temporary:
+## Offline Stock earnings
+
+Saved Stock remains conceptually productive while the player is away.
+
+On the next persistent load, the server atomically calculates:
+
+`Total saved passive rate / 60 × trusted elapsed seconds`
+
+using server time, then claims the profile session in the same UpdateAsync transaction. This prevents reconnecting repeatedly to claim the same absence.
+
+Current temporary offline cap: **4 hours**.
+
+Invalid/negative/future elapsed time produces no offline award. The client clock is never trusted.
+
+## M4 upgrades
+
+All upgrades use **Cash**.
+
+Current test tracks:
+
+### Strength
+
+Comfortable Weight frontier:
+
+`15 → 17 → 19.5 → 22.5 → 26 → 30 → 34.5 → 40`
+
+### Carry Space
+
+Comfortable Bulk frontier:
+
+`13 → 15 → 17.5 → 20.5 → 24 → 28 → 33 → 39`
+
+### Control
+
+Improves handling of increasingly unstable stacks:
+
+`1.00 → 1.10 → 1.22 → 1.35 → 1.50 → 1.67 → 1.85 → 2.05`
+
+### Mobility
+
+Unloaded/search WalkSpeed:
+
+`16 → 17.5 → 19 → 20.5 → 22 → 23.5 → 25`
+
+Mobility is load-suppressed. The faster exploration bonus is strongest unloaded/lightly loaded; dangerous Weight ratios retain only a small fraction of it so absurd loads still have consequential returns.
+
+### Stock Slots
+
+Physical Stock capacity:
+
+`3 → 4 → 5 → 6 → 8 → 10`
+
+Slot upgrades are intentionally priced above the first small carry upgrades because each slot permanently increases passive-income potential.
+
+All test values/costs live in `src/shared/Config/ProgressionConfig.lua` and are not final live balance.
+
+## SELL / KEEP economy
+
+The corrected big-number direction remains:
 
 - Box: SELL $600 / KEEP +$50/min
 - Microwave: SELL $1.8K / KEEP +$120/min
@@ -34,145 +101,91 @@ Current test values are intentionally large and temporary:
 - Couch: SELL $18.7K / KEEP +$850/min
 - Safe: SELL $30K / KEEP +$1.2K/min
 
-KEEP permanently sacrifices the original full SELL opportunity. Later Stock liquidation currently pays a configurable 20% salvage value so players cannot KEEP for passive earnings and later double-dip the full original sale price.
+SELL value is derived from passive rate × target break-even time.
 
-`src/shared/NumberFormat.lua` supports readable K / M / B / T economy presentation.
+KEEP sacrifices the original full SELL opportunity. Later liquidation currently pays **20% salvage**, preventing permanent passive earnings plus a full-value cash-out double dip.
 
-## Map Architecture V2
+`src/shared/NumberFormat.lua` keeps large Cash/rates readable with K / M / B / T suffixes.
 
-The old radial map and the first compressed-sector correction are no longer the active architecture.
+## Stock persistence
 
-Current facility footprint:
+Kept Stock is persistent and server-authoritative.
 
-**660 × 420 studs**
+On join:
 
-The long dimension runs across the loading face; depth runs from the player bays into the warehouse. This lets the playable facility use nearly the entire frame while keeping Deep travel within useful gameplay timings.
+`saved Stock → runtime Stock state → physical owner-bay display → passive contribution`
 
-### Loading side
+A sold/replaced Stock entry is removed from the profile and must not reappear after rejoin. Physical Stock remains non-colliding, non-queryable and non-stealable.
 
-- 12 player loading/resale bays across the primary loading side
-- shared Receiving / Dispatch apron: approximately `640 × 70`
-- freight crossing area
-- two purposeful oversized receiving/staging pockets
-- visible Stock and returning giant piles remain part of the shared social area
+## Warehouse V2 + M4 density
 
-### Four long sectors
+The macro-layout remains **660 × 420 studs** with:
 
-Each sector is approximately `140 × 295` studs and runs from Receiving toward Deep storage.
+- 12 bays on the primary loading side
+- Receiving / Dispatch apron
+- General Goods
+- Appliances / Electronics
+- Furniture / Oversized
+- Industrial / Heavy
+- Mid Cross-Aisle
+- Deep Cross-Aisle
+- Freight vs service-route choices
 
-1. **General Goods** — open racks and pallets
-2. **Appliances / Electronics** — larger storage-bay masses
-3. **Furniture / Oversized** — broad open staging areas
-4. **Industrial / Heavy** — heavy pads and cage-like storage
+M4 increases authored loot opportunities from **36 to 64** without changing the building layout.
 
-The layouts intentionally use different primitive geometry so the graybox does not read as one copied aisle repeated four times.
+Current server-controlled population target:
 
-Players are never assigned to a sector.
+- solo: 12 active per sector = **48 active objects**
+- population scales upward with player count
+- 12 players: 16 active per sector = **64 active objects**
 
-### Travel depth
+Spawn positions remain authored rack/pallet/staging/cage locations. The server does not randomly scatter loot across open floor.
 
-Near / Mid / Deep are physical route depth, not rooms or circular rings.
+When server population decreases, existing extra objects are not visibly deleted; disabled source points simply stop restocking after those objects are taken.
 
-Current coordinate-audit estimates for each bay's closest practical opportunities:
+## Preserved core systems
 
-- Near: roughly `90–122` route studs
-- Mid: roughly `185–230` route studs
-- Deep: roughly `317–347` route studs
+M4 does not intentionally redesign:
 
-At 16 studs/s before normal player movement/turning costs:
-
-- Near: ~5.6–7.6s
-- Mid: ~11.5–14.4s
-- Deep: ~19.8–21.7s
-
-At the current 9.5 studs/s heavily-loaded minimum speed:
-
-- Near: ~9.5–12.8s
-- Mid: ~19.4–24.2s
-- Deep: ~33.3–36.5s
-
-Studio timing still needs validation.
-
-### Cross-aisles
-
-- Mid Cross-Aisle at `Z = 18`, approximately 30 studs wide
-- Deep Cross-Aisle at `Z = -92`, approximately 34 studs wide
-
-They connect all four sectors, support route switching, and are intended as recurring social intersections for the 12-player server.
-
-### Freight vs Service
-
-Each sector has:
-
-- **Main Freight Route** — ~295 studs full depth, 30 studs wide, straight/readable
-- **Service Route** — ~276 studs end-to-end, 18 studs wide, shorter but with more directional changes
-
-The goal is a natural carrying tradeoff: giant unstable piles prefer the wider route, while a smaller/controlled load can save some distance through the service path.
-
-This tradeoff still requires Studio playtesting.
-
-### Loot distribution
-
-There are still 36 authoritative shared opportunities: nine per sector.
-
-They are now spread through receiving positions, racks, storage bays, side branches, staging areas, cages and deep positions instead of sitting on obvious loot pads.
-
-Spawn markers are invisible. Visible architecture provides the spatial context.
-
-The target search rhythm is a meaningful opportunity/decision approximately every 3–6 seconds rather than constant dense loot or long empty walking.
-
-### Full-footprint use
-
-The meaningful coordinate envelope currently spans approximately:
-
-- X: `-320` to `+320`
-- Z: about `-199` to `+195`
-
-inside a `660 × 420` footprint.
-
-That is roughly 91% of the total floor by bounding-envelope coverage. This is not a claim that 91% is covered by solid props; it means gameplay/intentional spaces now occupy nearly the whole usable frame rather than being squeezed into one corner.
-
-Large open regions now have explicit purposes: Receiving / Dispatch, cross-aisles, freight routes, oversized staging, or future Secure Storage connections.
-
-## Preserved systems
-
-Map V2 did not redesign:
-
-- GRAB / carrying feel
+- GRAB / carry feel
+- deterministic pile layout
 - Base Instability
-- Current Sway
-- Load Pressure
-- collapse consequence
+- movement-driven Current Sway
+- Load Pressure / Strain
+- partial collapse consequence
 - intentional ditch sacrifice
-- SELL / KEEP
-- passive Stock
-- Cash
-- bay Stock logic
-- authoritative multiplayer item ownership
+- multiplayer first-valid-grab authority
+- V2 warehouse macro architecture
+- SELL vs KEEP
+- permanent physical Stock
+
+Progression moves the danger frontier outward rather than deleting it.
 
 ## Still excluded
 
-- DataStore persistence
-- true offline income
-- progression purchases
-- movement upgrades
-- Carry Rig progression
-- Stock Slot purchases
-- rarity ladder
-- Secret deliveries
-- buyer contracts
-- traditional Luck
+- final rarity ladder
+- Mythic / Cosmic / Secret content
+- collection
+- personalized buyers/contracts
+- major server-wide events
+- traditional Luck stat
+- hard warehouse progression locks
+- final Carry Rig models
 - final warehouse art
-- final prop set
+- final UI
 - monetization
-- pets/workers
 - rebirths
+- pets/workers
+- trading
 
-## Current validation docs
+## Validation
 
-- `docs/M2_3_PLAYTEST.md` — ditch sacrifice / Load Pressure validation
-- `docs/M3_PLAYTEST.md` — SELL / KEEP passive Stock validation
-- `docs/CORRECTION_ECONOMY_WAREHOUSE_PLAYTEST.md` — earlier correction gate
-- `docs/MAP_ARCHITECTURE_V2_PLAYTEST.md` — active full-footprint warehouse validation gate
+M4 requires real Studio/DataStore/multi-client validation before approval.
 
-Do not begin M4 until Map Architecture V2 is reviewed in Studio.
+Use:
+
+`docs/M4_PLAYTEST.md`
+
+Persistence tests only count when the server Player reports `PersistenceStatus = PERSISTENT`. A `TEMPORARY_STUDIO:...` profile is useful for gameplay testing but intentionally does not persist.
+
+**Do not begin M5 until M4 is reviewed.**
