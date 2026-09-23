@@ -1,8 +1,8 @@
 --!strict
 
 return table.freeze({
-	-- V2 uses the footprint as a real facility: long across the loading face and
-	-- deep enough to create commitment without turning every run into dead travel.
+	-- V2 macro-layout stays locked in M4. This milestone only increases authored
+	-- loot population inside the existing facility.
 	FootprintSize = Vector3.new(660, 1, 420),
 	WallHeight = 32,
 	CeilingClearance = 50,
@@ -45,7 +45,6 @@ return table.freeze({
 		}),
 	}),
 
-	-- Cross-aisles are major social/route-switching spaces, not tiny connectors.
 	CrossAisles = table.freeze({
 		table.freeze({ Name = "MID_CROSS_AISLE", Z = 18, Width = 30 }),
 		table.freeze({ Name = "DEEP_CROSS_AISLE", Z = -92, Width = 34 }),
@@ -59,8 +58,13 @@ return table.freeze({
 		ServiceLaneWidth = 18,
 	}),
 
-	-- Each sector intentionally uses a different structure recipe. The Structures
-	-- table is graybox level-design data, not final art.
+	Density = table.freeze({
+		MinActivePerSector = 12,
+		MaxActivePerSector = 16,
+		FullServerPlayers = 12,
+		ReconcileDelaySeconds = 0.45,
+	}),
+
 	Sectors = table.freeze({
 		General = table.freeze({
 			DisplayName = "GENERAL GOODS",
@@ -86,12 +90,19 @@ return table.freeze({
 				table.freeze({ Name = "GEN_NEAR_A", Position = Vector3.new(-252, 0.18, 88), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
 				table.freeze({ Name = "GEN_NEAR_B", Position = Vector3.new(-207, 0.18, 72), Depth = 1, ItemId = "Lamp", Kind = "RackBay" }),
 				table.freeze({ Name = "GEN_NEAR_C", Position = Vector3.new(-274, 0.18, 48), Depth = 1, ItemId = "Box", Kind = "SidePallet" }),
+				table.freeze({ Name = "GEN_NEAR_D", Position = Vector3.new(-231, 0.18, 101), Depth = 1, ItemId = "Box", Kind = "ReceivingLane" }),
+				table.freeze({ Name = "GEN_NEAR_E", Position = Vector3.new(-194, 0.18, 34), Depth = 1, ItemId = "Lamp", Kind = "RackEnd" }),
 				table.freeze({ Name = "GEN_MID_A", Position = Vector3.new(-222, 0.18, 5), Depth = 2, ItemId = "Microwave", Kind = "RackBay" }),
 				table.freeze({ Name = "GEN_MID_B", Position = Vector3.new(-273, 0.18, -32), Depth = 2, ItemId = "Chair", Kind = "SideAisle" }),
 				table.freeze({ Name = "GEN_MID_C", Position = Vector3.new(-210, 0.18, -68), Depth = 2, ItemId = "TV", Kind = "PalletBay" }),
+				table.freeze({ Name = "GEN_MID_D", Position = Vector3.new(-247, 0.18, -10), Depth = 2, ItemId = "Box", Kind = "CrossAislePallet" }),
+				table.freeze({ Name = "GEN_MID_E", Position = Vector3.new(-194, 0.18, -22), Depth = 2, ItemId = "Microwave", Kind = "RackEnd" }),
+				table.freeze({ Name = "GEN_MID_F", Position = Vector3.new(-247, 0.18, -84), Depth = 2, ItemId = "Chair", Kind = "SideStaging" }),
 				table.freeze({ Name = "GEN_DEEP_A", Position = Vector3.new(-267, 0.18, -118), Depth = 3, ItemId = "TV", Kind = "DeepRack" }),
 				table.freeze({ Name = "GEN_DEEP_B", Position = Vector3.new(-215, 0.18, -151), Depth = 3, ItemId = "Couch", Kind = "DeepStaging" }),
 				table.freeze({ Name = "GEN_DEEP_C", Position = Vector3.new(-258, 0.18, -180), Depth = 3, ItemId = "Safe", Kind = "SecurePallet" }),
+				table.freeze({ Name = "GEN_DEEP_D", Position = Vector3.new(-292, 0.18, -145), Depth = 3, ItemId = "TV", Kind = "DeepRackEnd" }),
+				table.freeze({ Name = "GEN_DEEP_E", Position = Vector3.new(-232, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
 			}),
 		}),
 
@@ -119,12 +130,19 @@ return table.freeze({
 				table.freeze({ Name = "APP_NEAR_A", Position = Vector3.new(-91, 0.18, 91), Depth = 1, ItemId = "Microwave", Kind = "DisplayBay" }),
 				table.freeze({ Name = "APP_NEAR_B", Position = Vector3.new(-45, 0.18, 68), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
 				table.freeze({ Name = "APP_NEAR_C", Position = Vector3.new(-115, 0.18, 43), Depth = 1, ItemId = "Microwave", Kind = "StorageBay" }),
+				table.freeze({ Name = "APP_NEAR_D", Position = Vector3.new(-70, 0.18, 101), Depth = 1, ItemId = "Microwave", Kind = "ReceivingDisplay" }),
+				table.freeze({ Name = "APP_NEAR_E", Position = Vector3.new(-36, 0.18, 31), Depth = 1, ItemId = "Box", Kind = "BayEnd" }),
 				table.freeze({ Name = "APP_MID_A", Position = Vector3.new(-49, 0.18, 5), Depth = 2, ItemId = "TV", Kind = "DisplayBay" }),
 				table.freeze({ Name = "APP_MID_B", Position = Vector3.new(-112, 0.18, -37), Depth = 2, ItemId = "TV", Kind = "StorageBay" }),
 				table.freeze({ Name = "APP_MID_C", Position = Vector3.new(-46, 0.18, -67), Depth = 2, ItemId = "Chair", Kind = "SideBay" }),
+				table.freeze({ Name = "APP_MID_D", Position = Vector3.new(-79, 0.18, -12), Depth = 2, ItemId = "Microwave", Kind = "CrossAisleDisplay" }),
+				table.freeze({ Name = "APP_MID_E", Position = Vector3.new(-127, 0.18, -73), Depth = 2, ItemId = "TV", Kind = "StorageEnd" }),
+				table.freeze({ Name = "APP_MID_F", Position = Vector3.new(-72, 0.18, -86), Depth = 2, ItemId = "Chair", Kind = "SideDisplay" }),
 				table.freeze({ Name = "APP_DEEP_A", Position = Vector3.new(-111, 0.18, -121), Depth = 3, ItemId = "TV", Kind = "SecureElectronics" }),
 				table.freeze({ Name = "APP_DEEP_B", Position = Vector3.new(-48, 0.18, -150), Depth = 3, ItemId = "Safe", Kind = "SecureBay" }),
 				table.freeze({ Name = "APP_DEEP_C", Position = Vector3.new(-97, 0.18, -181), Depth = 3, ItemId = "Couch", Kind = "DeepStaging" }),
+				table.freeze({ Name = "APP_DEEP_D", Position = Vector3.new(-132, 0.18, -154), Depth = 3, ItemId = "TV", Kind = "SecureRackEnd" }),
+				table.freeze({ Name = "APP_DEEP_E", Position = Vector3.new(-67, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
 			}),
 		}),
 
@@ -151,12 +169,19 @@ return table.freeze({
 				table.freeze({ Name = "FUR_NEAR_A", Position = Vector3.new(65, 0.18, 91), Depth = 1, ItemId = "Chair", Kind = "FrontDisplay" }),
 				table.freeze({ Name = "FUR_NEAR_B", Position = Vector3.new(115, 0.18, 68), Depth = 1, ItemId = "Lamp", Kind = "OpenStaging" }),
 				table.freeze({ Name = "FUR_NEAR_C", Position = Vector3.new(44, 0.18, 42), Depth = 1, ItemId = "Chair", Kind = "SideDisplay" }),
+				table.freeze({ Name = "FUR_NEAR_D", Position = Vector3.new(83, 0.18, 102), Depth = 1, ItemId = "Lamp", Kind = "FrontStaging" }),
+				table.freeze({ Name = "FUR_NEAR_E", Position = Vector3.new(126, 0.18, 39), Depth = 1, ItemId = "Chair", Kind = "DisplayEnd" }),
 				table.freeze({ Name = "FUR_MID_A", Position = Vector3.new(112, 0.18, 5), Depth = 2, ItemId = "Couch", Kind = "OversizedStaging" }),
 				table.freeze({ Name = "FUR_MID_B", Position = Vector3.new(48, 0.18, -35), Depth = 2, ItemId = "Chair", Kind = "SideStaging" }),
 				table.freeze({ Name = "FUR_MID_C", Position = Vector3.new(111, 0.18, -68), Depth = 2, ItemId = "Couch", Kind = "OversizedStaging" }),
+				table.freeze({ Name = "FUR_MID_D", Position = Vector3.new(73, 0.18, -12), Depth = 2, ItemId = "Lamp", Kind = "CrossAisleDisplay" }),
+				table.freeze({ Name = "FUR_MID_E", Position = Vector3.new(35, 0.18, -80), Depth = 2, ItemId = "Chair", Kind = "SideDisplay" }),
+				table.freeze({ Name = "FUR_MID_F", Position = Vector3.new(84, 0.18, -88), Depth = 2, ItemId = "Couch", Kind = "OversizedBay" }),
 				table.freeze({ Name = "FUR_DEEP_A", Position = Vector3.new(50, 0.18, -119), Depth = 3, ItemId = "Couch", Kind = "DeepDisplay" }),
 				table.freeze({ Name = "FUR_DEEP_B", Position = Vector3.new(111, 0.18, -151), Depth = 3, ItemId = "TV", Kind = "SecureDisplay" }),
 				table.freeze({ Name = "FUR_DEEP_C", Position = Vector3.new(62, 0.18, -181), Depth = 3, ItemId = "Safe", Kind = "SecureStaging" }),
+				table.freeze({ Name = "FUR_DEEP_D", Position = Vector3.new(132, 0.18, -132), Depth = 3, ItemId = "Couch", Kind = "DeepOversized" }),
+				table.freeze({ Name = "FUR_DEEP_E", Position = Vector3.new(92, 0.18, -174), Depth = 3, ItemId = "Safe", Kind = "SecureDisplay" }),
 			}),
 		}),
 
@@ -183,12 +208,19 @@ return table.freeze({
 				table.freeze({ Name = "IND_NEAR_A", Position = Vector3.new(224, 0.18, 91), Depth = 1, ItemId = "Tire", Kind = "HeavyPad" }),
 				table.freeze({ Name = "IND_NEAR_B", Position = Vector3.new(278, 0.18, 68), Depth = 1, ItemId = "Box", Kind = "ReceivingPallet" }),
 				table.freeze({ Name = "IND_NEAR_C", Position = Vector3.new(201, 0.18, 43), Depth = 1, ItemId = "Tire", Kind = "HeavyRack" }),
+				table.freeze({ Name = "IND_NEAR_D", Position = Vector3.new(244, 0.18, 102), Depth = 1, ItemId = "Tire", Kind = "FrontHeavyPad" }),
+				table.freeze({ Name = "IND_NEAR_E", Position = Vector3.new(291, 0.18, 35), Depth = 1, ItemId = "Box", Kind = "ReceivingEnd" }),
 				table.freeze({ Name = "IND_MID_A", Position = Vector3.new(278, 0.18, 5), Depth = 2, ItemId = "Safe", Kind = "HeavyStaging" }),
 				table.freeze({ Name = "IND_MID_B", Position = Vector3.new(207, 0.18, -38), Depth = 2, ItemId = "Tire", Kind = "CageBay" }),
 				table.freeze({ Name = "IND_MID_C", Position = Vector3.new(277, 0.18, -68), Depth = 2, ItemId = "TV", Kind = "HeavyDisplay" }),
+				table.freeze({ Name = "IND_MID_D", Position = Vector3.new(242, 0.18, -12), Depth = 2, ItemId = "Tire", Kind = "CrossAisleHeavy" }),
+				table.freeze({ Name = "IND_MID_E", Position = Vector3.new(193, 0.18, -74), Depth = 2, ItemId = "Safe", Kind = "CageEnd" }),
+				table.freeze({ Name = "IND_MID_F", Position = Vector3.new(248, 0.18, -87), Depth = 2, ItemId = "TV", Kind = "HeavySideBay" }),
 				table.freeze({ Name = "IND_DEEP_A", Position = Vector3.new(210, 0.18, -120), Depth = 3, ItemId = "Safe", Kind = "SecureCage" }),
 				table.freeze({ Name = "IND_DEEP_B", Position = Vector3.new(279, 0.18, -151), Depth = 3, ItemId = "Couch", Kind = "HeavyStaging" }),
 				table.freeze({ Name = "IND_DEEP_C", Position = Vector3.new(222, 0.18, -181), Depth = 3, ItemId = "Safe", Kind = "SecureCage" }),
+				table.freeze({ Name = "IND_DEEP_D", Position = Vector3.new(294, 0.18, -125), Depth = 3, ItemId = "Safe", Kind = "SecureHeavyPad" }),
+				table.freeze({ Name = "IND_DEEP_E", Position = Vector3.new(251, 0.18, -174), Depth = 3, ItemId = "Couch", Kind = "DeepHeavyStaging" }),
 			}),
 		}),
 	}),
@@ -204,9 +236,8 @@ return table.freeze({
 		Safe = 2.50,
 	}),
 
-	ExpectedAvailableAtFullServer = 36,
+	ExpectedAvailableAtFullServer = 64,
 
-	-- V2 leaves logical future connections at the deep wall and both side edges.
 	ExpansionPoints = table.freeze({
 		CFrame.new(-240, 0.5, -202),
 		CFrame.new(-80, 0.5, -202),
