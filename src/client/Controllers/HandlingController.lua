@@ -6,7 +6,6 @@ local RunService = game:GetService("RunService")
 
 local CarryConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("CarryConfig"))
 local HandlingConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("HandlingConfig"))
-local ItemConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ItemConfig"))
 local NumberFormat = require(ReplicatedStorage:WaitForChild("NumberFormat"))
 local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
@@ -94,7 +93,7 @@ local function refreshSectionSigns()
 			if label and label:IsA("TextLabel") then
 				local sectionName = sectionId
 				if sectionModel then
-					local display = sectionModel:GetAttribute("SectionDisplayName")
+					local display = sectionModel:GetAttribute("DisplayName")
 					if typeof(display) == "string" and display ~= "" then sectionName = display end
 				end
 				local status = if tier >= recommendation then "READY" elseif tier + 1 >= recommendation then "CAUTION" else "HEAVY CARGO AHEAD"
