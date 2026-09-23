@@ -3,10 +3,8 @@
 local EconomyConfig = {
 	StartingCash = 0,
 	DefaultStockSlots = 3,
-	AllowedDevStockSlots = table.freeze({ 3, 5, 7, 10 }),
 	MaxStockSlots = 10,
 
-	-- Change these Player attributes on the SERVER while testing. No code edits needed.
 	StockSlotCapacityAttribute = "StockSlotCapacity",
 	PassiveIncomeMultiplierAttribute = "DevPassiveIncomeMultiplier",
 	DefaultPassiveIncomeMultiplier = 1,
@@ -26,9 +24,7 @@ local EconomyConfig = {
 	DefaultSalvageRatio = 0.20,
 
 	-- SELL value is derived from PassivePerMinute * TargetBreakEvenMinutes.
-	-- This lets us change the visual number scale without scattering unrelated
-	-- cash constants throughout gameplay logic. These are correction-pass test
-	-- values, NOT final live balance.
+	-- M4 keeps these as early-game test values; rarity/content scaling comes later.
 	Items = table.freeze({
 		Box = table.freeze({ PassivePerMinute = 50, TargetBreakEvenMinutes = 12 }),
 		Microwave = table.freeze({ PassivePerMinute = 120, TargetBreakEvenMinutes = 15 }),
@@ -40,8 +36,6 @@ local EconomyConfig = {
 		Safe = table.freeze({ PassivePerMinute = 1200, TargetBreakEvenMinutes = 25 }),
 	}),
 
-	-- Architectural progression bands for later tuning/tests. These do not grant
-	-- progression or change loot by themselves; they document supported scale.
 	ProgressionBands = table.freeze({
 		BeginnerPassivePerMinute = Vector2.new(50, 500),
 		EarlyPassivePerMinute = Vector2.new(500, 10_000),
