@@ -61,7 +61,7 @@ return table.freeze({
 	-- Budgets scale only modestly for 12 players so premium finds retain competition.
 	PremiumInventory = table.freeze({
 		TV = table.freeze({
-			SoloCap = 4,
+			SoloCap = 3,
 			FullServerCap = 6,
 			MinReplacementSeconds = 35,
 			MaxReplacementSeconds = 55,
