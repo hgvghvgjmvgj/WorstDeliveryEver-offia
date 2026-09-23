@@ -19,6 +19,16 @@ return table.freeze({
 		Control = 2.2,
 	}),
 
+	-- Mobility upgrades are intentionally strongest while unloaded/lightly loaded.
+	-- As Weight approaches a dangerous ratio, most of the bonus is suppressed so
+	-- late-game players still have consequential return trips.
+	Mobility = table.freeze({
+		SuppressionStartWeightRatio = 0.35,
+		FullSuppressionWeightRatio = 1.35,
+		MinimumBonusFractionAtMaxLoad = 0.18,
+		LoadedMinimumBonusFraction = 0.12,
+	}),
+
 	Movement = table.freeze({
 		VelocityDeadzone = 1.4,
 		AccelerationDeadzone = 8,
