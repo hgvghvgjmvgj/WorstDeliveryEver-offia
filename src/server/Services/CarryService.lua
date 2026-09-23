@@ -73,7 +73,6 @@ local noticeRemote: RemoteEvent
 local feedbackRemote: RemoteEvent
 
 local function getStats(player: Player)
-	-- Preserve the old server-only Veteran preset as a developer test override.
 	if player:GetAttribute("CarryPreset") == "Veteran" then
 		return CarryConfig.Veteran
 	end
@@ -199,7 +198,11 @@ local function calculateBaseInstability(player: Player, state: CarryState): numb
 	instability += highWeightContribution
 
 	local controlDivisor = math.max(0.6, stats.Control ^ tuning.ControlExponent)
-	return math.clamp(instability / controlDivisor, 0, tuning.MaxBaseInstability)
+	local raw = math.clamp(instability / controlDivisor, 0, tuning.MaxBaseInstability)
+	player:SetAttribute("CarryRawBaseInstability", raw)
+	local handlingBonus = math.max(0, tonumber(player:GetAttribute("HandlingBaseInstabilityBonus")) or 0)
+	local handlingFloor = math.max(0, tonumber(player:GetAttribute("HandlingInstabilityFloor")) or 0)
+	return math.clamp(math.max(raw + handlingBonus, handlingFloor), 0, tuning.MaxBaseInstability)
 end
 
 local function movementSpeedFor(player: Player, state: CarryState): number
@@ -218,17 +221,20 @@ local function movementSpeedFor(player: Player, state: CarryState): number
 	suppression = suppression * suppression * (3 - 2 * suppression)
 	local bonusFraction = 1 + (mobility.MinimumBonusFractionAtMaxLoad - 1) * suppression
 	local effectiveBase = CarryConfig.BaseWalkSpeed + mobilityBonus * bonusFraction
+	local result = effectiveBase
 
-	if ratio <= 0.50 then
-		return effectiveBase
+	if ratio > 0.50 then
+		local loadAlpha = math.clamp((ratio - 0.50) / 0.90, 0, 1)
+		loadAlpha = loadAlpha * loadAlpha * (3 - 2 * loadAlpha)
+		local loadedMinimum = CarryConfig.MinimumLoadedWalkSpeed
+			+ mobilityBonus * mobility.LoadedMinimumBonusFraction
+		result = effectiveBase + (loadedMinimum - effectiveBase) * loadAlpha
 	end
 
-	local loadAlpha = math.clamp((ratio - 0.50) / 0.90, 0, 1)
-	loadAlpha = loadAlpha * loadAlpha * (3 - 2 * loadAlpha)
-	local loadedMinimum = CarryConfig.MinimumLoadedWalkSpeed
-		+ mobilityBonus * mobility.LoadedMinimumBonusFraction
-
-	return effectiveBase + (loadedMinimum - effectiveBase) * loadAlpha
+	local handlingMultiplier = if #state.Items > 0
+		then math.clamp(tonumber(player:GetAttribute("HandlingMovementMultiplier")) or 1, 0.35, 1)
+		else 1
+	return math.max(4.8, result * handlingMultiplier)
 end
 
 local function riskValue(state: CarryState): number
@@ -255,50 +261,28 @@ local function calculateStrainLoadSeverity(player: Player, state: CarryState): n
 	local weightRatio = state.Weight / math.max(stats.Strength, 0.1)
 	local bulkRatio = state.Bulk / math.max(stats.CarrySpace, 0.1)
 
-	local weightPressure = normalizedPressure(
-		weightRatio,
-		tuning.StartWeightRatio,
-		tuning.FullWeightRatio
-	)
-	local bulkPressure = normalizedPressure(
-		bulkRatio,
-		tuning.StartBulkRatio,
-		tuning.FullBulkRatio
-	)
-	local basePressure = normalizedPressure(
-		state.BaseInstability,
-		tuning.StartBaseInstability,
-		tuning.FullBaseInstability
-	)
-	local heightPressure = normalizedPressure(
-		state.MaxLayer,
-		tuning.StartLayer,
-		tuning.FullLayer
-	)
+	local weightPressure = normalizedPressure(weightRatio, tuning.StartWeightRatio, tuning.FullWeightRatio)
+	local bulkPressure = normalizedPressure(bulkRatio, tuning.StartBulkRatio, tuning.FullBulkRatio)
+	local basePressure = normalizedPressure(state.BaseInstability, tuning.StartBaseInstability, tuning.FullBaseInstability)
+	local heightPressure = normalizedPressure(state.MaxLayer, tuning.StartLayer, tuning.FullLayer)
 
 	local combined = weightPressure * tuning.WeightWeight
 		+ bulkPressure * tuning.BulkWeight
 		+ basePressure * tuning.BaseWeight
 		+ heightPressure * tuning.HeightWeight
 
-	local peak = math.max(
-		weightPressure,
-		bulkPressure,
-		basePressure,
-		heightPressure
-	)
-
-	return math.clamp(
-		peak * tuning.PeakPressureWeight
-			+ combined * tuning.CombinedPressureWeight,
+	local peak = math.max(weightPressure, bulkPressure, basePressure, heightPressure)
+	local result = math.clamp(
+		peak * tuning.PeakPressureWeight + combined * tuning.CombinedPressureWeight,
 		0,
 		1
 	)
+	local handlingFloor = math.clamp(tonumber(player:GetAttribute("HandlingStrainFloor")) or 0, 0, 1)
+	return math.max(result, handlingFloor)
 end
 
 local function strainStageName(strain: number): string
 	local tuning = CarryConfig.Strain
-
 	if strain >= tuning.Critical then
 		return "Critical"
 	elseif strain >= tuning.High then
@@ -313,7 +297,10 @@ end
 
 local function updateStrain(player: Player, state: CarryState, dt: number)
 	local tuning = CarryConfig.Strain
-	local severity = state.StrainLoadSeverity
+	local severity = math.max(
+		state.StrainLoadSeverity,
+		math.clamp(tonumber(player:GetAttribute("HandlingStrainFloor")) or 0, 0, 1)
+	)
 
 	if #state.Items == 0 then
 		state.Strain = math.max(0, state.Strain - tuning.UnloadedRecoveryPerSecond * dt)
@@ -339,17 +326,11 @@ end
 local function ensureRig(state: CarryState)
 	local character = state.Character
 	local root = state.Root
-	if not character or not root then
-		return
-	end
-	if state.RigRoot and state.RigRoot.Parent then
-		return
-	end
+	if not character or not root then return end
+	if state.RigRoot and state.RigRoot.Parent then return end
 
 	local old = character:FindFirstChild("OneTripCarry")
-	if old then
-		old:Destroy()
-	end
+	if old then old:Destroy() end
 
 	local folder = Instance.new("Folder")
 	folder.Name = "OneTripCarry"
@@ -383,15 +364,11 @@ end
 local function ensureLayerVisual(state: CarryState, layerIndex: number): LayerVisual?
 	ensureRig(state)
 	local existing = state.LayerVisuals[layerIndex]
-	if existing and existing.Part.Parent then
-		return existing
-	end
+	if existing and existing.Part.Parent then return existing end
 
 	local rigRoot = state.RigRoot
 	local folder = state.RigFolder
-	if not rigRoot or not folder then
-		return nil
-	end
+	if not rigRoot or not folder then return nil end
 
 	local layerRoot = Instance.new("Part")
 	layerRoot.Name = ("LayerRoot_%02d"):format(layerIndex)
@@ -418,9 +395,7 @@ local function ensureLayerVisual(state: CarryState, layerIndex: number): LayerVi
 end
 
 local function clearCarryRig(state: CarryState)
-	if state.RigFolder and state.RigFolder.Parent then
-		state.RigFolder:Destroy()
-	end
+	if state.RigFolder and state.RigFolder.Parent then state.RigFolder:Destroy() end
 	state.RigFolder = nil
 	state.RigRoot = nil
 	state.RigWeld = nil
@@ -434,9 +409,7 @@ end
 local function cleanupUnusedLayers(state: CarryState)
 	for layerIndex, layerVisual in state.LayerVisuals do
 		if layerIndex > state.MaxLayer then
-			if layerVisual.Part.Parent then
-				layerVisual.Part:Destroy()
-			end
+			if layerVisual.Part.Parent then layerVisual.Part:Destroy() end
 			state.LayerVisuals[layerIndex] = nil
 		end
 	end
@@ -446,9 +419,7 @@ local function addVisual(state: CarryState, entry: ItemEntry, index: number, pic
 	local targetLocal, layerIndex = placementFor(index, entry.ItemId)
 	entry.Layer = layerIndex
 	local layerVisual = ensureLayerVisual(state, layerIndex)
-	if not layerVisual then
-		return
-	end
+	if not layerVisual then return end
 
 	local visual = PrototypeVisualConfig.Items[entry.ItemId]
 	local startWorld = pickupCFrame or (layerVisual.Part.CFrame * targetLocal)
@@ -498,27 +469,19 @@ local function recompute(player: Player, state: CarryState)
 			state.Weight += definition.Weight
 			state.Bulk += definition.Bulk
 			state.RunValue += definition.Value
-			if definition.ShapeTag == "Wide" then
-				state.WideItemCount += 1
-			end
+			if definition.ShapeTag == "Wide" then state.WideItemCount += 1 end
 		end
 	end
 
 	state.BaseInstability = calculateBaseInstability(player, state)
 	state.StrainLoadSeverity = calculateStrainLoadSeverity(player, state)
-	if state.Humanoid then
-		state.Humanoid.WalkSpeed = movementSpeedFor(player, state)
-	end
+	if state.Humanoid then state.Humanoid.WalkSpeed = movementSpeedFor(player, state) end
 	cleanupUnusedLayers(state)
 end
 
 local function sendState(player: Player, state: CarryState, force: boolean?)
-	if not player.Parent then
-		return
-	end
-	if not force and state.StateAccumulator < (1 / CarryConfig.Movement.StateUpdateHz) then
-		return
-	end
+	if not player.Parent then return end
+	if not force and state.StateAccumulator < (1 / CarryConfig.Movement.StateUpdateHz) then return end
 	state.StateAccumulator = 0
 	local stats = getStats(player)
 	carryStateRemote:FireClient(player, {
@@ -533,6 +496,10 @@ local function sendState(player: Player, state: CarryState, force: boolean?)
 		strainLoadSeverity = state.StrainLoadSeverity,
 		strainStage = state.StrainStage,
 		dangerState = state.DangerState,
+		handlingBand = player:GetAttribute("HandlingBand") or "READY",
+		handlingWeakness = player:GetAttribute("HandlingWeakness") or "",
+		handlingRatio = player:GetAttribute("HandlingRatio") or 1,
+		handlingGripRemaining = player:GetAttribute("HandlingGripRemaining") or 0,
 		preset = if player:GetAttribute("ProgressionReady") == true then "Progression" else (player:GetAttribute("CarryPreset") or "Beginner"),
 		strength = stats.Strength,
 		carrySpace = stats.CarrySpace,
@@ -564,25 +531,17 @@ local function resetState(player: Player, state: CarryState, keepSessionScore: b
 	state.Bulk = 0
 	state.RunValue = 0
 	resetMotion(state)
-	if not keepSessionScore then
-		state.SessionScore = 0
-	end
-	if state.Humanoid then
-		state.Humanoid.WalkSpeed = movementSpeedFor(player, state)
-	end
+	if not keepSessionScore then state.SessionScore = 0 end
+	if state.Humanoid then state.Humanoid.WalkSpeed = movementSpeedFor(player, state) end
 	sendState(player, state, true)
 end
 
 local function attachCharacter(player: Player, character: Model)
 	local state = states[player]
-	if not state then
-		return
-	end
+	if not state then return end
 	local humanoid = character:WaitForChild("Humanoid", 8)
 	local root = character:WaitForChild("HumanoidRootPart", 8)
-	if not humanoid or not root or not humanoid:IsA("Humanoid") or not root:IsA("BasePart") then
-		return
-	end
+	if not humanoid or not root or not humanoid:IsA("Humanoid") or not root:IsA("BasePart") then return end
 	state.Character = character
 	state.Humanoid = humanoid
 	state.Root = root
@@ -592,19 +551,13 @@ local function attachCharacter(player: Player, character: Model)
 	resetState(player, state, true)
 	ensureRig(state)
 	humanoid.Died:Connect(function()
-		if states[player] == state then
-			resetState(player, state, true)
-		end
+		if states[player] == state then resetState(player, state, true) end
 	end)
 end
 
 local function initializePlayer(player: Player)
-	if states[player] then
-		return
-	end
-	if player:GetAttribute("CarryPreset") == nil then
-		player:SetAttribute("CarryPreset", "Beginner")
-	end
+	if states[player] then return end
+	if player:GetAttribute("CarryPreset") == nil then player:SetAttribute("CarryPreset", "Beginner") end
 
 	local state: CarryState = {
 		Items = {}, Weight = 0, Bulk = 0, RunValue = 0, SessionScore = 0,
@@ -631,12 +584,8 @@ local function initializePlayer(player: Player)
 	player:GetAttributeChangedSignal("MobilityWalkSpeed"):Connect(progressionChanged)
 	player:GetAttributeChangedSignal("ProgressionReady"):Connect(progressionChanged)
 
-	player.CharacterAdded:Connect(function(character)
-		attachCharacter(player, character)
-	end)
-	if player.Character then
-		task.spawn(attachCharacter, player, player.Character)
-	end
+	player.CharacterAdded:Connect(function(character) attachCharacter(player, character) end)
+	if player.Character then task.spawn(attachCharacter, player, player.Character) end
 end
 
 local function applyGrabRecoil(player: Player, state: CarryState, itemId: string)
@@ -659,9 +608,7 @@ local function removeEntries(player: Player, state: CarryState, startIndex: numb
 		if entry then
 			local startCFrame = if entry.Visual and entry.Visual.Parent then entry.Visual.CFrame elseif state.Root then state.Root.CFrame else CFrame.new()
 			table.insert(removed, { ItemId = entry.ItemId, StartCFrame = startCFrame })
-			if entry.Visual and entry.Visual.Parent then
-				entry.Visual:Destroy()
-			end
+			if entry.Visual and entry.Visual.Parent then entry.Visual:Destroy() end
 		end
 	end
 
@@ -677,9 +624,7 @@ local function removeEntries(player: Player, state: CarryState, startIndex: numb
 			itemService.SpawnDropped(dropped.ItemId, dropped.StartCFrame, player.UserId, index)
 		end
 	end
-	if #removed > 0 then
-		noticeRemote:FireClient(player, notice)
-	end
+	if #removed > 0 then noticeRemote:FireClient(player, notice) end
 	sendState(player, state, true)
 end
 
@@ -727,9 +672,7 @@ local function collapseLossCount(itemCount: number, severity: number): number
 end
 
 local function partialCollapse(player: Player, state: CarryState, risk: number, warningDuration: number)
-	if #state.Items == 0 then
-		return
-	end
+	if #state.Items == 0 then return end
 	local severity = calculateCollapseSeverity(state, risk, warningDuration)
 	local count = collapseLossCount(#state.Items, severity)
 	local startIndex = math.max(1, #state.Items - count + 1)
@@ -738,30 +681,20 @@ local function partialCollapse(player: Player, state: CarryState, risk: number, 
 end
 
 local function handleGrab(player: Player, candidate: any)
-	if typeof(candidate) ~= "Instance" then
-		return
-	end
-	if player:GetAttribute("ProfileLoaded") ~= true then
-		return
-	end
+	if typeof(candidate) ~= "Instance" then return end
+	if player:GetAttribute("ProfileLoaded") ~= true then return end
 	local state = states[player]
-	if not state or not state.Root or not state.Humanoid or state.Humanoid.Health <= 0 then
-		return
-	end
+	if not state or not state.Root or not state.Humanoid or state.Humanoid.Health <= 0 then return end
 	if #state.Items >= CarryConfig.TechnicalMaxItems then
 		noticeRemote:FireClient(player, "Prototype guardrail reached.")
 		return
 	end
 	local now = os.clock()
-	if now - state.LastGrabAt < 0.08 then
-		return
-	end
+	if now - state.LastGrabAt < 0.08 then return end
 	state.LastGrabAt = now
 
 	local success, itemId, pickupCFrame = itemService.TryTake(player, candidate)
-	if not success or not itemId then
-		return
-	end
+	if not success or not itemId then return end
 	local entry: ItemEntry = { ItemId = itemId, Layer = 1, Visual = nil, VisualWeld = nil }
 	table.insert(state.Items, entry)
 	addVisual(state, entry, #state.Items, pickupCFrame)
@@ -779,25 +712,37 @@ end
 
 local function handleDrop(player: Player)
 	local state = states[player]
-	if not state or #state.Items == 0 then
-		return
-	end
+	if not state or #state.Items == 0 then return end
 	local topEntry = state.Items[#state.Items]
 	local topDefinition = topEntry and ItemConfig[topEntry.ItemId]
 	local topName = if topDefinition then topDefinition.Name else "TOP ITEM"
 	removeEntries(player, state, #state.Items, ("DITCHED %s - LOST FOR THIS TRIP."):format(topName), false)
 end
 
+function CarryService.RefreshHandling(player: Player)
+	local state = states[player]
+	if not state then return end
+	recompute(player, state)
+	sendState(player, state, true)
+end
+
+function CarryService.ForceGripLoss(player: Player): boolean
+	local state = states[player]
+	if not state or #state.Items == 0 then return false end
+	local topEntry = state.Items[#state.Items]
+	local topDefinition = topEntry and ItemConfig[topEntry.ItemId]
+	local topName = if topDefinition then string.upper(topDefinition.Name) else "ITEM"
+	removeEntries(player, state, #state.Items, ("GRIP FAILED - %s LOST. UPGRADE YOUR HANDLING."):format(topName), true)
+	feedbackRemote:FireClient(player, "GripFailure", { droppedCount = 1 })
+	return true
+end
+
 local function updateLayerVisuals(state: CarryState, risk: number, dt: number)
-	if state.MaxLayer <= 0 then
-		return
-	end
+	if state.MaxLayer <= 0 then return end
 	local stack = CarryConfig.Stack
 	local dangerRange = math.max(0.01, CarryConfig.Danger.CollapseRisk - CarryConfig.Danger.Dangerous)
 	local dangerAlpha = math.clamp((risk - CarryConfig.Danger.Dangerous) / dangerRange, 0, 1)
-	if state.CollapseStartedAt then
-		dangerAlpha = math.max(dangerAlpha, 0.92)
-	end
+	if state.CollapseStartedAt then dangerAlpha = math.max(dangerAlpha, 0.92) end
 
 	for layerIndex, layerVisual in state.LayerVisuals do
 		if layerVisual.Part.Parent then
@@ -825,9 +770,7 @@ end
 local function updateMovement(player: Player, state: CarryState, dt: number)
 	local root = state.Root
 	local humanoid = state.Humanoid
-	if not root or not humanoid or humanoid.Health <= 0 then
-		return
-	end
+	if not root or not humanoid or humanoid.Health <= 0 then return end
 
 	local velocity3 = root.AssemblyLinearVelocity
 	local horizontalVelocity = Vector3.new(velocity3.X, 0, velocity3.Z)
@@ -839,6 +782,8 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	local strainAlpha = math.clamp(state.Strain / math.max(0.01, strainTuning.Max), 0, 1)
 	local swayGenerationMultiplier = 1 + (strainTuning.SwayGenerationMultiplierAtMax - 1) * strainAlpha
 	local recoveryMultiplier = 1 - (1 - strainTuning.MinimumRecoveryMultiplierAtMax) * strainAlpha
+	swayGenerationMultiplier *= math.max(1, tonumber(player:GetAttribute("HandlingSwayMultiplier")) or 1)
+	recoveryMultiplier *= math.clamp(tonumber(player:GetAttribute("HandlingRecoveryMultiplier")) or 1, 0.2, 1)
 	local acceleration = (horizontalVelocity - state.LastVelocity) / math.max(dt, 1 / 240)
 	state.LastVelocity = horizontalVelocity
 	local decayRate = if speed <= movement.VelocityDeadzone then movement.StoppedRecoveryRate else movement.MovingRecoveryRate
@@ -907,9 +852,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 	then
 		if not state.CollapseStartedAt then
 			state.CollapseStartedAt = os.clock()
-			if state.TutorialWarningsEnabled then
-				noticeRemote:FireClient(player, "STOP OR IT WILL FALL!")
-			end
+			if state.TutorialWarningsEnabled then noticeRemote:FireClient(player, "STOP OR IT WILL FALL!") end
 			feedbackRemote:FireClient(player, "Warning", {})
 		elseif os.clock() - state.CollapseStartedAt >= CarryConfig.Danger.CollapseWarningSeconds then
 			local warningDuration = os.clock() - state.CollapseStartedAt
@@ -926,9 +869,7 @@ local function updateMovement(player: Player, state: CarryState, dt: number)
 				and sinceLastRecovery >= CarryConfig.Danger.RecoveryFeedbackCooldownSeconds
 			then
 				state.LastRecoveryFeedbackAt = os.clock()
-				if state.TutorialWarningsEnabled then
-					noticeRemote:FireClient(player, "SAVED IT.")
-				end
+				if state.TutorialWarningsEnabled then noticeRemote:FireClient(player, "SAVED IT.") end
 				feedbackRemote:FireClient(player, "Recovered", { showText = state.TutorialWarningsEnabled })
 			end
 		end
@@ -950,9 +891,7 @@ local function animateUnloadVisuals(state: CarryState, unloadCFrame: CFrame)
 	for index, entry in state.Items do
 		local part = entry.Visual
 		if part and part.Parent then
-			if entry.VisualWeld and entry.VisualWeld.Parent then
-				entry.VisualWeld:Destroy()
-			end
+			if entry.VisualWeld and entry.VisualWeld.Parent then entry.VisualWeld:Destroy() end
 			part.Anchored = true
 			part.CanCollide = false
 			part.CanTouch = false
@@ -966,9 +905,7 @@ local function animateUnloadVisuals(state: CarryState, unloadCFrame: CFrame)
 			local originalSize = part.Size
 			local delaySeconds = (index - 1) * CarryConfig.Feel.UnloadStaggerSeconds
 			task.delay(delaySeconds, function()
-				if not part.Parent then
-					return
-				end
+				if not part.Parent then return end
 				local tween = TweenService:Create(
 					part,
 					TweenInfo.new(CarryConfig.Feel.UnloadTweenSeconds, Enum.EasingStyle.Back, Enum.EasingDirection.In),
@@ -976,9 +913,7 @@ local function animateUnloadVisuals(state: CarryState, unloadCFrame: CFrame)
 				)
 				tween:Play()
 				tween.Completed:Once(function()
-					if part.Parent then
-						part:Destroy()
-					end
+					if part.Parent then part:Destroy() end
 				end)
 			end)
 			entry.Visual = nil
@@ -989,9 +924,7 @@ end
 
 function CarryService.Unload(player: Player, unloadCFrame: CFrame?): number
 	local state = states[player]
-	if not state or #state.Items == 0 then
-		return 0
-	end
+	if not state or #state.Items == 0 then return 0 end
 	local score = state.RunValue
 	local itemCount = #state.Items
 	state.SessionScore += score
@@ -1003,9 +936,7 @@ function CarryService.Unload(player: Player, unloadCFrame: CFrame?): number
 	state.Bulk = 0
 	state.RunValue = 0
 	resetMotion(state)
-	if state.Humanoid then
-		state.Humanoid.WalkSpeed = movementSpeedFor(player, state)
-	end
+	if state.Humanoid then state.Humanoid.WalkSpeed = movementSpeedFor(player, state) end
 	noticeRemote:FireClient(player, ("MADE IT! +%d TEST SCORE"):format(score))
 	feedbackRemote:FireClient(player, "Unload", { score = score, itemCount = itemCount })
 	sendState(player, state, true)
@@ -1022,16 +953,10 @@ function CarryService.Start(itemServiceModule: any)
 	requestGrab.OnServerEvent:Connect(handleGrab)
 	requestDrop.OnServerEvent:Connect(handleDrop)
 	Players.PlayerAdded:Connect(initializePlayer)
-	Players.PlayerRemoving:Connect(function(player)
-		states[player] = nil
-	end)
-	for _, player in Players:GetPlayers() do
-		initializePlayer(player)
-	end
+	Players.PlayerRemoving:Connect(function(player) states[player] = nil end)
+	for _, player in Players:GetPlayers() do initializePlayer(player) end
 	RunService.Heartbeat:Connect(function(dt)
-		for player, state in states do
-			updateMovement(player, state, dt)
-		end
+		for player, state in states do updateMovement(player, state, dt) end
 	end)
 end
 
