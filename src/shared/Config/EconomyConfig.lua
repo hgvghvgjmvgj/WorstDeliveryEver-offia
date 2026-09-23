@@ -1,5 +1,50 @@
 --!strict
 
+local LootCatalog = require(script.Parent:WaitForChild("LootCatalog"))
+local LootEconomy = require(script.Parent:WaitForChild("LootEconomy"))
+local RarityConfig = require(script.Parent:WaitForChild("RarityConfig"))
+
+local items = {}
+
+for baseItemId in LootCatalog.ById do
+	for _, rarity in RarityConfig.Order do
+		local economy = LootEconomy.For(baseItemId, rarity)
+		if economy then
+			local variantId = RarityConfig.MakeVariantId(baseItemId, rarity)
+			items[variantId] = table.freeze({
+				PassivePerMinute = economy.PassivePerMinute,
+				TargetBreakEvenMinutes = economy.BreakEvenMinutes,
+				EconomicTier = rarity,
+				BaseItemId = baseItemId,
+				SectionId = economy.SectionId,
+				SectionMultiplier = economy.SectionMultiplier,
+				Rarity = rarity,
+				RarityMultiplier = economy.RarityMultiplier,
+			})
+		end
+	end
+end
+
+-- Preserve M4/M4.2 Stock already written to profiles. These IDs are no longer
+-- selected by the M5B warehouse catalog, but old Stock must hydrate safely.
+local legacy = {
+	Box = { PassivePerMinute = 400, TargetBreakEvenMinutes = 2.25, EconomicTier = "Legacy" },
+	Lamp = { PassivePerMinute = 500, TargetBreakEvenMinutes = 3.36, EconomicTier = "Legacy" },
+	Microwave = { PassivePerMinute = 650, TargetBreakEvenMinutes = 224 / 65, EconomicTier = "Legacy" },
+	Tire = { PassivePerMinute = 850, TargetBreakEvenMinutes = 72 / 17, EconomicTier = "Legacy" },
+	Chair = { PassivePerMinute = 1000, TargetBreakEvenMinutes = 4.8, EconomicTier = "Legacy" },
+	TV = { PassivePerMinute = 1300, TargetBreakEvenMinutes = 90 / 13, EconomicTier = "Legacy" },
+	Couch = { PassivePerMinute = 1700, TargetBreakEvenMinutes = 168 / 17, EconomicTier = "Legacy" },
+	Safe = { PassivePerMinute = 2000, TargetBreakEvenMinutes = 12, EconomicTier = "Legacy" },
+}
+for itemId, tuning in legacy do
+	if not items[itemId] then
+		items[itemId] = table.freeze(tuning)
+	end
+end
+
+table.freeze(items)
+
 local EconomyConfig = {
 	StartingCash = 0,
 	DefaultStockSlots = 3,
@@ -19,86 +64,16 @@ local EconomyConfig = {
 		CalculationIntervalSeconds = 1.0,
 	}),
 
-	-- Once an item is KEPT, the original immediate SELL opportunity was sacrificed.
-	-- Liquidating Stock later only returns a fraction of that original value.
 	DefaultSalvageRatio = 0.20,
+	Items = items,
 
-	-- M4.2 final passive-economy test curve.
-	--
-	-- Important: current SELL values are intentionally preserved from M4/M4.1 so
-	-- this pass measures KEEP attractiveness without moving the already-measured
-	-- active-income baseline. EconomyService/ItemConfig derive SELL from
-	-- PassivePerMinute * TargetBreakEvenMinutes, so the decimal break-even values
-	-- below are chosen to preserve those SELL values exactly.
-	--
-	-- M4.2 also records a relative EconomicTier and neutral future multiplier
-	-- placeholders centrally. M5 can extend these into section/rarity economics
-	-- without scattering economic constants into gameplay scripts.
-	Items = table.freeze({
-		Box = table.freeze({
-			PassivePerMinute = 400,
-			TargetBreakEvenMinutes = 2.25, -- SELL $900
-			EconomicTier = "Weak",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Lamp = table.freeze({
-			PassivePerMinute = 500,
-			TargetBreakEvenMinutes = 3.36, -- SELL $1,680
-			EconomicTier = "Weak",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Microwave = table.freeze({
-			PassivePerMinute = 650,
-			TargetBreakEvenMinutes = 224 / 65, -- SELL $2,240
-			EconomicTier = "Early",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Tire = table.freeze({
-			PassivePerMinute = 850,
-			TargetBreakEvenMinutes = 72 / 17, -- SELL $3,600
-			EconomicTier = "Early",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Chair = table.freeze({
-			PassivePerMinute = 1000,
-			TargetBreakEvenMinutes = 4.8, -- SELL $4,800
-			EconomicTier = "Early",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		TV = table.freeze({
-			PassivePerMinute = 1300,
-			TargetBreakEvenMinutes = 90 / 13, -- SELL $9,000
-			EconomicTier = "Strong",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Couch = table.freeze({
-			PassivePerMinute = 1700,
-			TargetBreakEvenMinutes = 168 / 17, -- SELL $16,800
-			EconomicTier = "Strong",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-		Safe = table.freeze({
-			PassivePerMinute = 2000,
-			TargetBreakEvenMinutes = 12, -- SELL $24,000
-			EconomicTier = "Exceptional",
-			FutureRarityMultiplier = 1,
-			FutureSectionMultiplier = 1,
-		}),
-	}),
-
-	-- Architectural headroom only; these are not M5 rarity assignments.
+	-- Numerical headroom for M5's much larger values. NumberFormat already
+	-- presents K/M/B/T; values remain far below exact-integer safety limits.
 	ProgressionBands = table.freeze({
-		BeginnerPassivePerMinute = Vector2.new(400, 1_300),
-		EarlyPassivePerMinute = Vector2.new(1_300, 20_000),
-		EstablishedPassivePerMinute = Vector2.new(20_000, 500_000),
-		LatePassivePerMinute = Vector2.new(500_000, 10_000_000),
+		BeginnerPassivePerMinute = Vector2.new(100, 10_000),
+		EarlyPassivePerMinute = Vector2.new(10_000, 250_000),
+		EstablishedPassivePerMinute = Vector2.new(250_000, 10_000_000),
+		LatePassivePerMinute = Vector2.new(10_000_000, 1_000_000_000),
 	}),
 }
 
