@@ -9,10 +9,12 @@ local FeelFeedbackController = require(Controllers:WaitForChild("FeelFeedbackCon
 local BayController = require(Controllers:WaitForChild("BayController"))
 local EconomyController = require(Controllers:WaitForChild("EconomyController"))
 local ProgressionController = require(Controllers:WaitForChild("ProgressionController"))
+local EconomyTelemetryController = require(Controllers:WaitForChild("EconomyTelemetryController"))
 
 PrototypeUIController.Start()
 EconomyController.Start()
 ProgressionController.Start()
+EconomyTelemetryController.Start()
 InteractionController.Start(PrototypeUIController)
 CameraProtectionController.Start()
 FeelFeedbackController.Start()
