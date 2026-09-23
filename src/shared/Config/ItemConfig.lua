@@ -1,6 +1,7 @@
 --!strict
 
 local EconomyConfig = require(script.Parent:WaitForChild("EconomyConfig"))
+local HandlingConfig = require(script.Parent:WaitForChild("HandlingConfig"))
 local LootCatalog = require(script.Parent:WaitForChild("LootCatalog"))
 local LootCarryTuning = require(script.Parent:WaitForChild("LootCarryTuning"))
 local RarityConfig = require(script.Parent:WaitForChild("RarityConfig"))
@@ -13,6 +14,7 @@ export type ItemDefinition = {
 	Weight: number,
 	Bulk: number,
 	ShapeTag: ShapeTag,
+	Handling: { Strength: number, CarrySpace: number, Control: number }?,
 	BaseItemId: string?,
 	SectionId: string?,
 	Rarity: string?,
@@ -33,6 +35,7 @@ local items: {[string]: ItemDefinition} = {}
 
 for baseItemId, base in LootCatalog.ById do
 	local tunedWeight, tunedBulk = LootCarryTuning.For(base)
+	local handling = HandlingConfig.RequirementsFor(base, tunedWeight, tunedBulk)
 	for _, rarity in RarityConfig.Order do
 		local variantId = RarityConfig.MakeVariantId(baseItemId, rarity)
 		local tier = RarityConfig.Tiers[rarity]
@@ -42,6 +45,7 @@ for baseItemId, base in LootCatalog.ById do
 			Weight = tunedWeight,
 			Bulk = tunedBulk,
 			ShapeTag = base.ShapeTag,
+			Handling = handling,
 			BaseItemId = baseItemId,
 			SectionId = base.SectionId,
 			Rarity = rarity,
@@ -53,8 +57,8 @@ for baseItemId, base in LootCatalog.ById do
 end
 
 -- Legacy world/profile compatibility for prototype IDs that no longer appear in
--- the authored M5 warehouse. Overlapping IDs (Microwave/Couch/Safe) use their
--- new catalog definitions; persisted Stock keeps its saved rate/value metadata.
+-- the authored M5 warehouse. Overlapping IDs use their new catalog definitions;
+-- persisted Stock keeps its saved rate/value metadata.
 local legacy = {
 	Box = { Name = "Box", Weight = 1, Bulk = 1, ShapeTag = "Compact" },
 	Lamp = { Name = "Lamp", Weight = 1, Bulk = 1, ShapeTag = "Tall" },
@@ -70,6 +74,7 @@ for itemId, definition in legacy do
 			Weight = definition.Weight,
 			Bulk = definition.Bulk,
 			ShapeTag = definition.ShapeTag,
+			Handling = table.freeze({ Strength = definition.Weight, CarrySpace = definition.Bulk, Control = 1.0 }),
 			BaseItemId = itemId,
 			SectionId = "Legacy",
 			Rarity = "Common",
