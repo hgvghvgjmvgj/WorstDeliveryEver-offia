@@ -12,18 +12,26 @@ local economyAction: RemoteEvent
 local latestSnapshot: any = nil
 local selected: {[string]: boolean} = {}
 local activeReviewId: string? = nil
-local snapshotReceivedAt = 0
+local manageOpen = false
 
 local cashLabel: TextLabel
+local passiveLabel: TextLabel
 local stockLabel: TextLabel
-local listingsLabel: TextLabel
+local summaryManageButton: TextButton
+
 local reviewFrame: Frame
 local reviewTitle: TextLabel
 local reviewStockLabel: TextLabel
 local itemList: ScrollingFrame
-local stockSelectedButton: TextButton
-local quickSellRestButton: TextButton
-local quickSellAllButton: TextButton
+local keepSelectedButton: TextButton
+local sellRestButton: TextButton
+local sellAllButton: TextButton
+local reviewManageButton: TextButton
+
+local manageFrame: Frame
+local manageTitle: TextLabel
+local managePassiveLabel: TextLabel
+local stockList: ScrollingFrame
 
 local function roundCorner(instance: GuiObject, radius: number)
 	local corner = Instance.new("UICorner")
@@ -78,22 +86,9 @@ local function makeButton(
 	return button
 end
 
-local function formatEta(seconds: number): string
-	local value = math.max(0, math.floor(seconds + 0.5))
-	if value >= 60 then
-		local minutes = math.floor(value / 60)
-		local remaining = value % 60
-		if remaining == 0 then
-			return ("~%dm"):format(minutes)
-		end
-		return ("~%dm %ds"):format(minutes, remaining)
-	end
-	return ("~%ds"):format(value)
-end
-
-local function clearItemRows()
-	for _, child in itemList:GetChildren() do
-		if child:IsA("GuiObject") and child.Name == "ReviewItem" then
+local function clearNamedRows(parent: Instance, rowName: string)
+	for _, child in parent:GetChildren() do
+		if child:IsA("GuiObject") and child.Name == rowName then
 			child:Destroy()
 		end
 	end
@@ -109,7 +104,7 @@ local function selectedCount(): number
 	return count
 end
 
-local function refreshStockButton()
+local function refreshKeepButton()
 	if not latestSnapshot then
 		return
 	end
@@ -117,17 +112,17 @@ local function refreshStockButton()
 	local count = selectedCount()
 	local free = tonumber(latestSnapshot.stockFree) or 0
 	if count <= 0 then
-		stockSelectedButton.Text = "SELECT ITEMS TO STOCK"
-		stockSelectedButton.BackgroundColor3 = Color3.fromRGB(83, 91, 104)
-		stockSelectedButton.Active = false
+		keepSelectedButton.Text = "SELECT ITEMS TO KEEP"
+		keepSelectedButton.BackgroundColor3 = Color3.fromRGB(83, 91, 104)
+		keepSelectedButton.Active = false
 	elseif count > free then
-		stockSelectedButton.Text = ("NEED %d FREE SLOTS"):format(count)
-		stockSelectedButton.BackgroundColor3 = Color3.fromRGB(153, 76, 70)
-		stockSelectedButton.Active = false
+		keepSelectedButton.Text = "STOCK FULL — MANAGE FIRST"
+		keepSelectedButton.BackgroundColor3 = Color3.fromRGB(153, 76, 70)
+		keepSelectedButton.Active = false
 	else
-		stockSelectedButton.Text = ("STOCK SELECTED (%d)"):format(count)
-		stockSelectedButton.BackgroundColor3 = Color3.fromRGB(67, 142, 101)
-		stockSelectedButton.Active = true
+		keepSelectedButton.Text = ("KEEP SELECTED (%d)"):format(count)
+		keepSelectedButton.BackgroundColor3 = Color3.fromRGB(67, 142, 101)
+		keepSelectedButton.Active = true
 	end
 end
 
@@ -140,7 +135,12 @@ local function rebuildReview(snapshot)
 
 	if typeof(reviewId) ~= "string" or reviewId == "" then
 		reviewFrame.Visible = false
-		clearItemRows()
+		clearNamedRows(itemList, "ReviewItem")
+		return
+	end
+
+	if manageOpen then
+		reviewFrame.Visible = false
 		return
 	end
 
@@ -151,7 +151,7 @@ local function rebuildReview(snapshot)
 	local occupied = tonumber(snapshot.stockOccupied) or 0
 
 	reviewTitle.Text = ("DELIVERY COMPLETE  •  %d ITEMS"):format(#items)
-	reviewStockLabel.Text = ("AVAILABLE STOCK SLOTS: %d / %d  •  %d FREE"):format(
+	reviewStockLabel.Text = ("STOCK: %d / %d  •  %d FREE"):format(
 		occupied,
 		capacity,
 		free
@@ -169,19 +169,18 @@ local function rebuildReview(snapshot)
 		end
 	end
 
-	clearItemRows()
+	clearNamedRows(itemList, "ReviewItem")
 
 	for _, item in items do
 		if typeof(item) == "table" and typeof(item.id) == "string" then
 			local id = item.id
 			local name = tostring(item.name or item.itemId or "ITEM")
-			local quick = tonumber(item.quickSell) or 0
-			local stock = tonumber(item.stockPayout) or quick
-			local eta = tonumber(item.buyerEta) or 0
+			local sell = tonumber(item.sellValue) or 0
+			local passive = tonumber(item.passiveRate) or 0
 
 			local row = Instance.new("TextButton")
 			row.Name = "ReviewItem"
-			row.Size = UDim2.new(1, -12, 0, 58)
+			row.Size = UDim2.new(1, -12, 0, 62)
 			row.BackgroundColor3 = if selected[id]
 				then Color3.fromRGB(57, 116, 84)
 				else Color3.fromRGB(42, 47, 56)
@@ -193,12 +192,11 @@ local function rebuildReview(snapshot)
 			row.TextWrapped = true
 			row.TextXAlignment = Enum.TextXAlignment.Left
 			row.Text = string.format(
-				"  %s%s\n  $%d NOW    •    ~$%d STOCK    •    BUYER %s",
-				if selected[id] then "✓ " else "",
+				"  %s%s\n  SELL $%d NOW    •    KEEP +$%g/min",
+				if selected[id] then "✓ KEEP  " else "",
 				string.upper(name),
-				quick,
-				stock,
-				formatEta(eta)
+				sell,
+				passive
 			)
 			row.Parent = itemList
 			roundCorner(row, 7)
@@ -210,40 +208,90 @@ local function rebuildReview(snapshot)
 		end
 	end
 
-	refreshStockButton()
+	refreshKeepButton()
 end
 
 local function refreshAlwaysVisible(snapshot)
 	cashLabel.Text = ("CASH  $%d"):format(tonumber(snapshot.cash) or 0)
+	passiveLabel.Text = ("PASSIVE INCOME  +$%g/min"):format(
+		tonumber(snapshot.totalPassiveRate) or 0
+	)
 
 	local occupied = tonumber(snapshot.stockOccupied) or 0
 	local capacity = tonumber(snapshot.stockCapacity) or 0
 	local free = tonumber(snapshot.stockFree) or 0
 	stockLabel.Text = ("STOCK  %d / %d   •   %d FREE"):format(occupied, capacity, free)
+end
 
-	local listings = if typeof(snapshot.listings) == "table" then snapshot.listings else {}
-	if #listings == 0 then
-		listingsLabel.Text = "NO ACTIVE LISTINGS"
-	else
-		local pieces = {}
-		local elapsed = os.clock() - snapshotReceivedAt
-		for _, listing in listings do
-			if typeof(listing) == "table" then
-				local remaining = math.max(0, (tonumber(listing.remaining) or 0) - elapsed)
-				table.insert(
-					pieces,
-					("%s %s"):format(
-						string.upper(tostring(listing.name or "ITEM")),
-						formatEta(remaining)
-					)
-				)
-			end
+local function rebuildStockManagement(snapshot)
+	if not manageOpen then
+		manageFrame.Visible = false
+		return
+	end
+
+	manageFrame.Visible = true
+	local capacity = tonumber(snapshot.stockCapacity) or 0
+	local totalPassive = tonumber(snapshot.totalPassiveRate) or 0
+	manageTitle.Text = ("CURRENT STOCK  •  %d SLOTS"):format(capacity)
+	managePassiveLabel.Text = ("TOTAL PASSIVE INCOME  +$%g/min"):format(totalPassive)
+
+	local bySlot: {[number]: any} = {}
+	local stockItems = if typeof(snapshot.stockItems) == "table" then snapshot.stockItems else {}
+	for _, item in stockItems do
+		if typeof(item) == "table" and typeof(item.slotIndex) == "number" then
+			bySlot[item.slotIndex] = item
 		end
-		listingsLabel.Text = table.concat(pieces, "   •   ")
+	end
+
+	clearNamedRows(stockList, "StockRow")
+
+	for slotIndex = 1, capacity do
+		local item = bySlot[slotIndex]
+		local row = Instance.new("TextButton")
+		row.Name = "StockRow"
+		row.Size = UDim2.new(1, -12, 0, 64)
+		row.BorderSizePixel = 0
+		row.Font = Enum.Font.GothamBold
+		row.TextColor3 = Color3.fromRGB(243, 245, 248)
+		row.TextSize = 15
+		row.TextWrapped = true
+		row.TextXAlignment = Enum.TextXAlignment.Left
+		row.Parent = stockList
+		roundCorner(row, 7)
+
+		if item then
+			local name = string.upper(tostring(item.name or item.itemId or "ITEM"))
+			local passive = tonumber(item.passiveRate) or 0
+			local sell = tonumber(item.sellValue) or 0
+			local stockId = tostring(item.stockId or "")
+
+			row.BackgroundColor3 = Color3.fromRGB(62, 78, 70)
+			row.AutoButtonColor = true
+			row.Active = true
+			row.Text = ("  SLOT %d  —  %s\n  +$%g/min     •     SELL STOCK FOR $%d"):format(
+				slotIndex,
+				name,
+				passive,
+				sell
+			)
+			row.Activated:Connect(function()
+				if stockId ~= "" then
+					economyAction:FireServer("SellStock", {
+						slotIndex = slotIndex,
+						stockId = stockId,
+					})
+				end
+			end)
+		else
+			row.BackgroundColor3 = Color3.fromRGB(42, 47, 56)
+			row.AutoButtonColor = false
+			row.Active = false
+			row.Text = ("  SLOT %d  —  EMPTY\n  Available for a kept delivery item"):format(slotIndex)
+		end
 	end
 end
 
-local function sendAction(action: string, extra: {[string]: any}?)
+local function sendReviewAction(action: string, extra: {[string]: any}?)
 	if not latestSnapshot or typeof(latestSnapshot.reviewId) ~= "string" then
 		return
 	end
@@ -259,6 +307,22 @@ local function sendAction(action: string, extra: {[string]: any}?)
 	economyAction:FireServer(action, payload)
 end
 
+local function openStockManagement()
+	manageOpen = true
+	reviewFrame.Visible = false
+	if latestSnapshot then
+		rebuildStockManagement(latestSnapshot)
+	end
+end
+
+local function closeStockManagement()
+	manageOpen = false
+	manageFrame.Visible = false
+	if latestSnapshot then
+		rebuildReview(latestSnapshot)
+	end
+end
+
 function Controller.Start()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "OneTripEconomyUI"
@@ -269,8 +333,8 @@ function Controller.Start()
 
 	local summary = Instance.new("Frame")
 	summary.Name = "EconomySummary"
-	summary.Size = UDim2.fromOffset(310, 88)
-	summary.Position = UDim2.new(1, -328, 0, 18)
+	summary.Size = UDim2.fromOffset(330, 126)
+	summary.Position = UDim2.new(1, -348, 0, 18)
 	summary.BackgroundColor3 = Color3.fromRGB(24, 27, 32)
 	summary.BackgroundTransparency = 0.10
 	summary.BorderSizePixel = 0
@@ -288,27 +352,37 @@ function Controller.Start()
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Left
 	cashLabel.TextColor3 = Color3.fromRGB(130, 238, 160)
 
+	passiveLabel = makeText(
+		summary,
+		"Passive",
+		"PASSIVE INCOME  +$0/min",
+		UDim2.new(1, -20, 0, 22),
+		UDim2.fromOffset(10, 36),
+		14
+	)
+	passiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+	passiveLabel.TextColor3 = Color3.fromRGB(128, 212, 232)
+
 	stockLabel = makeText(
 		summary,
 		"Stock",
 		"STOCK  0 / 3   •   3 FREE",
 		UDim2.new(1, -20, 0, 20),
-		UDim2.fromOffset(10, 37),
+		UDim2.fromOffset(10, 61),
 		13
 	)
 	stockLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-	listingsLabel = makeText(
+	summaryManageButton = makeButton(
 		summary,
-		"Listings",
-		"NO ACTIVE LISTINGS",
-		UDim2.new(1, -20, 0, 20),
-		UDim2.fromOffset(10, 60),
-		11
+		"ManageStock",
+		"MANAGE STOCK",
+		UDim2.new(1, -20, 0, 30),
+		UDim2.fromOffset(10, 88),
+		Color3.fromRGB(72, 91, 119)
 	)
-	listingsLabel.TextXAlignment = Enum.TextXAlignment.Left
-	listingsLabel.TextColor3 = Color3.fromRGB(180, 189, 201)
-	listingsLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	summaryManageButton.TextSize = 13
+	summaryManageButton.Activated:Connect(openStockManagement)
 
 	reviewFrame = Instance.new("Frame")
 	reviewFrame.Name = "DeliveryReview"
@@ -322,10 +396,10 @@ function Controller.Start()
 	reviewFrame.Parent = gui
 	roundCorner(reviewFrame, 12)
 
-	local sizeConstraint = Instance.new("UISizeConstraint")
-	sizeConstraint.MinSize = Vector2.new(300, 330)
-	sizeConstraint.MaxSize = Vector2.new(650, 520)
-	sizeConstraint.Parent = reviewFrame
+	local reviewConstraint = Instance.new("UISizeConstraint")
+	reviewConstraint.MinSize = Vector2.new(300, 330)
+	reviewConstraint.MaxSize = Vector2.new(650, 520)
+	reviewConstraint.Parent = reviewFrame
 
 	reviewTitle = makeText(
 		reviewFrame,
@@ -340,13 +414,24 @@ function Controller.Start()
 	reviewStockLabel = makeText(
 		reviewFrame,
 		"StockInfo",
-		"AVAILABLE STOCK SLOTS: 0 / 3",
-		UDim2.new(1, -24, 0, 24),
+		"STOCK: 0 / 3",
+		UDim2.new(0.60, -12, 0, 24),
 		UDim2.fromOffset(12, 44),
 		13
 	)
 	reviewStockLabel.TextXAlignment = Enum.TextXAlignment.Left
 	reviewStockLabel.TextColor3 = Color3.fromRGB(183, 205, 225)
+
+	reviewManageButton = makeButton(
+		reviewFrame,
+		"ManageStock",
+		"MANAGE STOCK",
+		UDim2.new(0.36, -12, 0, 28),
+		UDim2.new(0.64, 0, 0, 42),
+		Color3.fromRGB(72, 91, 119)
+	)
+	reviewManageButton.TextSize = 12
+	reviewManageButton.Activated:Connect(openStockManagement)
 
 	itemList = Instance.new("ScrollingFrame")
 	itemList.Name = "Items"
@@ -372,35 +457,35 @@ function Controller.Start()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = itemList
 
-	stockSelectedButton = makeButton(
+	keepSelectedButton = makeButton(
 		reviewFrame,
-		"StockSelected",
-		"SELECT ITEMS TO STOCK",
+		"KeepSelected",
+		"SELECT ITEMS TO KEEP",
 		UDim2.new(0.48, -8, 0, 48),
 		UDim2.new(0, 12, 1, -104),
 		Color3.fromRGB(83, 91, 104)
 	)
 
-	quickSellRestButton = makeButton(
+	sellRestButton = makeButton(
 		reviewFrame,
-		"QuickSellRest",
-		"QUICK SELL REST",
+		"SellRest",
+		"SELL REST",
 		UDim2.new(0.52, -16, 0, 48),
 		UDim2.new(0.48, 8, 1, -104),
 		Color3.fromRGB(173, 119, 59)
 	)
 
-	quickSellAllButton = makeButton(
+	sellAllButton = makeButton(
 		reviewFrame,
-		"QuickSellAll",
-		"QUICK SELL ALL — START NEXT RUN",
+		"SellAll",
+		"SELL ALL — START NEXT RUN",
 		UDim2.new(1, -24, 0, 44),
 		UDim2.new(0, 12, 1, -50),
 		Color3.fromRGB(80, 126, 171)
 	)
 
-	stockSelectedButton.Activated:Connect(function()
-		if not stockSelectedButton.Active then
+	keepSelectedButton.Activated:Connect(function()
+		if not keepSelectedButton.Active then
 			return
 		end
 		local ids = {}
@@ -409,16 +494,89 @@ function Controller.Start()
 				table.insert(ids, id)
 			end
 		end
-		sendAction("StockSelected", { itemIds = ids })
+		sendReviewAction("KeepSelected", { itemIds = ids })
 	end)
 
-	quickSellRestButton.Activated:Connect(function()
-		sendAction("QuickSellRest", nil)
+	sellRestButton.Activated:Connect(function()
+		sendReviewAction("SellRest", nil)
 	end)
 
-	quickSellAllButton.Activated:Connect(function()
-		sendAction("QuickSellAll", nil)
+	sellAllButton.Activated:Connect(function()
+		sendReviewAction("SellAll", nil)
 	end)
+
+	manageFrame = Instance.new("Frame")
+	manageFrame.Name = "StockManagement"
+	manageFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	manageFrame.Position = UDim2.fromScale(0.5, 0.53)
+	manageFrame.Size = UDim2.fromScale(0.82, 0.68)
+	manageFrame.BackgroundColor3 = Color3.fromRGB(23, 26, 31)
+	manageFrame.BackgroundTransparency = 0.02
+	manageFrame.BorderSizePixel = 0
+	manageFrame.Visible = false
+	manageFrame.Parent = gui
+	roundCorner(manageFrame, 12)
+
+	local manageConstraint = Instance.new("UISizeConstraint")
+	manageConstraint.MinSize = Vector2.new(300, 300)
+	manageConstraint.MaxSize = Vector2.new(570, 450)
+	manageConstraint.Parent = manageFrame
+
+	manageTitle = makeText(
+		manageFrame,
+		"Title",
+		"CURRENT STOCK",
+		UDim2.new(1, -110, 0, 34),
+		UDim2.fromOffset(12, 10),
+		22
+	)
+	manageTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	local closeManageButton = makeButton(
+		manageFrame,
+		"Close",
+		"BACK",
+		UDim2.fromOffset(82, 32),
+		UDim2.new(1, -94, 0, 10),
+		Color3.fromRGB(82, 89, 101)
+	)
+	closeManageButton.TextSize = 13
+	closeManageButton.Activated:Connect(closeStockManagement)
+
+	managePassiveLabel = makeText(
+		manageFrame,
+		"Passive",
+		"TOTAL PASSIVE INCOME  +$0/min",
+		UDim2.new(1, -24, 0, 24),
+		UDim2.fromOffset(12, 50),
+		14
+	)
+	managePassiveLabel.TextXAlignment = Enum.TextXAlignment.Left
+	managePassiveLabel.TextColor3 = Color3.fromRGB(128, 212, 232)
+
+	stockList = Instance.new("ScrollingFrame")
+	stockList.Name = "StockItems"
+	stockList.Size = UDim2.new(1, -24, 1, -92)
+	stockList.Position = UDim2.fromOffset(12, 80)
+	stockList.BackgroundColor3 = Color3.fromRGB(31, 35, 42)
+	stockList.BackgroundTransparency = 0.18
+	stockList.BorderSizePixel = 0
+	stockList.ScrollBarThickness = 6
+	stockList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	stockList.CanvasSize = UDim2.new()
+	stockList.Parent = manageFrame
+	roundCorner(stockList, 8)
+
+	local stockPadding = Instance.new("UIPadding")
+	stockPadding.PaddingTop = UDim.new(0, 6)
+	stockPadding.PaddingBottom = UDim.new(0, 6)
+	stockPadding.PaddingLeft = UDim.new(0, 6)
+	stockPadding.Parent = stockList
+
+	local stockLayout = Instance.new("UIListLayout")
+	stockLayout.Padding = UDim.new(0, 6)
+	stockLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	stockLayout.Parent = stockList
 
 	local remoteFolder = ReplicatedStorage:WaitForChild(RemoteNames.Folder)
 	local economyState = remoteFolder:WaitForChild(RemoteNames.EconomyState) :: RemoteEvent
@@ -429,23 +587,16 @@ function Controller.Start()
 			return
 		end
 		latestSnapshot = snapshot
-		snapshotReceivedAt = os.clock()
 		refreshAlwaysVisible(snapshot)
-		rebuildReview(snapshot)
-	end)
-
-	-- Harmless handshake so a LocalScript that connects after PlayerAdded still
-	-- receives current Cash/listing state.
-	economyAction:FireServer("RequestState", {})
-
-	task.spawn(function()
-		while gui.Parent do
-			task.wait(1)
-			if latestSnapshot then
-				refreshAlwaysVisible(latestSnapshot)
-			end
+		if manageOpen then
+			rebuildStockManagement(snapshot)
+		else
+			rebuildReview(snapshot)
 		end
 	end)
+
+	-- Request current server state after the LocalScript has connected its listener.
+	economyAction:FireServer("RequestState", {})
 end
 
 return Controller
