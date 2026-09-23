@@ -24,11 +24,12 @@ BayService.Start(world)
 ItemService.Start(world)
 CarryService.Start(ItemService)
 
--- Register profile consumers before loading profiles so restored progression and
--- Stock are hydrated exactly once when PlayerDataService fires OnLoaded.
+-- PlayerData owns the earliest PlayerRemoving connection. Progression/Economy
+-- register OnLoaded callbacks immediately afterward; OnLoaded also replays any
+-- profile that happened to finish loading during this startup window.
+PlayerDataService.Start()
 ProgressionService.Start()
 EconomyService.Start()
-PlayerDataService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService)
 
