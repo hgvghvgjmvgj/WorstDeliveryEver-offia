@@ -71,9 +71,7 @@ local function defaultProfile(nowUnix: number): any
 			StockSlotLevel = 1,
 			CarryRigTier = ProgressionConfig.DefaultCarryRigTier,
 		},
-		Stock = {
-			Slots = {},
-		},
+		Stock = { Slots = {} },
 		PassiveRemainder = 0,
 		LastSeenUnix = nowUnix,
 		Session = nil,
@@ -82,22 +80,16 @@ end
 
 local function sanitizeLevel(value: any, trackName: string): number
 	local track = ProgressionConfig.Tracks[trackName]
-	local maximum = #track.Levels
-	return math.clamp(math.floor(finiteNumber(value, 1) + 0.5), 1, maximum)
+	return math.clamp(math.floor(finiteNumber(value, 1) + 0.5), 1, #track.Levels)
 end
 
 local function sanitizeStock(rawStock: any, nowUnix: number): any
 	local result = { Slots = {} }
-	local sourceSlots = if typeof(rawStock) == "table" and typeof(rawStock.Slots) == "table"
-		then rawStock.Slots
-		else {}
-
+	local sourceSlots = if typeof(rawStock) == "table" and typeof(rawStock.Slots) == "table" then rawStock.Slots else {}
 	for slotIndex = 1, EconomyConfig.MaxStockSlots do
 		local key = tostring(slotIndex)
 		local raw = sourceSlots[key]
-		if raw == nil then
-			raw = sourceSlots[slotIndex]
-		end
+		if raw == nil then raw = sourceSlots[slotIndex] end
 		if typeof(raw) == "table" and typeof(raw.ItemId) == "string" and ItemConfig[raw.ItemId] then
 			local passive, sell, salvage = currentEconomy(raw.ItemId)
 			local savedPassive = math.clamp(finiteNumber(raw.PassiveRatePerMinute, passive), 0, MAX_SAFE_CASH)
@@ -121,28 +113,19 @@ local function migrateAndSanitize(raw: any, nowUnix: number): (any?, string?)
 	if typeof(raw) ~= "table" then
 		return defaultProfile(nowUnix), nil
 	end
-
 	local rawVersion = math.floor(finiteNumber(raw.SchemaVersion, 0))
 	if rawVersion > DataConfig.SchemaVersion then
 		return nil, "NEWER_SCHEMA"
 	end
-
-	-- V0/legacy sessions had no persistent profile. Preserve any recognizable
-	-- fields if a development datastore already contains them, then normalize.
 	local result = defaultProfile(nowUnix)
 	result.Cash = math.clamp(math.floor(finiteNumber(raw.Cash, result.Cash)), 0, MAX_SAFE_CASH)
-
 	local sourceProgression = if typeof(raw.Progression) == "table" then raw.Progression else raw
 	result.Progression.StrengthLevel = sanitizeLevel(sourceProgression.StrengthLevel, "Strength")
 	result.Progression.CarrySpaceLevel = sanitizeLevel(sourceProgression.CarrySpaceLevel, "CarrySpace")
 	result.Progression.ControlLevel = sanitizeLevel(sourceProgression.ControlLevel, "Control")
 	result.Progression.MobilityLevel = sanitizeLevel(sourceProgression.MobilityLevel, "Mobility")
 	result.Progression.StockSlotLevel = sanitizeLevel(sourceProgression.StockSlotLevel, "StockSlots")
-	result.Progression.CarryRigTier = math.max(
-		1,
-		math.floor(finiteNumber(sourceProgression.CarryRigTier, ProgressionConfig.DefaultCarryRigTier) + 0.5)
-	)
-
+	result.Progression.CarryRigTier = math.max(1, math.floor(finiteNumber(sourceProgression.CarryRigTier, ProgressionConfig.DefaultCarryRigTier) + 0.5))
 	result.Stock = sanitizeStock(raw.Stock, nowUnix)
 	result.PassiveRemainder = math.clamp(finiteNumber(raw.PassiveRemainder, 0), 0, 0.999999)
 	result.LastSeenUnix = math.max(0, math.floor(finiteNumber(raw.LastSeenUnix, nowUnix)))
@@ -153,9 +136,7 @@ end
 local function totalSavedPassive(profile: any): number
 	local total = 0
 	local slots = profile.Stock and profile.Stock.Slots
-	if typeof(slots) ~= "table" then
-		return 0
-	end
+	if typeof(slots) ~= "table" then return 0 end
 	for _, entry in slots do
 		if typeof(entry) == "table" then
 			total += math.max(0, finiteNumber(entry.PassiveRatePerMinute, 0))
@@ -176,9 +157,7 @@ local function fireLoaded(player: Player, profile: any)
 	for _, callback in loadedCallbacks do
 		task.spawn(function()
 			local ok, err = pcall(callback, player, profile)
-			if not ok then
-				warn("[ONE TRIP] profile loaded callback failed:", err)
-			end
+			if not ok then warn("[ONE TRIP] profile loaded callback failed:", err) end
 		end)
 	end
 end
@@ -203,10 +182,7 @@ local function loadTemporary(player: Player, reason: string)
 end
 
 local function loadPlayer(player: Player)
-	if profiles[player] or not player.Parent then
-		return
-	end
-
+	if profiles[player] or not player.Parent then return end
 	player:SetAttribute(DataConfig.ProfileLoadedAttribute, false)
 	player:SetAttribute(DataConfig.PersistenceStatusAttribute, "LOADING")
 
@@ -227,13 +203,8 @@ local function loadPlayer(player: Player)
 					unsupportedSchema = migrationError == "NEWER_SCHEMA"
 					return nil
 				end
-
 				local session = if typeof(raw) == "table" then raw.Session else nil
-				if typeof(session) == "table"
-					and typeof(session.JobId) == "string"
-					and session.JobId ~= ""
-					and session.JobId ~= game.JobId
-				then
+				if typeof(session) == "table" and typeof(session.JobId) == "string" and session.JobId ~= "" and session.JobId ~= game.JobId then
 					local updatedAt = math.max(0, math.floor(finiteNumber(session.UpdatedAt, 0)))
 					if nowUnix - updatedAt < DataConfig.SessionLockTimeoutSeconds then
 						blockedBySession = true
@@ -247,35 +218,24 @@ local function loadPlayer(player: Player)
 				if lastSeen > 0 and rawElapsed > 0 and rawElapsed <= DataConfig.MaximumTrustedElapsedSeconds then
 					elapsed = math.min(rawElapsed, DataConfig.OfflineEarningsCapSeconds)
 				end
-
-				local passiveRate = totalSavedPassive(profile)
-				local exactOffline = (passiveRate / 60) * elapsed + profile.PassiveRemainder
+				local exactOffline = (totalSavedPassive(profile) / 60) * elapsed + profile.PassiveRemainder
 				local offlineWhole = math.max(0, math.floor(exactOffline + 0.000001))
 				profile.PassiveRemainder = exactOffline - offlineWhole
 				profile.Cash = math.clamp(profile.Cash + offlineWhole, 0, MAX_SAFE_CASH)
 				profile.LastSeenUnix = nowUnix
-				profile.Session = {
-					JobId = game.JobId,
-					PlaceId = game.PlaceId,
-					UpdatedAt = nowUnix,
-				}
+				profile.Session = { JobId = game.JobId, PlaceId = game.PlaceId, UpdatedAt = nowUnix }
 				profile.SchemaVersion = DataConfig.SchemaVersion
 				awardedOffline = offlineWhole
 				return profile
 			end)
 		end)
-
 		if ok and result ~= nil and not blockedBySession and not unsupportedSchema then
 			loadedProfile = result
 			break
 		end
 		lastError = if ok then (if blockedBySession then "SESSION_LOCKED" elseif unsupportedSchema then "NEWER_SCHEMA" else "UPDATE_CANCELLED") else tostring(result)
-		if blockedBySession or unsupportedSchema then
-			break
-		end
-		if attempt < DataConfig.MaxAttempts then
-			task.wait(retryDelay(attempt))
-		end
+		if blockedBySession or unsupportedSchema then break end
+		if attempt < DataConfig.MaxAttempts then task.wait(retryDelay(attempt)) end
 	end
 
 	if not loadedProfile then
@@ -292,9 +252,7 @@ local function loadPlayer(player: Player)
 		return
 	end
 
-	if not player.Parent then
-		return
-	end
+	if not player.Parent then return end
 	profiles[player] = loadedProfile
 	temporaryProfiles[player] = nil
 	dirty[player] = false
@@ -306,23 +264,30 @@ end
 local function runBeforeSave(player: Player, profile: any)
 	for _, callback in beforeSaveCallbacks do
 		local ok, err = pcall(callback, player, profile)
-		if not ok then
-			warn("[ONE TRIP] before-save callback failed:", err)
-		end
+		if not ok then warn("[ONE TRIP] before-save callback failed:", err) end
 	end
 end
 
 local function savePlayerInternal(player: Player, releaseSession: boolean): boolean
 	local profile = profiles[player]
-	if not profile then
-		return true
-	end
-	if temporaryProfiles[player] then
-		return true
-	end
+	if not profile or temporaryProfiles[player] then return true end
+
 	if saving[player] then
-		saveAgain[player] = true
-		return false
+		if not releaseSession then
+			saveAgain[player] = true
+			return false
+		end
+		-- Final save/release must not be dropped just because an autosave is in flight.
+		local waitStarted = os.clock()
+		while saving[player] and os.clock() - waitStarted < 10 do
+			task.wait(0.05)
+		end
+		if saving[player] then
+			warn("[ONE TRIP] timed out waiting for in-flight save before release", player.UserId)
+			return false
+		end
+		profile = profiles[player]
+		if not profile then return true end
 	end
 
 	saving[player] = true
@@ -331,11 +296,7 @@ local function savePlayerInternal(player: Player, releaseSession: boolean): bool
 	profile.LastSeenUnix = nowUnix
 	profile.SchemaVersion = DataConfig.SchemaVersion
 	local payload = deepCopy(profile)
-	payload.Session = if releaseSession then nil else {
-		JobId = game.JobId,
-		PlaceId = game.PlaceId,
-		UpdatedAt = nowUnix,
-	}
+	payload.Session = if releaseSession then nil else { JobId = game.JobId, PlaceId = game.PlaceId, UpdatedAt = nowUnix }
 
 	local succeeded = false
 	for attempt = 1, DataConfig.MaxAttempts do
@@ -361,9 +322,7 @@ local function savePlayerInternal(player: Player, releaseSession: boolean): bool
 			break
 		end
 		warn(("[ONE TRIP] save attempt %d failed for %d: %s"):format(attempt, player.UserId, tostring(err)))
-		if attempt < DataConfig.MaxAttempts then
-			task.wait(retryDelay(attempt))
-		end
+		if attempt < DataConfig.MaxAttempts then task.wait(retryDelay(attempt)) end
 	end
 
 	if succeeded then
@@ -374,9 +333,7 @@ local function savePlayerInternal(player: Player, releaseSession: boolean): bool
 
 	if saveAgain[player] and player.Parent and not releaseSession then
 		saveAgain[player] = nil
-		task.defer(function()
-			savePlayerInternal(player, false)
-		end)
+		task.defer(function() savePlayerInternal(player, false) end)
 	else
 		saveAgain[player] = nil
 	end
@@ -396,15 +353,11 @@ function PlayerDataService.GetOfflineAward(player: Player): number
 end
 
 function PlayerDataService.MarkDirty(player: Player)
-	if profiles[player] then
-		dirty[player] = true
-	end
+	if profiles[player] then dirty[player] = true end
 end
 
 function PlayerDataService.RequestSave(player: Player)
-	if not profiles[player] or temporaryProfiles[player] or saveScheduled[player] then
-		return
-	end
+	if not profiles[player] or temporaryProfiles[player] or saveScheduled[player] then return end
 	saveScheduled[player] = true
 	task.delay(DataConfig.SaveDebounceSeconds, function()
 		saveScheduled[player] = nil
@@ -425,13 +378,9 @@ end
 
 function PlayerDataService.AddCash(player: Player, amount: number): number
 	local profile = profiles[player]
-	if not profile then
-		return 0
-	end
+	if not profile then return 0 end
 	local clean = math.max(0, math.floor(finiteNumber(amount, 0) + 0.000001))
-	if clean <= 0 then
-		return profile.Cash
-	end
+	if clean <= 0 then return profile.Cash end
 	profile.Cash = math.clamp(profile.Cash + clean, 0, MAX_SAFE_CASH)
 	player:SetAttribute("Cash", profile.Cash)
 	dirty[player] = true
@@ -440,13 +389,9 @@ end
 
 function PlayerDataService.TrySpendCash(player: Player, amount: number): boolean
 	local profile = profiles[player]
-	if not profile then
-		return false
-	end
+	if not profile then return false end
 	local clean = math.max(0, math.floor(finiteNumber(amount, 0) + 0.5))
-	if clean <= 0 or profile.Cash < clean then
-		return false
-	end
+	if clean <= 0 or profile.Cash < clean then return false end
 	profile.Cash -= clean
 	player:SetAttribute("Cash", profile.Cash)
 	dirty[player] = true
@@ -455,9 +400,7 @@ end
 
 function PlayerDataService.OnLoaded(callback: (Player, any) -> ())
 	table.insert(loadedCallbacks, callback)
-	for player, profile in profiles do
-		task.spawn(callback, player, profile)
-	end
+	for player, profile in profiles do task.spawn(callback, player, profile) end
 end
 
 function PlayerDataService.RegisterBeforeSave(callback: (Player, any) -> ())
@@ -465,19 +408,18 @@ function PlayerDataService.RegisterBeforeSave(callback: (Player, any) -> ())
 end
 
 function PlayerDataService.Start()
-	if started then
-		return
-	end
+	if started then return end
 	started = true
 
-	Players.PlayerAdded:Connect(function(player)
-		task.spawn(loadPlayer, player)
-	end)
+	Players.PlayerAdded:Connect(function(player) task.spawn(loadPlayer, player) end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		saveScheduled[player] = nil
 		if profiles[player] then
-			savePlayerInternal(player, true)
+			local released = savePlayerInternal(player, true)
+			if not released then
+				warn("[ONE TRIP] final save/session release failed for", player.UserId)
+			end
 		end
 		profiles[player] = nil
 		offlineAwards[player] = nil
@@ -487,20 +429,14 @@ function PlayerDataService.Start()
 		saveAgain[player] = nil
 	end)
 
-	for _, player in Players:GetPlayers() do
-		task.spawn(loadPlayer, player)
-	end
+	for _, player in Players:GetPlayers() do task.spawn(loadPlayer, player) end
 
 	task.spawn(function()
 		while not shuttingDown do
 			task.wait(DataConfig.AutosaveSeconds)
-			if shuttingDown then
-				break
-			end
+			if shuttingDown then break end
 			for player in profiles do
-				if player.Parent then
-					task.spawn(savePlayerInternal, player, false)
-				end
+				if player.Parent then task.spawn(savePlayerInternal, player, false) end
 			end
 		end
 	end)
@@ -516,9 +452,7 @@ function PlayerDataService.Start()
 			end)
 		end
 		local startedAt = os.clock()
-		while pending > 0 and os.clock() - startedAt < DataConfig.BindToCloseTimeoutSeconds do
-			task.wait(0.05)
-		end
+		while pending > 0 and os.clock() - startedAt < DataConfig.BindToCloseTimeoutSeconds do task.wait(0.05) end
 	end)
 end
 
