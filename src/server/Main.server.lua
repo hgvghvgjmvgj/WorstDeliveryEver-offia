@@ -24,4 +24,4 @@ CarryService.Start(ItemService)
 EconomyService.Start()
 UnloadService.Start(world, CarryService, EconomyService)
 
-print("[ONE TRIP] M3 delivery economy loaded")
+print("[ONE TRIP] M3 SELL vs KEEP passive Stock economy loaded")
