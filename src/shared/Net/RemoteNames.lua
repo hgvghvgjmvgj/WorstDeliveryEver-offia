@@ -6,6 +6,7 @@ return table.freeze({
 	RequestGrab = "RequestGrab",
 	RequestDrop = "RequestDrop",
 	CarryState = "CarryState",
+	HandlingPreview = "HandlingPreview",
 	PrototypeNotice = "PrototypeNotice",
 	PrototypeFeedback = "PrototypeFeedback",
 
