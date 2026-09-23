@@ -2,7 +2,7 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	DataStoreName = "OneTripPlayerData_v1",
+	DataStoreName = "OneTripPlayerData_M4BalanceTest_v1",
 	KeyPrefix = "player_",
 
 	AutosaveSeconds = 60,
