@@ -2,8 +2,8 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Separate temporary namespace so M4.2 starts with fresh Cash/upgrades/Stock
-	-- and does not inherit persisted M4.1 Stock rates.
+	-- Keep the existing M4.2 test namespace during M5B so persistence/legacy
+	-- Stock compatibility can be validated instead of hiding migration problems.
 	DataStoreName = "OneTripPlayerData_M4_2PassiveTest_v1",
 	KeyPrefix = "player_",
 
@@ -14,16 +14,13 @@ return table.freeze({
 	SessionLockTimeoutSeconds = 180,
 	BindToCloseTimeoutSeconds = 25,
 
-	-- M4.2 temporary offline sanity cap. Stronger passive Stock makes the former
-	-- two-hour cap disproportionately large for the finite M4 test progression.
-	-- Thirty minutes still makes returning rewarding without letting idle time
-	-- replace a large amount of active warehouse play.
-	OfflineEarningsCapSeconds = 30 * 60,
+	-- M5B produces much larger passive values. Offline Stock remains rewarding,
+	-- but earns at a reduced fraction of live passive and stops after 20 minutes.
+	-- This is a test value, not a permanent live-service promise.
+	OfflineEarningsCapSeconds = 20 * 60,
+	OfflineEarningsMultiplier = 0.20,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
-	-- Studio can still be playtested when API Services are disabled, but that
-	-- session is explicitly marked temporary and must not be mistaken for a
-	-- persistence pass.
 	FailOpenInStudio = true,
 
 	ProfileLoadedAttribute = "ProfileLoaded",
