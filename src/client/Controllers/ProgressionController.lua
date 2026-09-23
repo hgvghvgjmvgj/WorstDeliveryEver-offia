@@ -100,7 +100,7 @@ local function rebuild(snapshot: any)
 			title.Position = UDim2.fromOffset(10, 7)
 			title.TextXAlignment = Enum.TextXAlignment.Left
 
-			local description = makeText(row, if isMax then "MAXED FOR M4" else benefitText(track), UDim2.new(0.60, -14, 0, 48), 13)
+			local description = makeText(row, if isMax then "MAXED" else benefitText(track), UDim2.new(0.60, -14, 0, 48), 13)
 			description.Position = UDim2.fromOffset(10, 36)
 			description.TextXAlignment = Enum.TextXAlignment.Left
 			description.TextColor3 = Color3.fromRGB(187, 198, 211)
