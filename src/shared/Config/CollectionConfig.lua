@@ -31,9 +31,9 @@ Config.Trophies = table.freeze({
 	Secure = table.freeze({ Name = "SECURE CONTAINMENT AWARD", Color = Color3.fromRGB(214, 202, 145), Shape = "Case" }),
 })
 
-Config.RareFindMinimumRank = 7 -- Cosmic/Eternal core items also become prestige finds.
-Config.HeroAnnouncementMinimumRank = 6 -- Mythic+ hero deliveries may announce.
-Config.ServerAnnouncementMinimumRank = 7 -- Cosmic/Eternal always qualify.
+Config.RareFindMinimumRank = 7
+Config.HeroAnnouncementMinimumRank = 6
+Config.ServerAnnouncementMinimumRank = 7
 
 local milestoneKeys = table.freeze({ ["25"] = true, ["50"] = true, ["75"] = true, ["100"] = true })
 
@@ -65,10 +65,7 @@ function Config.NewProfile(): any
 	for _, sectionId in LootCatalog.SectionOrder do
 		sections[sectionId] = { Discovered = {}, RewardMilestones = {} }
 	end
-	return {
-		Sections = sections,
-		RareFinds = {},
-	}
+	return { Sections = sections, RareFinds = {} }
 end
 
 local function sanitizeEntry(raw: any, nowUnix: number): any?
@@ -99,9 +96,7 @@ function Config.Sanitize(raw: any, nowUnix: number): any
 			end
 			local rewards = if typeof(source.RewardMilestones) == "table" then source.RewardMilestones else {}
 			for key, value in rewards do
-				if milestoneKeys[tostring(key)] and value == true then
-					destination.RewardMilestones[tostring(key)] = true
-				end
+				if milestoneKeys[tostring(key)] and value == true then destination.RewardMilestones[tostring(key)] = true end
 			end
 		end
 	end
@@ -123,9 +118,7 @@ end
 function Config.CashReward(sectionId: string, milestoneKey: string): number
 	local scale = Config.SectionRewardScale[sectionId] or 1
 	for _, milestone in Config.Milestones do
-		if milestone.Key == milestoneKey then
-			return math.max(0, math.floor(milestone.BaseCash * scale + 0.5))
-		end
+		if milestone.Key == milestoneKey then return math.max(0, math.floor(milestone.BaseCash * scale + 0.5)) end
 	end
 	return 0
 end
@@ -155,9 +148,7 @@ function Config.IsRareFind(baseItemId: string, rarity: string): boolean
 end
 
 local function upgradeEntry(entry: any?, rarity: string, nowUnix: number, sellValue: number?): (any, boolean, string?)
-	if not entry then
-		return newEntry(rarity, nowUnix, sellValue), true, nil
-	end
+	if not entry then return newEntry(rarity, nowUnix, sellValue), true, nil end
 	local oldRarity = validRarity(entry.BestRarity)
 	entry.TimesDelivered = math.max(1, math.floor(finiteNumber(entry.TimesDelivered, 1) + 0.5)) + 1
 	entry.BestSellValueDelivered = math.max(
@@ -177,8 +168,7 @@ function Config.RecordCore(collection: any, baseItemId: string, rarity: string, 
 	if not base or base.Core ~= true then return false, nil end
 	local section = collection.Sections[base.SectionId]
 	if not section then return false, nil end
-	local entry = section.Discovered[baseItemId]
-	local updated, isNew, oldBest = upgradeEntry(entry, validRarity(rarity), nowUnix, sellValue)
+	local updated, isNew, oldBest = upgradeEntry(section.Discovered[baseItemId], validRarity(rarity), nowUnix, sellValue)
 	section.Discovered[baseItemId] = updated
 	return isNew, oldBest
 end
@@ -186,8 +176,7 @@ end
 function Config.RecordRareFind(collection: any, baseItemId: string, rarity: string, nowUnix: number, sellValue: number?): (boolean, string?)
 	local base = LootCatalog.ById[baseItemId]
 	if not base or not Config.IsRareFind(baseItemId, rarity) then return false, nil end
-	local entry = collection.RareFinds[baseItemId]
-	local updated, isNew, oldBest = upgradeEntry(entry, validRarity(rarity), nowUnix, sellValue)
+	local updated, isNew, oldBest = upgradeEntry(collection.RareFinds[baseItemId], validRarity(rarity), nowUnix, sellValue)
 	updated.SectionId = base.SectionId
 	collection.RareFinds[baseItemId] = updated
 	return isNew, oldBest
@@ -205,40 +194,45 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 				local base = LootCatalog.ById[baseItemId]
 				local rarity = validRarity(definition.Rarity)
 				if base then
+					local stockTime = math.max(0, math.floor(finiteNumber(raw.StockedAtUnix, nowUnix)))
+					local stockSell = math.max(0, math.floor(finiteNumber(raw.OriginalSellValue, 0) + 0.5))
 					if base.Core == true then
 						local section = collection.Sections[base.SectionId]
 						local previous = section and section.Discovered[baseItemId]
 						if section then
 							if not previous then
-								section.Discovered[baseItemId] = newEntry(rarity, math.max(0, math.floor(finiteNumber(raw.StockedAtUnix, nowUnix))), raw.OriginalSellValue)
+								section.Discovered[baseItemId] = newEntry(rarity, stockTime, stockSell)
 								changedSections[base.SectionId] = true
-							elseif RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(previous.BestRarity)) then
-								previous.BestRarity = rarity
+							else
+								if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(previous.BestRarity)) then previous.BestRarity = rarity end
+								previous.BestSellValueDelivered = math.max(finiteNumber(previous.BestSellValueDelivered, 0), stockSell)
 							end
 						end
 					end
-					if Config.IsRareFind(baseItemId, rarity) and not collection.RareFinds[baseItemId] then
-						local rare = newEntry(rarity, math.max(0, math.floor(finiteNumber(raw.StockedAtUnix, nowUnix))), raw.OriginalSellValue)
-						rare.SectionId = base.SectionId
-						collection.RareFinds[baseItemId] = rare
+					if Config.IsRareFind(baseItemId, rarity) then
+						local rare = collection.RareFinds[baseItemId]
+						if not rare then
+							rare = newEntry(rarity, stockTime, stockSell)
+							rare.SectionId = base.SectionId
+							collection.RareFinds[baseItemId] = rare
+						else
+							if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(rare.BestRarity)) then rare.BestRarity = rarity end
+							rare.BestSellValueDelivered = math.max(finiteNumber(rare.BestSellValueDelivered, 0), stockSell)
+						end
 					end
 				end
 			end
 		end
 	end
 
-	-- Migration/backfill proves historical delivery, but it must not become a
-	-- reconnect Cash exploit. Any mastery threshold already satisfied solely by
-	-- newly backfilled Stock is reconciled as claimed without paying it again.
+	-- Backfill proves historical delivery but must not become reconnect Cash.
 	for sectionId in changedSections do
 		local total = Config.CoreCount(sectionId)
 		local count = Config.DiscoveredCount(collection, sectionId)
 		local ratio = if total > 0 then count / total else 0
 		local section = collection.Sections[sectionId]
 		for _, milestone in Config.Milestones do
-			if ratio + 1e-6 >= milestone.Ratio then
-				section.RewardMilestones[milestone.Key] = true
-			end
+			if ratio + 1e-6 >= milestone.Ratio then section.RewardMilestones[milestone.Key] = true end
 		end
 	end
 end
