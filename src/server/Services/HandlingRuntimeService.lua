@@ -18,6 +18,7 @@ type RuntimeState = {
 	GripStartedAt: number?,
 	GripDuration: number,
 	GripWarned: boolean,
+	GripItemCount: number,
 }
 
 local runtime: {[Player]: RuntimeState} = {}
@@ -103,6 +104,7 @@ local function worstEvaluation(player: Player, itemIds: {string}, extraItemId: s
 				tallCount
 			)
 			result.ItemId = itemId
+			result.ItemCount = #allIds
 			if not worst or result.Ratio < worst.Ratio then worst = result end
 		end
 	end
@@ -140,6 +142,7 @@ local function clearHandling(player: Player, state: RuntimeState)
 	state.GripStartedAt = nil
 	state.GripDuration = 0
 	state.GripWarned = false
+	state.GripItemCount = 0
 	local key = "NONE"
 	if state.PenaltyKey ~= key then
 		state.PenaltyKey = key
@@ -172,10 +175,21 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 	end
 
 	if evaluation.Band == "UNMANAGEABLE" then
+		local itemCount = math.max(0, math.floor(tonumber(evaluation.ItemCount) or 0))
 		if not state.GripStartedAt then
 			state.GripStartedAt = os.clock()
 			state.GripDuration = HandlingConfig.GripFailureSeconds(evaluation.Ratio)
 			state.GripWarned = false
+			state.GripItemCount = itemCount
+		elseif itemCount > state.GripItemCount then
+			-- Once a load is already UNMANAGEABLE, newly stacked cargo must not act
+			-- as disposable armor for the original underqualified item. Strip the
+			-- newest/top item immediately while preserving the original failure timer.
+			carryService.ForceGripLoss(player)
+			state.GripItemCount = math.max(0, itemCount - 1)
+			return
+		else
+			state.GripItemCount = itemCount
 		end
 		if not state.GripWarned then
 			state.GripWarned = true
@@ -187,19 +201,21 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 		if remaining <= 0 then
 			state.GripStartedAt = nil
 			state.GripWarned = false
+			state.GripItemCount = 0
 			carryService.ForceGripLoss(player)
 		end
 	else
 		state.GripStartedAt = nil
 		state.GripDuration = 0
 		state.GripWarned = false
+		state.GripItemCount = 0
 		setAttributeIfChanged(player, "HandlingGripRemaining", 0)
 	end
 end
 
 local function initializePlayer(player: Player)
 	if runtime[player] then return end
-	runtime[player] = { PenaltyKey = "", GripStartedAt = nil, GripDuration = 0, GripWarned = false }
+	runtime[player] = { PenaltyKey = "", GripStartedAt = nil, GripDuration = 0, GripWarned = false, GripItemCount = 0 }
 	setAttributeIfChanged(player, "HandlingBand", "READY")
 	setAttributeIfChanged(player, "HandlingWeakness", "")
 	setAttributeIfChanged(player, "HandlingRatio", 1)
