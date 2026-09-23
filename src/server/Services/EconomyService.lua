@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 local EconomyConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("EconomyConfig"))
 local ItemConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ItemConfig"))
 local PrototypeVisualConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PrototypeVisualConfig"))
+local NumberFormat = require(ReplicatedStorage:WaitForChild("NumberFormat"))
 local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
 local BayService = require(script.Parent:WaitForChild("BayService"))
@@ -29,6 +30,8 @@ type StockEntry = {
 	SlotIndex: number,
 	StockedAtUnix: number,
 	PassiveRatePerMinute: number,
+	OriginalSellValue: number,
+	SalvageValue: number,
 }
 
 type EconomyState = {
@@ -52,25 +55,36 @@ local function economyFor(itemId: string)
 	return EconomyConfig.Items[itemId]
 end
 
-local function sellValue(itemId: string): number
-	local tuning = economyFor(itemId)
-	if tuning then
-		return math.max(0, math.floor(tuning.SellValue + 0.5))
-	end
-
-	local definition = ItemConfig[itemId]
-	if definition then
-		return math.max(0, math.floor(definition.Value * 10 + 0.5))
-	end
-	return 0
-end
-
 local function passiveRate(itemId: string): number
 	local tuning = economyFor(itemId)
 	if not tuning then
 		return 0
 	end
 	return math.max(0, tuning.PassivePerMinute)
+end
+
+local function sellValue(itemId: string): number
+	local tuning = economyFor(itemId)
+	if tuning then
+		return math.max(0, math.floor(
+			tuning.PassivePerMinute * tuning.TargetBreakEvenMinutes + 0.5
+		))
+	end
+
+	local definition = ItemConfig[itemId]
+	if definition then
+		return math.max(0, math.floor(definition.Value * 100 + 0.5))
+	end
+	return 0
+end
+
+local function salvageValue(itemId: string): number
+	local tuning = economyFor(itemId)
+	local ratio = EconomyConfig.DefaultSalvageRatio
+	if tuning and typeof(tuning.SalvageRatio) == "number" then
+		ratio = tuning.SalvageRatio
+	end
+	return math.max(0, math.floor(sellValue(itemId) * math.clamp(ratio, 0, 1) + 0.5))
 end
 
 local function stockCapacity(player: Player): number
@@ -85,7 +99,6 @@ local function stockCapacity(player: Player): number
 			return math.min(allowed, EconomyConfig.MaxStockSlots)
 		end
 	end
-
 	return EconomyConfig.DefaultStockSlots
 end
 
@@ -126,16 +139,15 @@ local function addCash(player: Player, state: EconomyState, amount: number)
 	player:SetAttribute("Cash", state.Cash)
 end
 
-local function settlePassive(
-	player: Player,
-	state: EconomyState,
-	nowServer: number
-): number
+local function settlePassive(player: Player, state: EconomyState, nowServer: number): number
 	local elapsed = math.max(0, nowServer - state.LastPassiveServerTime)
 	state.LastPassiveServerTime = nowServer
+	if elapsed <= 0 then
+		return 0
+	end
 
 	local ratePerMinute = totalPassiveRate(state)
-	if ratePerMinute <= 0 or elapsed <= 0 then
+	if ratePerMinute <= 0 then
 		return 0
 	end
 
@@ -160,10 +172,10 @@ local function ensureSlotLabel(marker: BasePart, index: number): TextLabel
 		gui = Instance.new("BillboardGui")
 		gui.Name = "StockSlotLabel"
 		gui.Adornee = marker
-		gui.Size = UDim2.fromOffset(145, 42)
+		gui.Size = UDim2.fromOffset(155, 44)
 		gui.StudsOffset = Vector3.new(0, 2.5, 0)
 		gui.AlwaysOnTop = true
-		gui.MaxDistance = 45
+		gui.MaxDistance = 48
 		gui.Parent = marker
 	end
 
@@ -182,7 +194,6 @@ local function ensureSlotLabel(marker: BasePart, index: number): TextLabel
 		label.TextStrokeTransparency = 0.35
 		label.Parent = gui
 	end
-
 	label.Text = ("STOCK %d\nFREE"):format(index)
 	return label
 end
@@ -192,12 +203,10 @@ local function displayFolderFor(state: EconomyState): Folder?
 	if not bay or not bay.Parent then
 		return nil
 	end
-
 	local existing = bay:FindFirstChild("StockDisplays")
 	if existing and existing:IsA("Folder") then
 		return existing
 	end
-
 	local folder = Instance.new("Folder")
 	folder.Name = "StockDisplays"
 	folder.Parent = bay
@@ -206,14 +215,8 @@ end
 
 local function destroyDisplay(state: EconomyState, slotIndex: number)
 	local bay = state.Bay
-	if not bay then
-		return
-	end
-	local folder = bay:FindFirstChild("StockDisplays")
-	if not folder then
-		return
-	end
-	local existing = folder:FindFirstChild(("StockDisplay%02d"):format(slotIndex))
+	local folder = bay and bay:FindFirstChild("StockDisplays")
+	local existing = folder and folder:FindFirstChild(("StockDisplay%02d"):format(slotIndex))
 	if existing then
 		existing:Destroy()
 	end
@@ -233,7 +236,6 @@ local function createDisplay(state: EconomyState, stock: StockEntry)
 	end
 
 	destroyDisplay(state, stock.SlotIndex)
-
 	local visual = PrototypeVisualConfig.Items[stock.ItemId]
 	local definition = ItemConfig[stock.ItemId]
 	if not visual or not definition then
@@ -260,10 +262,10 @@ local function createDisplay(state: EconomyState, stock: StockEntry)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "StockedLabel"
 	billboard.Adornee = part
-	billboard.Size = UDim2.fromOffset(160, 42)
+	billboard.Size = UDim2.fromOffset(180, 44)
 	billboard.StudsOffset = Vector3.new(0, visual.Size.Y * 0.5 + 1.15, 0)
 	billboard.AlwaysOnTop = true
-	billboard.MaxDistance = 48
+	billboard.MaxDistance = 55
 	billboard.Parent = part
 
 	local label = Instance.new("TextLabel")
@@ -271,9 +273,9 @@ local function createDisplay(state: EconomyState, stock: StockEntry)
 	label.Size = UDim2.fromScale(1, 1)
 	label.Font = Enum.Font.GothamBold
 	label.Text = string.format(
-		"%s\n+$%g/min",
+		"%s\n%s",
 		string.upper(definition.Name),
-		stock.PassiveRatePerMinute
+		NumberFormat.Rate(stock.PassiveRatePerMinute)
 	)
 	label.TextScaled = true
 	label.TextColor3 = Color3.fromRGB(128, 232, 164)
@@ -318,14 +320,14 @@ local function refreshSlots(player: Player, state: EconomyState)
 			if gui and gui:IsA("BillboardGui") then
 				gui.Enabled = active
 			end
-
 			if active then
 				if stock then
 					local definition = ItemConfig[stock.ItemId]
-					label.Text = ("STOCK %d\n%s +$%g/m"):format(
+					label.Text = string.format(
+						"STOCK %d\n%s %s",
 						index,
 						if definition then string.upper(definition.Name) else "KEPT",
-						stock.PassiveRatePerMinute
+						NumberFormat.Rate(stock.PassiveRatePerMinute)
 					)
 					label.TextColor3 = Color3.fromRGB(128, 232, 164)
 				else
@@ -362,8 +364,9 @@ local function snapshotFor(player: Player, state: EconomyState)
 			stockId = stock.StockId,
 			itemId = stock.ItemId,
 			name = if definition then definition.Name else stock.ItemId,
-			sellValue = sellValue(stock.ItemId),
 			passiveRate = stock.PassiveRatePerMinute,
+			salvageValue = stock.SalvageValue,
+			originalSellValue = stock.OriginalSellValue,
 			stockedAtUnix = stock.StockedAtUnix,
 		})
 	end
@@ -373,7 +376,6 @@ local function snapshotFor(player: Player, state: EconomyState)
 
 	local capacity = stockCapacity(player)
 	local occupied = occupiedCount(state)
-
 	return {
 		cash = state.Cash,
 		reviewId = state.ReviewId,
@@ -418,25 +420,16 @@ local function closeReviewIfEmpty(state: EconomyState)
 	end
 end
 
-local function sellDeliveredEntries(player: Player, state: EconomyState, ids: {string}?): number
-	local requested: {[string]: boolean}? = nil
-	if ids then
-		requested = {}
-		for _, id in ids do
-			requested[id] = true
-		end
-	end
-
+local function sellDeliveredEntries(player: Player, state: EconomyState): number
 	local payout = 0
 	for index = #state.Delivered, 1, -1 do
 		local entry = state.Delivered[index]
-		if entry.State == "Delivered" and (not requested or requested[entry.ReviewItemId]) then
+		if entry.State == "Delivered" then
 			entry.State = "Sold"
 			payout += sellValue(entry.ItemId)
 			table.remove(state.Delivered, index)
 		end
 	end
-
 	if payout > 0 then
 		addCash(player, state, payout)
 	end
@@ -452,35 +445,35 @@ local function createStockEntry(state: EconomyState, entry: DeliveredEntry, slot
 		SlotIndex = slotIndex,
 		StockedAtUnix = os.time(),
 		PassiveRatePerMinute = passiveRate(entry.ItemId),
+		OriginalSellValue = sellValue(entry.ItemId),
+		SalvageValue = salvageValue(entry.ItemId),
 	}
-
 	entry.State = "Stocked"
 	state.Stock[slotIndex] = stock
 	createDisplay(state, stock)
 end
 
 local function keepSelected(player: Player, state: EconomyState, ids: {string}): boolean
-	local uniqueIds: {[string]: boolean} = {}
-	local orderedIds: {string} = {}
+	local unique: {[string]: boolean} = {}
+	local ordered = {}
 	for _, id in ids do
-		if typeof(id) == "string" and not uniqueIds[id] then
-			uniqueIds[id] = true
-			table.insert(orderedIds, id)
+		if typeof(id) == "string" and not unique[id] then
+			unique[id] = true
+			table.insert(ordered, id)
 		end
 	end
-
-	if #orderedIds == 0 then
+	if #ordered == 0 then
 		return false
 	end
 
 	local slots = freeSlots(player, state)
-	if #orderedIds > #slots then
-		noticeRemote:FireClient(player, "STOCK FULL - SELL AN OLD STOCK ITEM FIRST.")
+	if #ordered > #slots then
+		noticeRemote:FireClient(player, "STOCK FULL - SELL OR MANAGE STOCK FIRST.")
 		return false
 	end
 
 	local validated: {{Entry: DeliveredEntry, Index: number}} = {}
-	for _, id in orderedIds do
+	for _, id in ordered do
 		local entry, index = findDelivered(state, id)
 		if not entry or not index then
 			return false
@@ -488,53 +481,48 @@ local function keepSelected(player: Player, state: EconomyState, ids: {string}):
 		table.insert(validated, { Entry = entry, Index = index })
 	end
 
-	-- Settle the old Stock composition before new passive generators are added.
 	settlePassive(player, state, Workspace:GetServerTimeNow())
-
 	for listIndex, record in validated do
 		createStockEntry(state, record.Entry, slots[listIndex])
 	end
-
 	table.sort(validated, function(a, b)
 		return a.Index > b.Index
 	end)
 	for _, record in validated do
 		table.remove(state.Delivered, record.Index)
 	end
-
 	closeReviewIfEmpty(state)
 	refreshSlots(player, state)
 	return true
 end
 
-local function sellStockItem(
-	player: Player,
-	state: EconomyState,
-	slotIndex: number,
-	stockId: string
-): number
+local function sellStock(player: Player, state: EconomyState, slotIndex: number, stockId: string): boolean
 	local stock = state.Stock[slotIndex]
 	if not stock or stock.StockId ~= stockId then
-		return 0
+		return false
 	end
 
-	-- Credit everything legitimately earned by the old composition first, then
-	-- remove Stock state before the sell payout. A repeated Remote cannot pay twice.
 	settlePassive(player, state, Workspace:GetServerTimeNow())
 	state.Stock[slotIndex] = nil
 	destroyDisplay(state, slotIndex)
-
-	local payout = sellValue(stock.ItemId)
-	addCash(player, state, payout)
+	addCash(player, state, stock.SalvageValue)
 	refreshSlots(player, state)
-	return payout
+
+	local definition = ItemConfig[stock.ItemId]
+	noticeRemote:FireClient(
+		player,
+		("%s LIQUIDATED +%s"):format(
+			if definition then string.upper(definition.Name) else "STOCK",
+			NumberFormat.Cash(stock.SalvageValue)
+		)
+	)
+	return true
 end
 
 local function handleAction(player: Player, action: any, payload: any)
 	if typeof(action) ~= "string" or typeof(payload) ~= "table" then
 		return
 	end
-
 	local state = states[player]
 	if not state then
 		return
@@ -554,14 +542,10 @@ local function handleAction(player: Player, action: any, payload: any)
 	if action == "SellStock" then
 		local slotIndex = payload.slotIndex
 		local stockId = payload.stockId
-		if typeof(slotIndex) ~= "number" or typeof(stockId) ~= "string" then
-			return
-		end
-		local roundedSlot = math.floor(slotIndex + 0.5)
-		local payout = sellStockItem(player, state, roundedSlot, stockId)
-		if payout > 0 then
-			noticeRemote:FireClient(player, ("STOCK SOLD! +$%d"):format(payout))
-			sendState(player, state)
+		if typeof(slotIndex) == "number" and typeof(stockId) == "string" then
+			if sellStock(player, state, math.floor(slotIndex), stockId) then
+				sendState(player, state)
+			end
 		end
 		return
 	end
@@ -572,9 +556,9 @@ local function handleAction(player: Player, action: any, payload: any)
 	end
 
 	if action == "SellAll" or action == "SellRest" then
-		local payout = sellDeliveredEntries(player, state, nil)
+		local payout = sellDeliveredEntries(player, state)
 		if payout > 0 then
-			noticeRemote:FireClient(player, ("SOLD! +$%d"):format(payout))
+			noticeRemote:FireClient(player, ("SOLD! +%s"):format(NumberFormat.Cash(payout)))
 		end
 		sendState(player, state)
 	elseif action == "KeepSelected" then
@@ -582,16 +566,14 @@ local function handleAction(player: Player, action: any, payload: any)
 		if typeof(ids) ~= "table" then
 			return
 		end
-
-		local cleanIds: {string} = {}
+		local cleanIds = {}
 		for _, id in ids do
 			if typeof(id) == "string" then
 				table.insert(cleanIds, id)
 			end
 		end
-
 		if keepSelected(player, state, cleanIds) then
-			noticeRemote:FireClient(player, "ITEMS KEPT IN STOCK. SELL THE REST OR KEEP CHOOSING.")
+			noticeRemote:FireClient(player, "KEPT IN STOCK. SELL THE REST OR KEEP CHOOSING.")
 			sendState(player, state)
 		end
 	end
@@ -601,15 +583,11 @@ local function initializePlayer(player: Player)
 	if states[player] then
 		return
 	end
-
 	if player:GetAttribute(EconomyConfig.StockSlotCapacityAttribute) == nil then
 		player:SetAttribute(EconomyConfig.StockSlotCapacityAttribute, EconomyConfig.DefaultStockSlots)
 	end
 	if player:GetAttribute(EconomyConfig.PassiveIncomeMultiplierAttribute) == nil then
-		player:SetAttribute(
-			EconomyConfig.PassiveIncomeMultiplierAttribute,
-			EconomyConfig.DefaultPassiveIncomeMultiplier
-		)
+		player:SetAttribute(EconomyConfig.PassiveIncomeMultiplierAttribute, EconomyConfig.DefaultPassiveIncomeMultiplier)
 	end
 
 	local state: EconomyState = {
@@ -623,7 +601,6 @@ local function initializePlayer(player: Player)
 		LastPassiveServerTime = Workspace:GetServerTimeNow(),
 	}
 	states[player] = state
-
 	player:SetAttribute("Cash", state.Cash)
 
 	player:GetAttributeChangedSignal(EconomyConfig.StockSlotCapacityAttribute):Connect(function()
@@ -632,9 +609,10 @@ local function initializePlayer(player: Player)
 			sendState(player, state)
 		end
 	end)
-
 	player:GetAttributeChangedSignal(EconomyConfig.PassiveIncomeMultiplierAttribute):Connect(function()
 		if states[player] == state then
+			-- Development multiplier changes should not retroactively affect elapsed time.
+			state.LastPassiveServerTime = Workspace:GetServerTimeNow()
 			sendState(player, state)
 		end
 	end)
@@ -648,17 +626,12 @@ function EconomyService.CanAcceptDelivery(player: Player): boolean
 	return state ~= nil and state.ReviewId == nil
 end
 
--- The carry rig is server-created and server-controlled. M3 reads those visual
--- item records immediately before CarryService authoritatively clears the load.
--- No client value or item identity is trusted. A future carry-state refactor can
--- replace this adapter without changing EconomyService's Delivered/Stock states.
 function EconomyService.CaptureCarriedItems(player: Player): {string}
 	local character = player.Character
 	local rig = character and character:FindFirstChild("OneTripCarry")
 	if not rig then
 		return {}
 	end
-
 	local found = {}
 	for _, descendant in rig:GetDescendants() do
 		if descendant:IsA("BasePart") then
@@ -667,13 +640,11 @@ function EconomyService.CaptureCarriedItems(player: Player): {string}
 			if itemId and index and ItemConfig[itemId] then
 				table.insert(found, { Index = index, ItemId = itemId })
 			end
-		end
 	end
-
+	end
 	table.sort(found, function(a, b)
 		return a.Index < b.Index
 	end)
-
 	local items = {}
 	for _, record in found do
 		table.insert(items, record.ItemId)
@@ -686,7 +657,6 @@ function EconomyService.BeginDelivery(player: Player, itemIds: {string}): boolea
 	if not state or state.ReviewId ~= nil or #itemIds == 0 then
 		return false
 	end
-
 	local delivered = {}
 	for _, itemId in itemIds do
 		if typeof(itemId) ~= "string" or not ItemConfig[itemId] then
@@ -698,7 +668,6 @@ function EconomyService.BeginDelivery(player: Player, itemIds: {string}): boolea
 			State = "Delivered",
 		})
 	end
-
 	state.ReviewId = HttpService:GenerateGUID(false)
 	state.Delivered = delivered
 	noticeRemote:FireClient(player, "DELIVERY COMPLETE - SELL OR KEEP.")
@@ -710,14 +679,9 @@ function EconomyService.Start()
 	economyStateRemote = RemoteService.Get(RemoteNames.EconomyState)
 	economyActionRemote = RemoteService.Get(RemoteNames.EconomyAction)
 	noticeRemote = RemoteService.Get(RemoteNames.PrototypeNotice)
-
 	economyActionRemote.OnServerEvent:Connect(handleAction)
 
-	Players.PlayerAdded:Connect(function(player)
-		-- BayService is started before EconomyService and assigns synchronously.
-		initializePlayer(player)
-	end)
-
+	Players.PlayerAdded:Connect(initializePlayer)
 	Players.PlayerRemoving:Connect(function(player)
 		local state = states[player]
 		if state then
@@ -728,7 +692,6 @@ function EconomyService.Start()
 		end
 		states[player] = nil
 	end)
-
 	for _, player in Players:GetPlayers() do
 		initializePlayer(player)
 	end
@@ -739,7 +702,6 @@ function EconomyService.Start()
 			return
 		end
 		heartbeatAccumulator = 0
-
 		local nowServer = Workspace:GetServerTimeNow()
 		for player, state in states do
 			if settlePassive(player, state, nowServer) > 0 then
