@@ -22,7 +22,7 @@ local function playerFromHit(hit: BasePart): Player?
 	return nil
 end
 
-local function connectZone(zone: BasePart, carryService: any, economyService: any)
+local function connectZone(zone: BasePart, carryService: any, economyService: any, collectionService: any)
 	zone.Touched:Connect(function(hit)
 		local player = playerFromHit(hit)
 		if not player then
@@ -45,14 +45,13 @@ local function connectZone(zone: BasePart, carryService: any, economyService: an
 			return
 		end
 
-		-- M3 keeps one short delivery review at a time. Do not destroy a new
-		-- carried haul while an unresolved review still owns delivered items.
 		if not economyService.CanAcceptDelivery(player) then
 			return
 		end
 
-		-- Capture server-created carry records before CarryService clears them.
-		-- No client-provided item IDs or values participate in this transition.
+		-- This is the same server-owned delivery list consumed by Economy. M5C
+		-- never trusts client-provided discovery IDs and never grants on pickup,
+		-- preview, collapse, ditch, or disconnect.
 		local deliveredItems = economyService.CaptureCarriedItems(player)
 		if #deliveredItems == 0 then
 			return
@@ -64,18 +63,21 @@ local function connectZone(zone: BasePart, carryService: any, economyService: an
 			return
 		end
 
+		-- Delivery itself is the accomplishment. Collection credit happens before
+		-- the SELL/KEEP decision, so both review outcomes count exactly once.
+		collectionService.RecordDelivery(player, deliveredItems)
 		economyService.BeginDelivery(player, deliveredItems)
 	end)
 end
 
-function UnloadService.Start(worldRoot: Folder, carryService: any, economyService: any)
+function UnloadService.Start(worldRoot: Folder, carryService: any, economyService: any, collectionService: any)
 	local bays = worldRoot:WaitForChild("Bays")
 
 	for _, bay in bays:GetChildren() do
 		if bay:IsA("Model") then
 			local zone = bay:FindFirstChild("UnloadZone")
 			if zone and zone:IsA("BasePart") then
-				connectZone(zone, carryService, economyService)
+				connectZone(zone, carryService, economyService, collectionService)
 			end
 		end
 	end
