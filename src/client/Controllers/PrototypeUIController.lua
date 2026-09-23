@@ -210,7 +210,10 @@ function Controller.Start()
 	promptLabel.Visible = false
 	noticeLabel = makeLabel(gui, "Notice", UDim2.fromOffset(440, 52), UDim2.new(0.5, -220, 0, 100), 20)
 	noticeLabel.Visible = false
-	debugLabel = makeLabel(gui, "Debug", UDim2.fromOffset(330, 222), UDim2.new(1, -348, 0, 18), 14)
+	-- Keep the developer telemetry below the economy summary + UPGRADES button.
+	-- F3 is a desktop testing surface, so reserving the right-side column is
+	-- clearer than stacking it under production HUD elements at the same origin.
+	debugLabel = makeLabel(gui, "Debug", UDim2.fromOffset(330, 222), UDim2.new(1, -348, 0, 190), 14)
 	debugLabel.TextXAlignment = Enum.TextXAlignment.Left
 	debugLabel.TextYAlignment = Enum.TextYAlignment.Top
 	debugLabel.Visible = false
