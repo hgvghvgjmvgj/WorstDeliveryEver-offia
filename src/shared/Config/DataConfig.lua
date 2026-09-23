@@ -2,8 +2,9 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Temporary fresh namespace for the M5B.1 starter sequence-break and
-	-- handling-progression tests. Older M4/M5 test data remains untouched.
+	-- Keep the M5B.1 namespace for M5C so real pre-Collection profiles exercise
+	-- additive migration/backfill instead of being hidden behind another reset.
+	-- Collection is optional/sanitized data, so no breaking schema bump is needed.
 	DataStoreName = "OneTripPlayerData_M5B_1HandlingTest_v1",
 	KeyPrefix = "player_",
 
