@@ -2,6 +2,7 @@
 
 local EconomyConfig = require(script.Parent:WaitForChild("EconomyConfig"))
 local LootCatalog = require(script.Parent:WaitForChild("LootCatalog"))
+local LootCarryTuning = require(script.Parent:WaitForChild("LootCarryTuning"))
 local RarityConfig = require(script.Parent:WaitForChild("RarityConfig"))
 
 export type ShapeTag = "Compact" | "Tall" | "Wide"
@@ -31,14 +32,15 @@ end
 local items: {[string]: ItemDefinition} = {}
 
 for baseItemId, base in LootCatalog.ById do
+	local tunedWeight, tunedBulk = LootCarryTuning.For(base)
 	for _, rarity in RarityConfig.Order do
 		local variantId = RarityConfig.MakeVariantId(baseItemId, rarity)
 		local tier = RarityConfig.Tiers[rarity]
 		items[variantId] = table.freeze({
 			Name = if rarity == "Common" then base.Name else (rarity .. " " .. base.Name),
 			Value = sellValue(variantId),
-			Weight = base.Weight,
-			Bulk = base.Bulk,
+			Weight = tunedWeight,
+			Bulk = tunedBulk,
 			ShapeTag = base.ShapeTag,
 			BaseItemId = baseItemId,
 			SectionId = base.SectionId,
