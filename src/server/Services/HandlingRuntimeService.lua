@@ -27,6 +27,16 @@ local previewRemote: RemoteEvent
 local noticeRemote: RemoteEvent
 local accumulator = 0
 
+local function setAttributeIfChanged(player: Player, name: string, value: any)
+	local current = player:GetAttribute(name)
+	if typeof(current) == "number" and typeof(value) == "number" then
+		if math.abs(current - value) <= 0.001 then return end
+	elseif current == value then
+		return
+	end
+	player:SetAttribute(name, value)
+end
+
 local function statsFor(player: Player)
 	return {
 		Strength = math.max(0.1, tonumber(player:GetAttribute("CarryStrength")) or CarryConfig.Beginner.Strength),
@@ -114,19 +124,19 @@ local function penaltyKey(evaluation): string
 end
 
 local function clearHandling(player: Player, state: RuntimeState)
-	player:SetAttribute("HandlingBand", "READY")
-	player:SetAttribute("HandlingWeakness", "")
-	player:SetAttribute("HandlingRatio", 1)
-	player:SetAttribute("HandlingRequiredStrength", 0)
-	player:SetAttribute("HandlingRequiredCarrySpace", 0)
-	player:SetAttribute("HandlingRequiredControl", 0)
-	player:SetAttribute("HandlingBaseInstabilityBonus", 0)
-	player:SetAttribute("HandlingInstabilityFloor", 0)
-	player:SetAttribute("HandlingSwayMultiplier", 1)
-	player:SetAttribute("HandlingRecoveryMultiplier", 1)
-	player:SetAttribute("HandlingMovementMultiplier", 1)
-	player:SetAttribute("HandlingStrainFloor", 0)
-	player:SetAttribute("HandlingGripRemaining", 0)
+	setAttributeIfChanged(player, "HandlingBand", "READY")
+	setAttributeIfChanged(player, "HandlingWeakness", "")
+	setAttributeIfChanged(player, "HandlingRatio", 1)
+	setAttributeIfChanged(player, "HandlingRequiredStrength", 0)
+	setAttributeIfChanged(player, "HandlingRequiredCarrySpace", 0)
+	setAttributeIfChanged(player, "HandlingRequiredControl", 0)
+	setAttributeIfChanged(player, "HandlingBaseInstabilityBonus", 0)
+	setAttributeIfChanged(player, "HandlingInstabilityFloor", 0)
+	setAttributeIfChanged(player, "HandlingSwayMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingRecoveryMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingMovementMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingStrainFloor", 0)
+	setAttributeIfChanged(player, "HandlingGripRemaining", 0)
 	state.GripStartedAt = nil
 	state.GripDuration = 0
 	state.GripWarned = false
@@ -142,18 +152,18 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 		clearHandling(player, state)
 		return
 	end
-	player:SetAttribute("HandlingBand", evaluation.Band)
-	player:SetAttribute("HandlingWeakness", evaluation.Weakness)
-	player:SetAttribute("HandlingRatio", evaluation.Ratio)
-	player:SetAttribute("HandlingRequiredStrength", evaluation.RequiredStrength)
-	player:SetAttribute("HandlingRequiredCarrySpace", evaluation.RequiredCarrySpace)
-	player:SetAttribute("HandlingRequiredControl", evaluation.RequiredControl)
-	player:SetAttribute("HandlingBaseInstabilityBonus", evaluation.BaseInstabilityBonus)
-	player:SetAttribute("HandlingInstabilityFloor", evaluation.InstabilityFloor)
-	player:SetAttribute("HandlingSwayMultiplier", evaluation.SwayMultiplier)
-	player:SetAttribute("HandlingRecoveryMultiplier", evaluation.RecoveryMultiplier)
-	player:SetAttribute("HandlingMovementMultiplier", evaluation.MovementMultiplier)
-	player:SetAttribute("HandlingStrainFloor", evaluation.StrainFloor)
+	setAttributeIfChanged(player, "HandlingBand", evaluation.Band)
+	setAttributeIfChanged(player, "HandlingWeakness", evaluation.Weakness)
+	setAttributeIfChanged(player, "HandlingRatio", evaluation.Ratio)
+	setAttributeIfChanged(player, "HandlingRequiredStrength", evaluation.RequiredStrength)
+	setAttributeIfChanged(player, "HandlingRequiredCarrySpace", evaluation.RequiredCarrySpace)
+	setAttributeIfChanged(player, "HandlingRequiredControl", evaluation.RequiredControl)
+	setAttributeIfChanged(player, "HandlingBaseInstabilityBonus", evaluation.BaseInstabilityBonus)
+	setAttributeIfChanged(player, "HandlingInstabilityFloor", evaluation.InstabilityFloor)
+	setAttributeIfChanged(player, "HandlingSwayMultiplier", evaluation.SwayMultiplier)
+	setAttributeIfChanged(player, "HandlingRecoveryMultiplier", evaluation.RecoveryMultiplier)
+	setAttributeIfChanged(player, "HandlingMovementMultiplier", evaluation.MovementMultiplier)
+	setAttributeIfChanged(player, "HandlingStrainFloor", evaluation.StrainFloor)
 
 	local key = penaltyKey(evaluation)
 	if state.PenaltyKey ~= key then
@@ -173,7 +183,7 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 		end
 		local elapsed = os.clock() - (state.GripStartedAt or os.clock())
 		local remaining = math.max(0, state.GripDuration - elapsed)
-		player:SetAttribute("HandlingGripRemaining", remaining)
+		setAttributeIfChanged(player, "HandlingGripRemaining", remaining)
 		if remaining <= 0 then
 			state.GripStartedAt = nil
 			state.GripWarned = false
@@ -183,23 +193,23 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 		state.GripStartedAt = nil
 		state.GripDuration = 0
 		state.GripWarned = false
-		player:SetAttribute("HandlingGripRemaining", 0)
+		setAttributeIfChanged(player, "HandlingGripRemaining", 0)
 	end
 end
 
 local function initializePlayer(player: Player)
 	if runtime[player] then return end
 	runtime[player] = { PenaltyKey = "", GripStartedAt = nil, GripDuration = 0, GripWarned = false }
-	player:SetAttribute("HandlingBand", "READY")
-	player:SetAttribute("HandlingWeakness", "")
-	player:SetAttribute("HandlingRatio", 1)
-	player:SetAttribute("HandlingMovementMultiplier", 1)
-	player:SetAttribute("HandlingSwayMultiplier", 1)
-	player:SetAttribute("HandlingRecoveryMultiplier", 1)
-	player:SetAttribute("HandlingBaseInstabilityBonus", 0)
-	player:SetAttribute("HandlingInstabilityFloor", 0)
-	player:SetAttribute("HandlingStrainFloor", 0)
-	player:SetAttribute("HandlingGripRemaining", 0)
+	setAttributeIfChanged(player, "HandlingBand", "READY")
+	setAttributeIfChanged(player, "HandlingWeakness", "")
+	setAttributeIfChanged(player, "HandlingRatio", 1)
+	setAttributeIfChanged(player, "HandlingMovementMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingSwayMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingRecoveryMultiplier", 1)
+	setAttributeIfChanged(player, "HandlingBaseInstabilityBonus", 0)
+	setAttributeIfChanged(player, "HandlingInstabilityFloor", 0)
+	setAttributeIfChanged(player, "HandlingStrainFloor", 0)
+	setAttributeIfChanged(player, "HandlingGripRemaining", 0)
 end
 
 local function updatePlayer(player: Player)
