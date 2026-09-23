@@ -23,24 +23,34 @@ local EconomyConfig = {
 	-- Liquidating Stock later only returns a fraction of that original value.
 	DefaultSalvageRatio = 0.20,
 
-	-- SELL value is derived from PassivePerMinute * TargetBreakEvenMinutes.
-	-- M4 keeps these as early-game test values; rarity/content scaling comes later.
+	-- M4 economy-tuning patch:
+	-- KEEP was too weak relative to real early active hauling. These values are
+	-- deliberately temporary and make current Stock relevant enough to test before
+	-- M5 introduces section baseline power + rarity. SELL remains derived from the
+	-- passive rate through a short early break-even window rather than being tuned
+	-- independently.
+	--
+	-- Old -> new passive direction:
+	-- Box 50 -> 150, Microwave 120 -> 320, Lamp 90 -> 240,
+	-- Tire 180 -> 450, Chair 220 -> 600, TV 500 -> 900,
+	-- Couch 850 -> 1400, Safe 1200 -> 2000.
 	Items = table.freeze({
-		Box = table.freeze({ PassivePerMinute = 50, TargetBreakEvenMinutes = 12 }),
-		Microwave = table.freeze({ PassivePerMinute = 120, TargetBreakEvenMinutes = 15 }),
-		Lamp = table.freeze({ PassivePerMinute = 90, TargetBreakEvenMinutes = 15 }),
-		Chair = table.freeze({ PassivePerMinute = 220, TargetBreakEvenMinutes = 18 }),
-		Tire = table.freeze({ PassivePerMinute = 180, TargetBreakEvenMinutes = 18 }),
-		TV = table.freeze({ PassivePerMinute = 500, TargetBreakEvenMinutes = 20 }),
-		Couch = table.freeze({ PassivePerMinute = 850, TargetBreakEvenMinutes = 22 }),
-		Safe = table.freeze({ PassivePerMinute = 1200, TargetBreakEvenMinutes = 25 }),
+		Box = table.freeze({ PassivePerMinute = 150, TargetBreakEvenMinutes = 6 }),
+		Microwave = table.freeze({ PassivePerMinute = 320, TargetBreakEvenMinutes = 7 }),
+		Lamp = table.freeze({ PassivePerMinute = 240, TargetBreakEvenMinutes = 7 }),
+		Chair = table.freeze({ PassivePerMinute = 600, TargetBreakEvenMinutes = 8 }),
+		Tire = table.freeze({ PassivePerMinute = 450, TargetBreakEvenMinutes = 8 }),
+		TV = table.freeze({ PassivePerMinute = 900, TargetBreakEvenMinutes = 10 }),
+		Couch = table.freeze({ PassivePerMinute = 1400, TargetBreakEvenMinutes = 12 }),
+		Safe = table.freeze({ PassivePerMinute = 2000, TargetBreakEvenMinutes = 12 }),
 	}),
 
+	-- These are architectural headroom bands, not M5 rarity/content assignments.
 	ProgressionBands = table.freeze({
-		BeginnerPassivePerMinute = Vector2.new(50, 500),
-		EarlyPassivePerMinute = Vector2.new(500, 10_000),
-		EstablishedPassivePerMinute = Vector2.new(10_000, 250_000),
-		LatePassivePerMinute = Vector2.new(250_000, 10_000_000),
+		BeginnerPassivePerMinute = Vector2.new(150, 900),
+		EarlyPassivePerMinute = Vector2.new(900, 20_000),
+		EstablishedPassivePerMinute = Vector2.new(20_000, 500_000),
+		LatePassivePerMinute = Vector2.new(500_000, 10_000_000),
 	}),
 }
 
