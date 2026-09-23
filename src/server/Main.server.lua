@@ -10,7 +10,8 @@ local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessSer
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local BayService = require(Services:WaitForChild("BayService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
-local PremiumSupplyService = require(Services:WaitForChild("PremiumSupplyService"))
+local LootRarityService = require(Services:WaitForChild("LootRarityService"))
+local LootPresentationService = require(Services:WaitForChild("LootPresentationService"))
 local CarryService = require(Services:WaitForChild("CarryService"))
 local PlayerDataService = require(Services:WaitForChild("PlayerDataService"))
 local ProgressionService = require(Services:WaitForChild("ProgressionService"))
@@ -25,7 +26,11 @@ WarehouseAccessService.Start(world)
 
 BayService.Start(world)
 ItemService.Start(world)
-PremiumSupplyService.Start(world)
+-- M5B supersedes the old M4.2 TV/Couch/Safe-specific overlay with a generalized
+-- section catalog + rarity supply layer. M4.1's central replenishment cadence is
+-- still ItemService-owned and remains unchanged underneath this layer.
+LootRarityService.Start(world)
+LootPresentationService.Start(world)
 CarryService.Start(ItemService)
 
 -- PlayerData owns the earliest PlayerRemoving connection. Progression/Economy
@@ -37,4 +42,4 @@ EconomyService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService)
 
-print("[ONE TRIP] M5A long warehouse architecture loaded")
+print("[ONE TRIP] M5B loot catalog + rarity foundation loaded")
