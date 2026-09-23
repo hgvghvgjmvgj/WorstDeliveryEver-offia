@@ -68,39 +68,25 @@ end
 
 local function clearRows(parent: Instance, rowName: string)
 	for _, child in parent:GetChildren() do
-		if child:IsA("GuiObject") and child.Name == rowName then
-			child:Destroy()
-		end
+		if child:IsA("GuiObject") and child.Name == rowName then child:Destroy() end
 	end
 end
 
 local function selectedCount(): number
 	local count = 0
-	for _, enabled in selected do
-		if enabled then
-			count += 1
-		end
-	end
+	for _, enabled in selected do if enabled then count += 1 end end
 	return count
 end
 
 local function sendReviewAction(action: string, extra: {[string]: any}?)
-	if not latestSnapshot or typeof(latestSnapshot.reviewId) ~= "string" then
-		return
-	end
+	if not latestSnapshot or typeof(latestSnapshot.reviewId) ~= "string" then return end
 	local payload: {[string]: any} = { reviewId = latestSnapshot.reviewId }
-	if extra then
-		for key, value in extra do
-			payload[key] = value
-		end
-	end
+	if extra then for key, value in extra do payload[key] = value end end
 	economyAction:FireServer(action, payload)
 end
 
 local function refreshKeepButton()
-	if not latestSnapshot then
-		return
-	end
+	if not latestSnapshot then return end
 	local count = selectedCount()
 	local free = tonumber(latestSnapshot.stockFree) or 0
 	if count <= 0 then
@@ -120,10 +106,7 @@ end
 
 local function rebuildReview(snapshot)
 	local reviewId = snapshot.reviewId
-	if reviewId ~= activeReviewId then
-		table.clear(selected)
-		activeReviewId = reviewId
-	end
+	if reviewId ~= activeReviewId then table.clear(selected); activeReviewId = reviewId end
 	if typeof(reviewId) ~= "string" or reviewId == "" then
 		reviewFrame.Visible = false
 		clearRows(itemList, "ReviewItem")
@@ -140,23 +123,13 @@ local function rebuildReview(snapshot)
 
 	local stillPresent: {[string]: boolean} = {}
 	for _, item in items do
-		if typeof(item) == "table" and typeof(item.id) == "string" then
-			stillPresent[item.id] = true
-		end
+		if typeof(item) == "table" and typeof(item.id) == "string" then stillPresent[item.id] = true end
 	end
-	for id in selected do
-		if not stillPresent[id] then
-			selected[id] = nil
-		end
-	end
-
+	for id in selected do if not stillPresent[id] then selected[id] = nil end end
 	clearRows(itemList, "ReviewItem")
 	for _, item in items do
 		if typeof(item) == "table" and typeof(item.id) == "string" then
 			local id = item.id
-			local name = tostring(item.name or item.itemId or "ITEM")
-			local sell = tonumber(item.sellValue) or 0
-			local passive = tonumber(item.passiveRate) or 0
 			local row = Instance.new("TextButton")
 			row.Name = "ReviewItem"
 			row.Size = UDim2.new(1, -12, 0, 62)
@@ -170,16 +143,13 @@ local function rebuildReview(snapshot)
 			row.Text = string.format(
 				"  %s%s\n  SELL %s NOW    •    KEEP %s",
 				if selected[id] then "✓ " else "",
-				string.upper(name),
-				NumberFormat.Cash(sell),
-				NumberFormat.Rate(passive)
+				string.upper(tostring(item.name or item.itemId or "ITEM")),
+				NumberFormat.Cash(tonumber(item.sellValue) or 0),
+				NumberFormat.Rate(tonumber(item.passiveRate) or 0)
 			)
 			row.Parent = itemList
 			roundCorner(row, 7)
-			row.Activated:Connect(function()
-				selected[id] = not selected[id]
-				rebuildReview(latestSnapshot)
-			end)
+			row.Activated:Connect(function() selected[id] = not selected[id]; rebuildReview(latestSnapshot) end)
 		end
 	end
 	refreshKeepButton()
@@ -193,7 +163,6 @@ local function rebuildManage(snapshot)
 		label.TextColor3 = Color3.fromRGB(180, 189, 201)
 		return
 	end
-
 	for _, stock in stockItems do
 		if typeof(stock) == "table" then
 			local row = Instance.new("Frame")
@@ -203,44 +172,26 @@ local function rebuildManage(snapshot)
 			row.BorderSizePixel = 0
 			row.Parent = manageList
 			roundCorner(row, 7)
-
 			local slotIndex = tonumber(stock.slotIndex) or 0
-			local name = string.upper(tostring(stock.name or "ITEM"))
-			local passive = tonumber(stock.passiveRate) or 0
-			local salvage = tonumber(stock.salvageValue) or 0
-			local info = makeText(
-				row,
-				"Info",
-				("SLOT %d — %s\n%s"):format(slotIndex, name, NumberFormat.Rate(passive)),
-				UDim2.new(0.62, -8, 1, 0),
-				UDim2.fromOffset(10, 0),
-				14
-			)
+			local info = makeText(row, "Info", ("SLOT %d — %s\n%s"):format(slotIndex, string.upper(tostring(stock.name or "ITEM")), NumberFormat.Rate(tonumber(stock.passiveRate) or 0)), UDim2.new(0.62, -8, 1, 0), UDim2.fromOffset(10, 0), 14)
 			info.TextXAlignment = Enum.TextXAlignment.Left
-
-			local sellButton = makeButton(
-				row,
-				"Liquidate",
-				("LIQUIDATE\n%s"):format(NumberFormat.Cash(salvage)),
-				UDim2.new(0.36, -8, 0, 50),
-				UDim2.new(0.64, 0, 0.5, -25),
-				Color3.fromRGB(156, 101, 58)
-			)
+			local sellButton = makeButton(row, "Liquidate", ("LIQUIDATE\n%s"):format(NumberFormat.Cash(tonumber(stock.salvageValue) or 0)), UDim2.new(0.36, -8, 0, 50), UDim2.new(0.64, 0, 0.5, -25), Color3.fromRGB(156, 101, 58))
 			sellButton.TextSize = 13
 			sellButton.Activated:Connect(function()
-				if typeof(stock.stockId) == "string" then
-					economyAction:FireServer("SellStock", {
-						slotIndex = slotIndex,
-						stockId = stock.stockId,
-					})
-				end
+				if typeof(stock.stockId) == "string" then economyAction:FireServer("SellStock", { slotIndex = slotIndex, stockId = stock.stockId }) end
 			end)
 		end
 	end
 end
 
+local function currentCash(snapshot: any): number
+	local attribute = player:GetAttribute("Cash")
+	if typeof(attribute) == "number" then return attribute end
+	return tonumber(snapshot and snapshot.cash) or 0
+end
+
 local function refreshSummary(snapshot)
-	cashLabel.Text = "CASH  " .. NumberFormat.Cash(tonumber(snapshot.cash) or 0)
+	cashLabel.Text = "CASH  " .. NumberFormat.Cash(currentCash(snapshot))
 	local occupied = tonumber(snapshot.stockOccupied) or 0
 	local capacity = tonumber(snapshot.stockCapacity) or 0
 	local free = tonumber(snapshot.stockFree) or 0
@@ -291,7 +242,6 @@ function Controller.Start()
 	sizeConstraint.MinSize = Vector2.new(300, 330)
 	sizeConstraint.MaxSize = Vector2.new(680, 540)
 	sizeConstraint.Parent = reviewFrame
-
 	reviewTitle = makeText(reviewFrame, "Title", "DELIVERY COMPLETE", UDim2.new(1, -24, 0, 34), UDim2.fromOffset(12, 10), 22)
 	reviewTitle.TextXAlignment = Enum.TextXAlignment.Left
 	reviewStockLabel = makeText(reviewFrame, "StockInfo", "STOCK: 0 / 3", UDim2.new(1, -24, 0, 24), UDim2.fromOffset(12, 44), 13)
@@ -311,13 +261,8 @@ function Controller.Start()
 	itemList.Parent = reviewFrame
 	roundCorner(itemList, 8)
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 6)
-	padding.PaddingBottom = UDim.new(0, 6)
-	padding.PaddingLeft = UDim.new(0, 6)
-	padding.Parent = itemList
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
-	layout.Parent = itemList
+	padding.PaddingTop = UDim.new(0, 6); padding.PaddingBottom = UDim.new(0, 6); padding.PaddingLeft = UDim.new(0, 6); padding.Parent = itemList
+	local layout = Instance.new("UIListLayout"); layout.Padding = UDim.new(0, 6); layout.Parent = itemList
 
 	keepSelectedButton = makeButton(reviewFrame, "KeepSelected", "SELECT ITEMS TO KEEP", UDim2.new(0.48, -8, 0, 48), UDim2.new(0, 12, 1, -104), Color3.fromRGB(83, 91, 104))
 	sellRestButton = makeButton(reviewFrame, "SellRest", "SELL REST", UDim2.new(0.52, -16, 0, 48), UDim2.new(0.48, 8, 1, -104), Color3.fromRGB(173, 119, 59))
@@ -348,29 +293,17 @@ function Controller.Start()
 	manageList.ScrollBarThickness = 6
 	manageList.Parent = manageFrame
 	roundCorner(manageList, 8)
-	local managePadding = Instance.new("UIPadding")
-	managePadding.PaddingTop = UDim.new(0, 6)
-	managePadding.PaddingLeft = UDim.new(0, 6)
-	managePadding.PaddingBottom = UDim.new(0, 6)
-	managePadding.Parent = manageList
-	local manageLayout = Instance.new("UIListLayout")
-	manageLayout.Padding = UDim.new(0, 6)
-	manageLayout.Parent = manageList
+	local managePadding = Instance.new("UIPadding"); managePadding.PaddingTop = UDim.new(0, 6); managePadding.PaddingLeft = UDim.new(0, 6); managePadding.PaddingBottom = UDim.new(0, 6); managePadding.Parent = manageList
+	local manageLayout = Instance.new("UIListLayout"); manageLayout.Padding = UDim.new(0, 6); manageLayout.Parent = manageList
 
 	keepSelectedButton.Activated:Connect(function()
 		if not keepSelectedButton.Active then return end
-		local ids = {}
-		for id, enabled in selected do
-			if enabled then table.insert(ids, id) end
-		end
+		local ids = {}; for id, enabled in selected do if enabled then table.insert(ids, id) end end
 		sendReviewAction("KeepSelected", { itemIds = ids })
 	end)
 	sellRestButton.Activated:Connect(function() sendReviewAction("SellRest", nil) end)
 	sellAllButton.Activated:Connect(function() sendReviewAction("SellAll", nil) end)
-	manageButton.Activated:Connect(function()
-		manageFrame.Visible = not manageFrame.Visible
-		if latestSnapshot then rebuildManage(latestSnapshot) end
-	end)
+	manageButton.Activated:Connect(function() manageFrame.Visible = not manageFrame.Visible; if latestSnapshot then rebuildManage(latestSnapshot) end end)
 	closeManage.Activated:Connect(function() manageFrame.Visible = false end)
 
 	local remoteFolder = ReplicatedStorage:WaitForChild(RemoteNames.Folder)
@@ -382,6 +315,9 @@ function Controller.Start()
 		refreshSummary(snapshot)
 		rebuildReview(snapshot)
 		if manageFrame.Visible then rebuildManage(snapshot) end
+	end)
+	player:GetAttributeChangedSignal("Cash"):Connect(function()
+		if latestSnapshot and cashLabel then cashLabel.Text = "CASH  " .. NumberFormat.Cash(currentCash(latestSnapshot)) end
 	end)
 	economyAction:FireServer("RequestState", {})
 end
