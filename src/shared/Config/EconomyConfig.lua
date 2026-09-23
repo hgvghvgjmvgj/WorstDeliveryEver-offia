@@ -8,27 +8,32 @@ local EconomyConfig = {
 
 	-- Change these Player attributes on the SERVER while testing. No code edits needed.
 	StockSlotCapacityAttribute = "StockSlotCapacity",
-	SaleSpeedAttribute = "DevSaleSpeedMultiplier",
-	DefaultSaleSpeedMultiplier = 1,
-	MinSaleSpeedMultiplier = 0.1,
-	MaxSaleSpeedMultiplier = 30,
+	PassiveIncomeMultiplierAttribute = "DevPassiveIncomeMultiplier",
+	DefaultPassiveIncomeMultiplier = 1,
+	MinPassiveIncomeMultiplier = 0.1,
+	MaxPassiveIncomeMultiplier = 120,
 
-	-- Delivery review is temporary server state only in M3. M4 will persist Cash/listings.
 	Review = table.freeze({
 		ActionCooldownSeconds = 0.08,
 	}),
 
-	-- Per-item economics deliberately differ a little so Stock is not simply one
-	-- identical multiplier/timer applied to every object. Values are prototype tuning.
+	Passive = table.freeze({
+		CalculationIntervalSeconds = 1.0,
+	}),
+
+	-- M3 prototype values. SELL is deliberately worth far more in the short term.
+	-- KEEP sacrifices that immediate payout for slow indefinite passive income.
+	-- Future rarity/buyer/progression modifiers should be applied through the
+	-- centralized economy calculation path, not scattered through gameplay code.
 	Items = table.freeze({
-		Box = table.freeze({ StockMultiplier = 1.30, BaseSaleDuration = 20 }),
-		Microwave = table.freeze({ StockMultiplier = 1.38, BaseSaleDuration = 30 }),
-		Lamp = table.freeze({ StockMultiplier = 1.48, BaseSaleDuration = 38 }),
-		Chair = table.freeze({ StockMultiplier = 1.34, BaseSaleDuration = 42 }),
-		Tire = table.freeze({ StockMultiplier = 1.50, BaseSaleDuration = 32 }),
-		TV = table.freeze({ StockMultiplier = 1.45, BaseSaleDuration = 50 }),
-		Couch = table.freeze({ StockMultiplier = 1.40, BaseSaleDuration = 65 }),
-		Safe = table.freeze({ StockMultiplier = 1.55, BaseSaleDuration = 75 }),
+		Box = table.freeze({ SellValue = 150, PassivePerMinute = 1 }),
+		Microwave = table.freeze({ SellValue = 400, PassivePerMinute = 2 }),
+		Lamp = table.freeze({ SellValue = 400, PassivePerMinute = 2 }),
+		Chair = table.freeze({ SellValue = 550, PassivePerMinute = 3 }),
+		Tire = table.freeze({ SellValue = 300, PassivePerMinute = 2 }),
+		TV = table.freeze({ SellValue = 700, PassivePerMinute = 4 }),
+		Couch = table.freeze({ SellValue = 1000, PassivePerMinute = 5 }),
+		Safe = table.freeze({ SellValue = 1000, PassivePerMinute = 6 }),
 	}),
 }
 
