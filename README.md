@@ -42,7 +42,7 @@ On the next persistent load, the server atomically calculates:
 
 using server time, then claims the profile session in the same UpdateAsync transaction. This prevents reconnecting repeatedly to claim the same absence.
 
-Current temporary offline cap: **4 hours**.
+Current temporary offline cap: **2 hours**.
 
 Invalid/negative/future elapsed time produces no offline award. The client clock is never trusted.
 
