@@ -24,4 +24,4 @@ CarryService.Start(ItemService)
 EconomyService.Start()
 UnloadService.Start(world, CarryService, EconomyService)
 
-print("[ONE TRIP] M3 correction: big-number economy + sector warehouse loaded")
+print("[ONE TRIP] M3 Map Architecture V2 loaded")
