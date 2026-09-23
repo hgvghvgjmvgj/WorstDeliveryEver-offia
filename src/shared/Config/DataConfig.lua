@@ -12,9 +12,9 @@ return table.freeze({
 	SessionLockTimeoutSeconds = 180,
 	BindToCloseTimeoutSeconds = 25,
 
-	-- Temporary M4 test value. Returning should feel rewarding without allowing
-	-- a long absence to skip the active game.
-	OfflineEarningsCapSeconds = 4 * 60 * 60,
+	-- Temporary M4 test value. At current high-end early Stock, two capped hours
+	-- are rewarding without being close enough to complete the finite M4 test tree.
+	OfflineEarningsCapSeconds = 2 * 60 * 60,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
 	-- Studio can still be playtested when API Services are disabled, but that
