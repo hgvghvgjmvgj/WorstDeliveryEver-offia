@@ -10,6 +10,7 @@ local BayService = require(script.Parent:WaitForChild("BayService"))
 local PlayerDataService = require(script.Parent:WaitForChild("PlayerDataService"))
 
 local TrophyService = {}
+local cachedBays: {[Player]: Model} = {}
 
 local function makePart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
 	local part = Instance.new("Part")
@@ -80,6 +81,7 @@ function TrophyService.RefreshPlayer(player: Player)
 	local profile = PlayerDataService.GetProfile(player)
 	local bay = BayService.GetBayModel(player)
 	if not profile or not bay then return end
+	cachedBays[player] = bay
 	clearShowcase(bay)
 
 	local folder = Instance.new("Folder")
@@ -114,8 +116,9 @@ function TrophyService.Start()
 		task.defer(TrophyService.RefreshPlayer, player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		local bay = BayService.GetBayModel(player)
-		if bay then clearShowcase(bay) end
+		local bay = cachedBays[player]
+		if bay and bay.Parent then clearShowcase(bay) end
+		cachedBays[player] = nil
 	end)
 end
 
