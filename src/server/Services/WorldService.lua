@@ -63,15 +63,6 @@ local function addBillboard(
 	return label
 end
 
-local function depthName(depth: number): string
-	if depth >= 3 then
-		return "Deep"
-	elseif depth >= 2 then
-		return "Mid"
-	end
-	return "Near"
-end
-
 local function laneBetween(
 	parent: Instance,
 	name: string,
@@ -111,7 +102,7 @@ local function makeLabelAnchor(
 	anchor.CanCollide = false
 	anchor.CanTouch = false
 	anchor.CanQuery = false
-	addBillboard(anchor, "Label", text, color, UDim2.fromOffset(240, 44), maxDistance or 110)
+	addBillboard(anchor, "Label", text, color, UDim2.fromOffset(280, 48), maxDistance or 110)
 end
 
 local function buildLoadingApron(root: Folder)
@@ -140,13 +131,14 @@ local function buildLoadingApron(root: Folder)
 	)
 	crossing.CanCollide = false
 	crossing.CanTouch = false
+	crossing:SetAttribute("RouteType", "FrontCrossing")
 
-	for index, x in { -292, 292 } do
+	for index, x in { -312, 312 } do
 		local staging = makePart(
 			folder,
 			("OversizedStaging_%02d"):format(index),
-			Vector3.new(42, 0.12, 34),
-			CFrame.new(x, 0.15, 145),
+			Vector3.new(34, 0.12, 34),
+			CFrame.new(x, 0.15, 350),
 			Color3.fromRGB(82, 88, 98),
 			0.25
 		)
@@ -158,69 +150,96 @@ local function buildLoadingApron(root: Folder)
 	makeLabelAnchor(
 		folder,
 		"DispatchLabelAnchor",
-		Vector3.new(0, 1.2, 148),
+		Vector3.new(0, 1.2, 372),
 		"RECEIVING / DISPATCH",
 		Color3.fromRGB(216, 226, 237),
-		130
+		145
 	)
 end
 
-local function buildCrossAisles(root: Folder)
+local function buildRouteNetwork(root: Folder)
 	local folder = Instance.new("Folder")
-	folder.Name = "CrossAisles"
+	folder.Name = "RouteNetwork"
 	folder.Parent = root
 
+	local freightConfig = WarehouseConfig.Routes.MainFreight
+	local freight = laneBetween(
+		folder,
+		"MainFreightRoute",
+		freightConfig.Start,
+		freightConfig.Finish,
+		freightConfig.Width,
+		Color3.fromRGB(119, 126, 136),
+		0.48
+	)
+	freight:SetAttribute("RouteType", "Freight")
+
+	local function buildService(name: string, points)
+		local serviceFolder = Instance.new("Folder")
+		serviceFolder.Name = name
+		serviceFolder.Parent = folder
+		for index = 1, #points - 1 do
+			local segment = laneBetween(
+				serviceFolder,
+				("Segment_%02d"):format(index),
+				points[index],
+				points[index + 1],
+				WarehouseConfig.Routes.ServiceWidth,
+				Color3.fromRGB(145, 122, 82),
+				0.58
+			)
+			segment:SetAttribute("RouteType", "ServiceShortcut")
+		end
+	end
+
+	buildService("LeftServiceRoute", WarehouseConfig.Routes.LeftService)
+	buildService("RightServiceRoute", WarehouseConfig.Routes.RightService)
+
+	local crossFolder = Instance.new("Folder")
+	crossFolder.Name = "CrossAisles"
+	crossFolder.Parent = folder
 	for _, aisle in WarehouseConfig.CrossAisles do
 		local part = makePart(
-			folder,
+			crossFolder,
 			aisle.Name,
-			Vector3.new(638, 0.09, aisle.Width),
+			Vector3.new(WarehouseConfig.Section.Width, 0.09, aisle.Width),
 			CFrame.new(0, 0.15, aisle.Z),
 			Color3.fromRGB(112, 118, 128),
-			0.48
+			0.47
 		)
 		part.CanCollide = false
 		part.CanTouch = false
 		part:SetAttribute("RouteType", "CrossAisle")
-
-		makeLabelAnchor(
-			folder,
-			aisle.Name .. "_LabelAnchor",
-			Vector3.new(0, 1.0, aisle.Z),
-			string.gsub(aisle.Name, "_", " "),
-			Color3.fromRGB(195, 202, 213),
-			86
-		)
 	end
 end
 
-local function structureVisual(sectorColor: Color3, kind: string): (Color3, Enum.Material, number, boolean)
+local function structureVisual(sectionColor: Color3, kind: string): (Color3, Enum.Material, number, boolean)
 	if kind == "Rack" then
-		return sectorColor:Lerp(Color3.fromRGB(43, 46, 52), 0.48), Enum.Material.Metal, 0.06, true
+		return sectionColor:Lerp(Color3.fromRGB(43, 46, 52), 0.48), Enum.Material.Metal, 0.06, true
 	elseif kind == "Block" then
-		return sectorColor:Lerp(Color3.fromRGB(60, 64, 72), 0.32), Enum.Material.Metal, 0.10, true
+		return sectionColor:Lerp(Color3.fromRGB(60, 64, 72), 0.32), Enum.Material.Metal, 0.10, true
+	elseif kind == "MachineBay" then
+		return sectionColor:Lerp(Color3.fromRGB(48, 51, 53), 0.40), Enum.Material.Metal, 0.12, true
 	elseif kind == "Divider" then
-		return sectorColor:Lerp(Color3.fromRGB(55, 58, 64), 0.40), Enum.Material.Metal, 0.12, true
+		return sectionColor:Lerp(Color3.fromRGB(55, 58, 64), 0.40), Enum.Material.Metal, 0.12, true
 	elseif kind == "Cage" then
 		return Color3.fromRGB(92, 94, 86), Enum.Material.Metal, 0.35, true
 	elseif kind == "Staging" then
-		return sectorColor:Lerp(Color3.fromRGB(115, 112, 102), 0.20), Enum.Material.Concrete, 0.48, false
-	else
-		return sectorColor:Lerp(Color3.fromRGB(120, 123, 129), 0.20), Enum.Material.Concrete, 0.42, false
+		return sectionColor:Lerp(Color3.fromRGB(115, 112, 102), 0.20), Enum.Material.Concrete, 0.48, false
 	end
+	return sectionColor:Lerp(Color3.fromRGB(120, 123, 129), 0.20), Enum.Material.Concrete, 0.42, false
 end
 
 local function buildOpportunity(
 	spawnFolder: Folder,
-	sectorKey: string,
+	sectionKey: string,
+	section,
 	index: number,
 	opportunity
 )
-	local depth = opportunity.Depth
-	local zoneName = depthName(depth)
 	local marker = makePart(
 		spawnFolder,
-		("%s_%02d_%s_%s"):format(sectorKey, index, zoneName, opportunity.ItemId),
+		("%s_%02d_%s"):format(sectionKey, index, opportunity.ItemId),
 		Vector3.new(1.2, 0.08, 1.2),
 		CFrame.new(opportunity.Position + Vector3.new(0, 0.04, 0)),
 		Color3.fromRGB(126, 132, 143),
@@ -230,21 +249,25 @@ local function buildOpportunity(
 	marker.CanTouch = false
 	marker.CanQuery = false
 	marker:SetAttribute("ItemId", opportunity.ItemId)
-	marker:SetAttribute("ZoneName", zoneName)
-	marker:SetAttribute("ZoneDepth", depth)
-	marker:SetAttribute("SectorName", sectorKey)
+	-- ZoneDepth remains an internal supply-band input for the M4.1 controller.
+	-- Players see the real section identity instead of Near/Mid/Deep labels.
+	marker:SetAttribute("ZoneName", section.DisplayName)
+	marker:SetAttribute("ZoneDepth", opportunity.SupplyDepth)
+	marker:SetAttribute("SectorName", sectionKey)
+	marker:SetAttribute("SectionIndex", section.Index)
+	marker:SetAttribute("SectionDisplayName", section.DisplayName)
 	marker:SetAttribute("OpportunityName", opportunity.Name)
 	marker:SetAttribute("OpportunityKind", opportunity.Kind)
 	marker:SetAttribute("RestockSeconds", WarehouseConfig.RestockSeconds[opportunity.ItemId] or 1.8)
 end
 
-local function buildSectorStructures(model: Model, sectorKey: string, sector)
+local function buildSectionStructures(model: Model, sectionKey: string, section)
 	local folder = Instance.new("Folder")
 	folder.Name = "StorageStructures"
 	folder.Parent = model
 
-	for index, structure in sector.Structures do
-		local color, material, transparency, collides = structureVisual(sector.Color, structure.Kind)
+	for index, structure in section.Structures do
+		local color, material, transparency, collides = structureVisual(section.Color, structure.Kind)
 		local part = makePart(
 			folder,
 			("%02d_%s"):format(index, structure.Name),
@@ -258,152 +281,169 @@ local function buildSectorStructures(model: Model, sectorKey: string, sector)
 		part.CanTouch = false
 		part:SetAttribute("GrayboxStructure", true)
 		part:SetAttribute("StructureKind", structure.Kind)
-		part:SetAttribute("SectorName", sectorKey)
+		part:SetAttribute("SectorName", sectionKey)
+		part:SetAttribute("SectionIndex", section.Index)
 	end
 end
 
-local function buildServiceRoute(model: Model, sectorKey: string, sector)
+local function buildSectionIdentity(model: Model, sectionKey: string, section)
+	local identity = Instance.new("Folder")
+	identity.Name = "SectionIdentity"
+	identity.Parent = model
+
+	for _, x in { -306, 306 } do
+		local post = makePart(
+			identity,
+			("TransitionPost_%d"):format(x),
+			Vector3.new(6, 16, 4),
+			CFrame.new(x, 8, section.FrontZ - 2),
+			section.Color:Lerp(Color3.fromRGB(50, 52, 58), 0.35),
+			0.08
+		)
+		post.Material = Enum.Material.Metal
+		post.CanTouch = false
+	end
+
+	local beam = makePart(
+		identity,
+		"TransitionBeam",
+		Vector3.new(618, 2.5, 3),
+		CFrame.new(0, 15, section.FrontZ - 2),
+		section.Color:Lerp(Color3.fromRGB(55, 57, 64), 0.35),
+		0.12
+	)
+	beam.Material = Enum.Material.Metal
+	beam.CanCollide = false
+	beam.CanTouch = false
+
+	makeLabelAnchor(
+		identity,
+		"SectionSignAnchor",
+		Vector3.new(-277, 4.5, section.FrontZ - 5),
+		section.DisplayName,
+		Color3.fromRGB(235, 238, 244),
+		132
+	)
+end
+
+local function buildSectionBranches(model: Model, sectionKey: string, section)
 	local folder = Instance.new("Folder")
-	folder.Name = "ServiceRoute"
+	folder.Name = "StorageBranches"
 	folder.Parent = model
 
-	-- This path deliberately spans slightly less depth than the full freight route
-	-- and cuts diagonally between storage masses. It is shorter, but its narrower
-	-- width and repeated direction changes create more Sway risk for giant loads.
-	local inward = if sector.CenterX < 0 then 1 else -1
-	local points = {
-		Vector3.new(sector.CenterX + inward * 20, 0, 98),
-		Vector3.new(sector.CenterX + inward * 25, 0, 30),
-		Vector3.new(sector.CenterX + inward * 15, 0, -55),
-		Vector3.new(sector.CenterX + inward * 30, 0, -176),
-	}
+	-- One clear lateral connector through the middle of every section creates
+	-- freight <-> service switching without turning the facility into tunnels.
+	local connector = laneBetween(
+		folder,
+		"SectionCrossConnector",
+		Vector3.new(-286, 0, section.CenterZ),
+		Vector3.new(286, 0, section.CenterZ),
+		WarehouseConfig.Section.InternalConnectorWidth,
+		Color3.fromRGB(104, 109, 118),
+		0.67
+	)
+	connector:SetAttribute("RouteType", "SectionConnector")
+	connector:SetAttribute("SectorName", sectionKey)
 
-	for index = 1, #points - 1 do
-		local segment = laneBetween(
-			folder,
-			("Service_%02d"):format(index),
-			points[index],
-			points[index + 1],
-			WarehouseConfig.Sector.ServiceLaneWidth,
-			Color3.fromRGB(145, 122, 82),
-			0.56
-		)
-		segment:SetAttribute("RouteType", "ServiceShortcut")
-		segment:SetAttribute("SectorName", sectorKey)
+	for index, opportunity in section.Opportunities do
+		local x = opportunity.Position.X
+		local routeX = 0
+		if x <= -145 then
+			routeX = -195
+		elseif x >= 145 then
+			routeX = 195
+		end
+		if math.abs(x - routeX) >= 25 then
+			local branch = laneBetween(
+				folder,
+				("OpportunityBranch_%02d"):format(index),
+				Vector3.new(routeX, 0, opportunity.Position.Z),
+				opportunity.Position,
+				12,
+				Color3.fromRGB(101, 105, 113),
+				0.73
+			)
+			branch:SetAttribute("RouteType", "StorageBranch")
+			branch:SetAttribute("SectorName", sectionKey)
+		end
 	end
 end
 
-local function buildSector(
+local function buildSection(
 	root: Folder,
 	spawnFolder: Folder,
-	sectorKey: string,
-	sector
+	sectionKey: string,
+	section
 )
 	local model = Instance.new("Model")
-	model.Name = sectorKey
-	model:SetAttribute("SectorName", sectorKey)
-	model:SetAttribute("GrayboxStyle", sector.Style)
+	model.Name = sectionKey
+	model:SetAttribute("SectorName", sectionKey)
+	model:SetAttribute("SectionIndex", section.Index)
+	model:SetAttribute("DisplayName", section.DisplayName)
+	model:SetAttribute("GrayboxStyle", section.Style)
+	model:SetAttribute("FrontZ", section.FrontZ)
+	model:SetAttribute("BackZ", section.BackZ)
 	model.Parent = root
 
-	local centerZ = (WarehouseConfig.Sector.FrontZ + WarehouseConfig.Sector.BackZ) * 0.5
-	local length = WarehouseConfig.Sector.FrontZ - WarehouseConfig.Sector.BackZ
+	local length = section.FrontZ - section.BackZ
 	local floor = makePart(
 		model,
-		"SectorFloor",
-		Vector3.new(WarehouseConfig.Sector.Width, 0.08, length),
-		CFrame.new(sector.CenterX, 0.11, centerZ),
-		sector.Color,
+		"SectionFloor",
+		Vector3.new(WarehouseConfig.Section.Width, 0.08, length),
+		CFrame.new(0, 0.11, section.CenterZ),
+		section.Color,
 		0.90
 	)
 	floor.CanCollide = false
 	floor.CanTouch = false
 
-	local freight = makePart(
-		model,
-		"MainFreightRoute",
-		Vector3.new(WarehouseConfig.Sector.FreightLaneWidth, 0.09, length),
-		CFrame.new(sector.CenterX, 0.15, centerZ),
-		Color3.fromRGB(119, 126, 136),
-		0.52
-	)
-	freight.CanCollide = false
-	freight.CanTouch = false
-	freight:SetAttribute("RouteType", "Freight")
+	buildSectionStructures(model, sectionKey, section)
+	buildSectionBranches(model, sectionKey, section)
+	buildSectionIdentity(model, sectionKey, section)
 
-	local branchFolder = Instance.new("Folder")
-	branchFolder.Name = "SideBranches"
-	branchFolder.Parent = model
-	for index, opportunity in sector.Opportunities do
-		local deltaX = opportunity.Position.X - sector.CenterX
-		if math.abs(deltaX) >= 24 then
-			local branch = laneBetween(
-				branchFolder,
-				("Branch_%02d"):format(index),
-				Vector3.new(sector.CenterX, 0, opportunity.Position.Z),
-				opportunity.Position,
-				14,
-				Color3.fromRGB(105, 109, 117),
-				0.70
-			)
-			branch:SetAttribute("RouteType", "SideBranch")
-		end
-	end
-
-	buildSectorStructures(model, sectorKey, sector)
-	buildServiceRoute(model, sectorKey, sector)
-
-	makeLabelAnchor(
-		model,
-		"SectorSignAnchor",
-		Vector3.new(sector.CenterX, 1.2, 101),
-		sector.DisplayName,
-		Color3.fromRGB(235, 238, 244),
-		118
-	)
-
-	for opportunityIndex, opportunity in sector.Opportunities do
-		buildOpportunity(spawnFolder, sectorKey, opportunityIndex, opportunity)
+	for opportunityIndex, opportunity in section.Opportunities do
+		buildOpportunity(spawnFolder, sectionKey, section, opportunityIndex, opportunity)
 	end
 end
 
-local function buildDeepStorageLandmark(root: Folder)
+local function buildBackline(root: Folder)
 	local folder = Instance.new("Folder")
-	folder.Name = "SecureStorage"
+	folder.Name = "CurrentWarehouseBackline"
 	folder.Parent = root
 
 	local boundary = makePart(
 		folder,
 		"SecureBackline",
-		Vector3.new(630, 0.12, 8),
-		CFrame.new(0, 0.16, -190),
+		Vector3.new(WarehouseConfig.Section.Width, 0.12, 8),
+		CFrame.new(0, 0.16, -306),
 		Color3.fromRGB(123, 93, 74),
 		0.28
 	)
 	boundary.CanCollide = false
 	boundary.CanTouch = false
-	boundary:SetAttribute("ReservedPurpose", "FutureSecureExpansion")
+	boundary:SetAttribute("ReservedPurpose", "FutureFacilityExpansion")
 
-	for _, x in { -240, -80, 80, 240 } do
-		local doorFrame = makePart(
+	for _, x in { -240, 0, 240 } do
+		local frame = makePart(
 			folder,
-			("SecureDoor_%d"):format(x),
-			Vector3.new(54, 18, 4),
-			CFrame.new(x, 9, -199),
+			("ExpansionDoor_%d"):format(x),
+			Vector3.new(64, 18, 4),
+			CFrame.new(x, 9, -316),
 			Color3.fromRGB(72, 69, 66),
 			0.20
 		)
-		doorFrame.Material = Enum.Material.Metal
-		doorFrame.CanCollide = true
-		doorFrame:SetAttribute("ReservedPurpose", "FutureSecureStorage")
+		frame.Material = Enum.Material.Metal
+		frame.CanCollide = true
+		frame:SetAttribute("ReservedPurpose", "FutureWarehouseExpansion")
 	end
 
 	makeLabelAnchor(
 		folder,
-		"SecureLabelAnchor",
-		Vector3.new(0, 1.4, -178),
-		"DEEP / SECURE STORAGE",
+		"ExpansionLabelAnchor",
+		Vector3.new(0, 1.4, -294),
+		"CURRENT FACILITY LIMIT",
 		Color3.fromRGB(238, 210, 185),
-		128
+		120
 	)
 end
 
@@ -417,16 +457,16 @@ local function buildWarehouseGameplay(root: Folder)
 	spawnFolder.Parent = root
 
 	buildLoadingApron(gameplay)
-	buildCrossAisles(gameplay)
+	buildRouteNetwork(gameplay)
 
-	local sectorFolder = Instance.new("Folder")
-	sectorFolder.Name = "Sectors"
-	sectorFolder.Parent = gameplay
-	for _, key in { "General", "Appliances", "Furniture", "Industrial" } do
-		buildSector(sectorFolder, spawnFolder, key, WarehouseConfig.Sectors[key])
+	local sectionFolder = Instance.new("Folder")
+	sectionFolder.Name = "Sections"
+	sectionFolder.Parent = gameplay
+	for _, key in WarehouseConfig.SectionOrder do
+		buildSection(sectionFolder, spawnFolder, key, WarehouseConfig.Sectors[key])
 	end
 
-	buildDeepStorageLandmark(gameplay)
+	buildBackline(gameplay)
 end
 
 local function buildStockSlots(bay: Model, bayCFrame: CFrame)
@@ -613,6 +653,20 @@ local function buildExpansionPoints(root: Folder)
 	end
 end
 
+local function publishM5AMetrics(root: Folder)
+	root:SetAttribute("M5A_FacilityWidthStuds", WarehouseConfig.FootprintSize.X)
+	root:SetAttribute("M5A_FacilityLengthStuds", WarehouseConfig.FootprintSize.Z)
+	root:SetAttribute("M5A_SectionCount", #WarehouseConfig.SectionOrder)
+	root:SetAttribute("M5A_FreightStartZ", WarehouseConfig.Routes.MainFreight.Start.Z)
+	root:SetAttribute("M5A_FreightEndZ", WarehouseConfig.Routes.MainFreight.Finish.Z)
+	for _, key in WarehouseConfig.SectionOrder do
+		local section = WarehouseConfig.Sectors[key]
+		root:SetAttribute(("M5A_%s_CenterZ"):format(key), section.CenterZ)
+		root:SetAttribute(("M5A_%s_FrontZ"):format(key), section.FrontZ)
+		root:SetAttribute(("M5A_%s_BackZ"):format(key), section.BackZ)
+	end
+end
+
 function WorldService.Build(): Folder
 	local previous = Workspace:FindFirstChild(ROOT_NAME)
 	if previous then
@@ -645,6 +699,7 @@ function WorldService.Build(): Folder
 		buildBay(baysFolder, index)
 	end
 	buildExpansionPoints(root)
+	publishM5AMetrics(root)
 
 	local fallbackSpawn = Instance.new("SpawnLocation")
 	fallbackSpawn.Name = "FallbackSpawn"
