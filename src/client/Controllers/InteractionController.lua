@@ -93,13 +93,17 @@ function Controller.Start(uiController: any)
 	ContextActionService:SetTitle("OneTripGrab", "GRAB")
 	ContextActionService:SetPosition("OneTripGrab", UDim2.new(1, -150, 1, -180))
 
+	-- Ditching the top item is an intentional emergency-sacrifice mechanic, so
+	-- touch players need the same control as keyboard/controller players.
 	ContextActionService:BindAction(
 		"OneTripDrop",
 		dropAction,
-		false,
+		true,
 		Enum.KeyCode.Q,
 		Enum.KeyCode.ButtonB
 	)
+	ContextActionService:SetTitle("OneTripDrop", "DITCH")
+	ContextActionService:SetPosition("OneTripDrop", UDim2.new(1, -255, 1, -180))
 
 	RunService.RenderStepped:Connect(function(dt)
 		scanAccumulator += dt
@@ -124,10 +128,17 @@ function Controller.Start(uiController: any)
 			uiController.SetNearbyItem(nil)
 		end
 
-		local touchButton = ContextActionService:GetButton("OneTripGrab")
-		if touchButton then
-			touchButton.Visible = nearestItem ~= nil
-			touchButton.Size = UDim2.fromOffset(96, 96)
+		local grabButton = ContextActionService:GetButton("OneTripGrab")
+		if grabButton then
+			grabButton.Visible = nearestItem ~= nil
+			grabButton.Size = UDim2.fromOffset(96, 96)
+		end
+
+		local ditchButton = ContextActionService:GetButton("OneTripDrop")
+		if ditchButton then
+			-- CarryState remains server-authoritative; keeping the emergency button
+			-- available avoids a second client-side source of truth for item count.
+			ditchButton.Size = UDim2.fromOffset(78, 78)
 		end
 	end)
 end
