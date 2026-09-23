@@ -42,6 +42,8 @@ function RemoteService.Initialize()
 	ensureRemote(RemoteNames.PrototypeFeedback)
 	ensureRemote(RemoteNames.EconomyState)
 	ensureRemote(RemoteNames.EconomyAction)
+	ensureRemote(RemoteNames.ProgressionState)
+	ensureRemote(RemoteNames.ProgressionAction)
 end
 
 function RemoteService.Get(name: string): RemoteEvent
