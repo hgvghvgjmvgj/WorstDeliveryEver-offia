@@ -2,7 +2,9 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	DataStoreName = "OneTripPlayerData_M4_1SupplyTest_v1",
+	-- Separate temporary namespace so M4.2 starts with fresh Cash/upgrades/Stock
+	-- and does not inherit persisted M4.1 Stock rates.
+	DataStoreName = "OneTripPlayerData_M4_2PassiveTest_v1",
 	KeyPrefix = "player_",
 
 	AutosaveSeconds = 60,
@@ -12,9 +14,11 @@ return table.freeze({
 	SessionLockTimeoutSeconds = 180,
 	BindToCloseTimeoutSeconds = 25,
 
-	-- Temporary M4 test value. At current high-end early Stock, two capped hours
-	-- are rewarding without being close enough to complete the finite M4 test tree.
-	OfflineEarningsCapSeconds = 2 * 60 * 60,
+	-- M4.2 temporary offline sanity cap. Stronger passive Stock makes the former
+	-- two-hour cap disproportionately large for the finite M4 test progression.
+	-- Thirty minutes still makes returning rewarding without letting idle time
+	-- replace a large amount of active warehouse play.
+	OfflineEarningsCapSeconds = 30 * 60,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
 	-- Studio can still be playtested when API Services are disabled, but that
