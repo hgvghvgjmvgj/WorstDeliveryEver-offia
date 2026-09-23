@@ -22,24 +22,24 @@ type DeliveredEntry = {
 	State: string,
 }
 
-type Listing = {
-	ListingId: string,
+type StockEntry = {
+	StockId: string,
 	ItemId: string,
 	SourceReviewItemId: string,
 	SlotIndex: number,
-	ListingStartUnix: number,
-	SaleDurationSeconds: number,
-	ExpectedPayout: number,
-	SaleReadyServerTime: number,
+	StockedAtUnix: number,
+	PassiveRatePerMinute: number,
 }
 
 type EconomyState = {
 	Cash: number,
 	ReviewId: string?,
 	Delivered: {DeliveredEntry},
-	Listings: {[number]: Listing},
+	Stock: {[number]: StockEntry},
 	LastActionAt: number,
 	Bay: Model?,
+	PassiveRemainder: number,
+	LastPassiveServerTime: number,
 }
 
 local states: {[Player]: EconomyState} = {}
@@ -48,32 +48,29 @@ local economyActionRemote: RemoteEvent
 local noticeRemote: RemoteEvent
 local heartbeatAccumulator = 0
 
-local function quickSellValue(itemId: string): number
-	local definition = ItemConfig[itemId]
-	if not definition then
-		return 0
-	end
-	return math.max(0, math.floor(definition.Value + 0.5))
-end
-
 local function economyFor(itemId: string)
 	return EconomyConfig.Items[itemId]
 end
 
-local function stockPayout(itemId: string): number
+local function sellValue(itemId: string): number
 	local tuning = economyFor(itemId)
-	if not tuning then
-		return quickSellValue(itemId)
+	if tuning then
+		return math.max(0, math.floor(tuning.SellValue + 0.5))
 	end
-	return math.max(0, math.floor(quickSellValue(itemId) * tuning.StockMultiplier + 0.5))
+
+	local definition = ItemConfig[itemId]
+	if definition then
+		return math.max(0, math.floor(definition.Value * 10 + 0.5))
+	end
+	return 0
 end
 
-local function baseSaleDuration(itemId: string): number
+local function passiveRate(itemId: string): number
 	local tuning = economyFor(itemId)
 	if not tuning then
-		return 45
+		return 0
 	end
-	return math.max(1, tuning.BaseSaleDuration)
+	return math.max(0, tuning.PassivePerMinute)
 end
 
 local function stockCapacity(player: Player): number
@@ -92,24 +89,41 @@ local function stockCapacity(player: Player): number
 	return EconomyConfig.DefaultStockSlots
 end
 
-local function saleSpeedMultiplier(player: Player): number
-	local raw = player:GetAttribute(EconomyConfig.SaleSpeedAttribute)
+local function passiveIncomeMultiplier(player: Player): number
+	local raw = player:GetAttribute(EconomyConfig.PassiveIncomeMultiplierAttribute)
 	if typeof(raw) ~= "number" then
-		return EconomyConfig.DefaultSaleSpeedMultiplier
+		return EconomyConfig.DefaultPassiveIncomeMultiplier
 	end
 	return math.clamp(
 		raw,
-		EconomyConfig.MinSaleSpeedMultiplier,
-		EconomyConfig.MaxSaleSpeedMultiplier
+		EconomyConfig.MinPassiveIncomeMultiplier,
+		EconomyConfig.MaxPassiveIncomeMultiplier
 	)
+end
+
+local function totalPassiveRate(state: EconomyState): number
+	local total = 0
+	for _, stock in state.Stock do
+		total += stock.PassiveRatePerMinute
+	end
+	return total
 end
 
 local function occupiedCount(state: EconomyState): number
 	local count = 0
-	for _ in state.Listings do
+	for _ in state.Stock do
 		count += 1
 	end
 	return count
+end
+
+local function addCash(player: Player, state: EconomyState, amount: number)
+	local whole = math.max(0, math.floor(amount + 0.000001))
+	if whole <= 0 then
+		return
+	end
+	state.Cash += whole
+	player:SetAttribute("Cash", state.Cash)
 end
 
 local function ensureSlotLabel(marker: BasePart, index: number): TextLabel
@@ -121,7 +135,7 @@ local function ensureSlotLabel(marker: BasePart, index: number): TextLabel
 		gui = Instance.new("BillboardGui")
 		gui.Name = "StockSlotLabel"
 		gui.Adornee = marker
-		gui.Size = UDim2.fromOffset(130, 38)
+		gui.Size = UDim2.fromOffset(145, 42)
 		gui.StudsOffset = Vector3.new(0, 2.5, 0)
 		gui.AlwaysOnTop = true
 		gui.MaxDistance = 45
@@ -166,7 +180,11 @@ local function displayFolderFor(state: EconomyState): Folder?
 end
 
 local function destroyDisplay(state: EconomyState, slotIndex: number)
-	local folder = displayFolderFor(state)
+	local bay = state.Bay
+	if not bay then
+		return
+	end
+	local folder = bay:FindFirstChild("StockDisplays")
 	if not folder then
 		return
 	end
@@ -176,7 +194,7 @@ local function destroyDisplay(state: EconomyState, slotIndex: number)
 	end
 end
 
-local function createDisplay(state: EconomyState, listing: Listing)
+local function createDisplay(state: EconomyState, stock: StockEntry)
 	local bay = state.Bay
 	local folder = displayFolderFor(state)
 	if not bay or not folder then
@@ -184,21 +202,21 @@ local function createDisplay(state: EconomyState, listing: Listing)
 	end
 
 	local slots = bay:FindFirstChild("StockSlots")
-	local marker = slots and slots:FindFirstChild(("StockSlot%02d"):format(listing.SlotIndex))
+	local marker = slots and slots:FindFirstChild(("StockSlot%02d"):format(stock.SlotIndex))
 	if not marker or not marker:IsA("BasePart") then
 		return
 	end
 
-	destroyDisplay(state, listing.SlotIndex)
+	destroyDisplay(state, stock.SlotIndex)
 
-	local visual = PrototypeVisualConfig.Items[listing.ItemId]
-	local definition = ItemConfig[listing.ItemId]
+	local visual = PrototypeVisualConfig.Items[stock.ItemId]
+	local definition = ItemConfig[stock.ItemId]
 	if not visual or not definition then
 		return
 	end
 
 	local part = Instance.new("Part")
-	part.Name = ("StockDisplay%02d"):format(listing.SlotIndex)
+	part.Name = ("StockDisplay%02d"):format(stock.SlotIndex)
 	part.Size = visual.Size
 	part.CFrame = marker.CFrame * CFrame.new(0, visual.Size.Y * 0.5 + 0.15, 0)
 	part.Anchored = true
@@ -207,16 +225,17 @@ local function createDisplay(state: EconomyState, listing: Listing)
 	part.CanQuery = false
 	part.Material = Enum.Material.SmoothPlastic
 	part.Color = visual.Color
-	part:SetAttribute("ItemId", listing.ItemId)
-	part:SetAttribute("ListingId", listing.ListingId)
-	part:SetAttribute("StockSlotIndex", listing.SlotIndex)
+	part:SetAttribute("ItemId", stock.ItemId)
+	part:SetAttribute("StockId", stock.StockId)
+	part:SetAttribute("StockSlotIndex", stock.SlotIndex)
+	part:SetAttribute("PassiveRatePerMinute", stock.PassiveRatePerMinute)
 	part:SetAttribute("PresentationOnly", true)
 	part.Parent = folder
 
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "StockedLabel"
 	billboard.Adornee = part
-	billboard.Size = UDim2.fromOffset(150, 38)
+	billboard.Size = UDim2.fromOffset(160, 42)
 	billboard.StudsOffset = Vector3.new(0, visual.Size.Y * 0.5 + 1.15, 0)
 	billboard.AlwaysOnTop = true
 	billboard.MaxDistance = 48
@@ -226,7 +245,11 @@ local function createDisplay(state: EconomyState, listing: Listing)
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(1, 1)
 	label.Font = Enum.Font.GothamBold
-	label.Text = string.format("%s\nLISTED", string.upper(definition.Name))
+	label.Text = string.format(
+		"%s\n+$%g/min",
+		string.upper(definition.Name),
+		stock.PassiveRatePerMinute
+	)
 	label.TextScaled = true
 	label.TextColor3 = Color3.fromRGB(128, 232, 164)
 	label.TextStrokeTransparency = 0.3
@@ -250,19 +273,20 @@ local function refreshSlots(player: Player, state: EconomyState)
 
 	local capacity = stockCapacity(player)
 	bay:SetAttribute("ActiveStockSlots", capacity)
+	bay:SetAttribute("TotalPassivePerMinute", totalPassiveRate(state))
 
 	for index = 1, EconomyConfig.MaxStockSlots do
 		local marker = slots:FindFirstChild(("StockSlot%02d"):format(index))
 		if marker and marker:IsA("BasePart") then
-			local active = index <= capacity
-			local listing = state.Listings[index]
+			local stock = state.Stock[index]
+			local active = index <= capacity or stock ~= nil
 			marker.Transparency = if active then 0.45 else 1
 			marker.CanCollide = false
 			marker.CanTouch = false
 			marker.CanQuery = false
 			marker:SetAttribute("StockActive", active)
-			marker:SetAttribute("Occupied", listing ~= nil)
-			marker:SetAttribute("ListingId", if listing then listing.ListingId else "")
+			marker:SetAttribute("Occupied", stock ~= nil)
+			marker:SetAttribute("StockId", if stock then stock.StockId else "")
 
 			local label = ensureSlotLabel(marker, index)
 			local gui = label.Parent
@@ -271,11 +295,12 @@ local function refreshSlots(player: Player, state: EconomyState)
 			end
 
 			if active then
-				if listing then
-					local definition = ItemConfig[listing.ItemId]
-					label.Text = ("STOCK %d\n%s"):format(
+				if stock then
+					local definition = ItemConfig[stock.ItemId]
+					label.Text = ("STOCK %d\n%s +$%g/m"):format(
 						index,
-						if definition then string.upper(definition.Name) else "LISTED"
+						if definition then string.upper(definition.Name) else "KEPT",
+						stock.PassiveRatePerMinute
 					)
 					label.TextColor3 = Color3.fromRGB(128, 232, 164)
 				else
@@ -297,28 +322,27 @@ local function snapshotFor(player: Player, state: EconomyState)
 					id = entry.ReviewItemId,
 					itemId = entry.ItemId,
 					name = definition.Name,
-					quickSell = quickSellValue(entry.ItemId),
-					stockPayout = stockPayout(entry.ItemId),
-					buyerEta = math.max(1, math.floor(baseSaleDuration(entry.ItemId) / saleSpeedMultiplier(player) + 0.5)),
+					sellValue = sellValue(entry.ItemId),
+					passiveRate = passiveRate(entry.ItemId),
 				})
 			end
 		end
 	end
 
-	local listings = {}
-	local nowServer = Workspace:GetServerTimeNow()
-	for slotIndex, listing in state.Listings do
-		local definition = ItemConfig[listing.ItemId]
-		table.insert(listings, {
+	local stockItems = {}
+	for slotIndex, stock in state.Stock do
+		local definition = ItemConfig[stock.ItemId]
+		table.insert(stockItems, {
 			slotIndex = slotIndex,
-			listingId = listing.ListingId,
-			itemId = listing.ItemId,
-			name = if definition then definition.Name else listing.ItemId,
-			payout = listing.ExpectedPayout,
-			remaining = math.max(0, math.ceil(listing.SaleReadyServerTime - nowServer)),
+			stockId = stock.StockId,
+			itemId = stock.ItemId,
+			name = if definition then definition.Name else stock.ItemId,
+			sellValue = sellValue(stock.ItemId),
+			passiveRate = stock.PassiveRatePerMinute,
+			stockedAtUnix = stock.StockedAtUnix,
 		})
 	end
-	table.sort(listings, function(a, b)
+	table.sort(stockItems, function(a, b)
 		return a.slotIndex < b.slotIndex
 	end)
 
@@ -332,7 +356,8 @@ local function snapshotFor(player: Player, state: EconomyState)
 		stockCapacity = capacity,
 		stockOccupied = occupied,
 		stockFree = math.max(0, capacity - occupied),
-		listings = listings,
+		stockItems = stockItems,
+		totalPassiveRate = totalPassiveRate(state),
 	}
 end
 
@@ -346,7 +371,7 @@ local function freeSlots(player: Player, state: EconomyState): {number}
 	local result = {}
 	local capacity = stockCapacity(player)
 	for index = 1, capacity do
-		if not state.Listings[index] then
+		if not state.Stock[index] then
 			table.insert(result, index)
 		end
 	end
@@ -368,7 +393,7 @@ local function closeReviewIfEmpty(state: EconomyState)
 	end
 end
 
-local function quickSellEntries(player: Player, state: EconomyState, ids: {string}?): number
+local function sellDeliveredEntries(player: Player, state: EconomyState, ids: {string}?): number
 	local requested: {[string]: boolean}? = nil
 	if ids then
 		requested = {}
@@ -382,40 +407,36 @@ local function quickSellEntries(player: Player, state: EconomyState, ids: {strin
 		local entry = state.Delivered[index]
 		if entry.State == "Delivered" and (not requested or requested[entry.ReviewItemId]) then
 			entry.State = "Sold"
-			payout += quickSellValue(entry.ItemId)
+			payout += sellValue(entry.ItemId)
 			table.remove(state.Delivered, index)
 		end
 	end
 
 	if payout > 0 then
-		state.Cash += payout
+		addCash(player, state, payout)
 	end
 	closeReviewIfEmpty(state)
 	return payout
 end
 
-local function startListing(player: Player, state: EconomyState, entry: DeliveredEntry, slotIndex: number)
-	local speed = saleSpeedMultiplier(player)
-	local effectiveDuration = baseSaleDuration(entry.ItemId) / speed
-	local listing: Listing = {
-		ListingId = HttpService:GenerateGUID(false),
+local function createStockEntry(state: EconomyState, entry: DeliveredEntry, slotIndex: number)
+	local stock: StockEntry = {
+		StockId = HttpService:GenerateGUID(false),
 		ItemId = entry.ItemId,
 		SourceReviewItemId = entry.ReviewItemId,
 		SlotIndex = slotIndex,
-		ListingStartUnix = os.time(),
-		SaleDurationSeconds = effectiveDuration,
-		ExpectedPayout = stockPayout(entry.ItemId),
-		SaleReadyServerTime = Workspace:GetServerTimeNow() + effectiveDuration,
+		StockedAtUnix = os.time(),
+		PassiveRatePerMinute = passiveRate(entry.ItemId),
 	}
 
 	entry.State = "Stocked"
-	state.Listings[slotIndex] = listing
-	createDisplay(state, listing)
+	state.Stock[slotIndex] = stock
+	createDisplay(state, stock)
 end
 
-local function stockSelected(player: Player, state: EconomyState, ids: {string}): boolean
-	local uniqueIds = {}
-	local orderedIds = {}
+local function keepSelected(player: Player, state: EconomyState, ids: {string}): boolean
+	local uniqueIds: {[string]: boolean} = {}
+	local orderedIds: {string} = {}
 	for _, id in ids do
 		if typeof(id) == "string" and not uniqueIds[id] then
 			uniqueIds[id] = true
@@ -429,12 +450,12 @@ local function stockSelected(player: Player, state: EconomyState, ids: {string})
 
 	local slots = freeSlots(player, state)
 	if #orderedIds > #slots then
-		noticeRemote:FireClient(player, "NOT ENOUGH STOCK SLOTS.")
+		noticeRemote:FireClient(player, "STOCK FULL - SELL AN OLD STOCK ITEM FIRST.")
 		return false
 	end
 
-	-- Validate the whole request before mutating anything. No partial stock on an
-	-- invalid/spammed payload.
+	-- Validate the entire request before mutating anything. This prevents a
+	-- partially-kept haul when a duplicated/stale/spammed review ID is supplied.
 	local validated: {{Entry: DeliveredEntry, Index: number}} = {}
 	for _, id in orderedIds do
 		local entry, index = findDelivered(state, id)
@@ -444,11 +465,10 @@ local function stockSelected(player: Player, state: EconomyState, ids: {string})
 		table.insert(validated, { Entry = entry, Index = index })
 	end
 
-	-- Start listings first, then remove those exact authoritative review entries
-	-- back-to-front so indexes cannot shift underneath us.
 	for listIndex, record in validated do
-		startListing(player, state, record.Entry, slots[listIndex])
+		createStockEntry(state, record.Entry, slots[listIndex])
 	end
+
 	table.sort(validated, function(a, b)
 		return a.Index > b.Index
 	end)
@@ -461,6 +481,28 @@ local function stockSelected(player: Player, state: EconomyState, ids: {string})
 	return true
 end
 
+local function sellStockItem(
+	player: Player,
+	state: EconomyState,
+	slotIndex: number,
+	stockId: string
+): number
+	local stock = state.Stock[slotIndex]
+	if not stock or stock.StockId ~= stockId then
+		return 0
+	end
+
+	-- Remove Stock state before granting Cash. A repeated Remote immediately
+	-- fails validation and cannot pay for the same kept item twice.
+	state.Stock[slotIndex] = nil
+	destroyDisplay(state, slotIndex)
+
+	local payout = sellValue(stock.ItemId)
+	addCash(player, state, payout)
+	refreshSlots(player, state)
+	return payout
+end
+
 local function handleAction(player: Player, action: any, payload: any)
 	if typeof(action) ~= "string" or typeof(payload) ~= "table" then
 		return
@@ -471,62 +513,61 @@ local function handleAction(player: Player, action: any, payload: any)
 		return
 	end
 
+	if action == "RequestState" then
+		sendState(player, state)
+		return
+	end
+
 	local now = os.clock()
 	if now - state.LastActionAt < EconomyConfig.Review.ActionCooldownSeconds then
 		return
 	end
 	state.LastActionAt = now
 
+	if action == "SellStock" then
+		local slotIndex = payload.slotIndex
+		local stockId = payload.stockId
+		if typeof(slotIndex) ~= "number" or typeof(stockId) ~= "string" then
+			return
+		end
+		local roundedSlot = math.floor(slotIndex + 0.5)
+		local payout = sellStockItem(player, state, roundedSlot, stockId)
+		if payout > 0 then
+			noticeRemote:FireClient(player, ("STOCK SOLD! +$%d"):format(payout))
+			sendState(player, state)
+		end
+		return
+	end
+
 	local reviewId = payload.reviewId
 	if typeof(reviewId) ~= "string" or not state.ReviewId or reviewId ~= state.ReviewId then
 		return
 	end
 
-	if action == "QuickSellAll" or action == "QuickSellRest" then
-		local payout = quickSellEntries(player, state, nil)
+	if action == "SellAll" or action == "SellRest" then
+		local payout = sellDeliveredEntries(player, state, nil)
 		if payout > 0 then
-			noticeRemote:FireClient(player, ("QUICK SOLD! +$%d"):format(payout))
+			noticeRemote:FireClient(player, ("SOLD! +$%d"):format(payout))
 		end
 		sendState(player, state)
-	elseif action == "StockSelected" then
+	elseif action == "KeepSelected" then
 		local ids = payload.itemIds
 		if typeof(ids) ~= "table" then
 			return
 		end
 
-		local cleanIds = {}
+		local cleanIds: {string} = {}
 		for _, id in ids do
 			if typeof(id) == "string" then
 				table.insert(cleanIds, id)
 			end
 		end
 
-		if stockSelected(player, state, cleanIds) then
-			noticeRemote:FireClient(player, "ITEMS LISTED. QUICK SELL THE REST OR KEEP CHOOSING.")
+		if keepSelected(player, state, cleanIds) then
+			noticeRemote:FireClient(player, "ITEMS KEPT IN STOCK. SELL THE REST OR KEEP CHOOSING.")
 			sendState(player, state)
 		end
 	end
-end
-
-local function completeListing(player: Player, state: EconomyState, slotIndex: number, listing: Listing)
-	if state.Listings[slotIndex] ~= listing then
-		return
-	end
-
-	-- Remove authoritative Stock state before granting payout. Re-entrant/spammed
-	-- completion can no longer find the listing and therefore cannot pay twice.
-	state.Listings[slotIndex] = nil
-	state.Cash += listing.ExpectedPayout
-	destroyDisplay(state, slotIndex)
-	refreshSlots(player, state)
-
-	local definition = ItemConfig[listing.ItemId]
-	local name = if definition then string.upper(definition.Name) else "ITEM"
-	noticeRemote:FireClient(
-		player,
-		("%s SOLD! +$%d"):format(name, listing.ExpectedPayout)
-	)
-	sendState(player, state)
 end
 
 local function initializePlayer(player: Player)
@@ -537,17 +578,22 @@ local function initializePlayer(player: Player)
 	if player:GetAttribute(EconomyConfig.StockSlotCapacityAttribute) == nil then
 		player:SetAttribute(EconomyConfig.StockSlotCapacityAttribute, EconomyConfig.DefaultStockSlots)
 	end
-	if player:GetAttribute(EconomyConfig.SaleSpeedAttribute) == nil then
-		player:SetAttribute(EconomyConfig.SaleSpeedAttribute, EconomyConfig.DefaultSaleSpeedMultiplier)
+	if player:GetAttribute(EconomyConfig.PassiveIncomeMultiplierAttribute) == nil then
+		player:SetAttribute(
+			EconomyConfig.PassiveIncomeMultiplierAttribute,
+			EconomyConfig.DefaultPassiveIncomeMultiplier
+		)
 	end
 
 	local state: EconomyState = {
 		Cash = EconomyConfig.StartingCash,
 		ReviewId = nil,
 		Delivered = {},
-		Listings = {},
+		Stock = {},
 		LastActionAt = -math.huge,
 		Bay = BayService.GetBayModel(player),
+		PassiveRemainder = 0,
+		LastPassiveServerTime = Workspace:GetServerTimeNow(),
 	}
 	states[player] = state
 
@@ -560,7 +606,7 @@ local function initializePlayer(player: Player)
 		end
 	end)
 
-	player:GetAttributeChangedSignal(EconomyConfig.SaleSpeedAttribute):Connect(function()
+	player:GetAttributeChangedSignal(EconomyConfig.PassiveIncomeMultiplierAttribute):Connect(function()
 		if states[player] == state then
 			sendState(player, state)
 		end
@@ -628,7 +674,7 @@ function EconomyService.BeginDelivery(player: Player, itemIds: {string}): boolea
 
 	state.ReviewId = HttpService:GenerateGUID(false)
 	state.Delivered = delivered
-	noticeRemote:FireClient(player, "DELIVERY COMPLETE - QUICK SELL OR STOCK.")
+	noticeRemote:FireClient(player, "DELIVERY COMPLETE - SELL OR KEEP.")
 	sendState(player, state)
 	return true
 end
@@ -662,16 +708,28 @@ function EconomyService.Start()
 
 	RunService.Heartbeat:Connect(function(dt)
 		heartbeatAccumulator += dt
-		if heartbeatAccumulator < 0.25 then
+		if heartbeatAccumulator < EconomyConfig.Passive.CalculationIntervalSeconds then
 			return
 		end
 		heartbeatAccumulator = 0
 
 		local nowServer = Workspace:GetServerTimeNow()
 		for player, state in states do
-			for slotIndex, listing in state.Listings do
-				if nowServer >= listing.SaleReadyServerTime then
-					completeListing(player, state, slotIndex, listing)
+			local elapsed = math.max(0, nowServer - state.LastPassiveServerTime)
+			state.LastPassiveServerTime = nowServer
+
+			local ratePerMinute = totalPassiveRate(state)
+			if ratePerMinute > 0 and elapsed > 0 then
+				local earned = (ratePerMinute / 60)
+					* elapsed
+					* passiveIncomeMultiplier(player)
+				state.PassiveRemainder += earned
+
+				local wholeCash = math.floor(state.PassiveRemainder + 0.000001)
+				if wholeCash > 0 then
+					state.PassiveRemainder -= wholeCash
+					addCash(player, state, wholeCash)
+					sendState(player, state)
 				end
 			end
 		end
