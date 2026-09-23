@@ -8,12 +8,14 @@ local CameraProtectionController = require(Controllers:WaitForChild("CameraProte
 local FeelFeedbackController = require(Controllers:WaitForChild("FeelFeedbackController"))
 local BayController = require(Controllers:WaitForChild("BayController"))
 local EconomyController = require(Controllers:WaitForChild("EconomyController"))
+local ProgressionController = require(Controllers:WaitForChild("ProgressionController"))
 
 PrototypeUIController.Start()
 EconomyController.Start()
+ProgressionController.Start()
 InteractionController.Start(PrototypeUIController)
 CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M3 Map Architecture V2 client loaded")
+print("[ONE TRIP] M4 persistence + progression client loaded")
