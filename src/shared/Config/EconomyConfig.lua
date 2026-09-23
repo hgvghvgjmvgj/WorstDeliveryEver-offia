@@ -23,32 +23,80 @@ local EconomyConfig = {
 	-- Liquidating Stock later only returns a fraction of that original value.
 	DefaultSalvageRatio = 0.20,
 
-	-- M4 economy-tuning patch:
-	-- KEEP was too weak relative to real early active hauling. These values are
-	-- deliberately temporary and make current Stock relevant enough to test before
-	-- M5 introduces section baseline power + rarity. SELL remains derived from the
-	-- passive rate through a short early break-even window rather than being tuned
-	-- independently.
+	-- M4.2 final passive-economy test curve.
 	--
-	-- Old -> new passive direction:
-	-- Box 50 -> 150, Microwave 120 -> 320, Lamp 90 -> 240,
-	-- Tire 180 -> 450, Chair 220 -> 600, TV 500 -> 900,
-	-- Couch 850 -> 1400, Safe 1200 -> 2000.
+	-- Important: current SELL values are intentionally preserved from M4/M4.1 so
+	-- this pass measures KEEP attractiveness without moving the already-measured
+	-- active-income baseline. EconomyService/ItemConfig derive SELL from
+	-- PassivePerMinute * TargetBreakEvenMinutes, so the decimal break-even values
+	-- below are chosen to preserve those SELL values exactly.
+	--
+	-- M4.2 also records a relative EconomicTier and neutral future multiplier
+	-- placeholders centrally. M5 can extend these into section/rarity economics
+	-- without scattering economic constants into gameplay scripts.
 	Items = table.freeze({
-		Box = table.freeze({ PassivePerMinute = 150, TargetBreakEvenMinutes = 6 }),
-		Microwave = table.freeze({ PassivePerMinute = 320, TargetBreakEvenMinutes = 7 }),
-		Lamp = table.freeze({ PassivePerMinute = 240, TargetBreakEvenMinutes = 7 }),
-		Chair = table.freeze({ PassivePerMinute = 600, TargetBreakEvenMinutes = 8 }),
-		Tire = table.freeze({ PassivePerMinute = 450, TargetBreakEvenMinutes = 8 }),
-		TV = table.freeze({ PassivePerMinute = 900, TargetBreakEvenMinutes = 10 }),
-		Couch = table.freeze({ PassivePerMinute = 1400, TargetBreakEvenMinutes = 12 }),
-		Safe = table.freeze({ PassivePerMinute = 2000, TargetBreakEvenMinutes = 12 }),
+		Box = table.freeze({
+			PassivePerMinute = 400,
+			TargetBreakEvenMinutes = 2.25, -- SELL $900
+			EconomicTier = "Weak",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Lamp = table.freeze({
+			PassivePerMinute = 500,
+			TargetBreakEvenMinutes = 3.36, -- SELL $1,680
+			EconomicTier = "Weak",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Microwave = table.freeze({
+			PassivePerMinute = 650,
+			TargetBreakEvenMinutes = 224 / 65, -- SELL $2,240
+			EconomicTier = "Early",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Tire = table.freeze({
+			PassivePerMinute = 850,
+			TargetBreakEvenMinutes = 72 / 17, -- SELL $3,600
+			EconomicTier = "Early",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Chair = table.freeze({
+			PassivePerMinute = 1000,
+			TargetBreakEvenMinutes = 4.8, -- SELL $4,800
+			EconomicTier = "Early",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		TV = table.freeze({
+			PassivePerMinute = 1300,
+			TargetBreakEvenMinutes = 90 / 13, -- SELL $9,000
+			EconomicTier = "Strong",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Couch = table.freeze({
+			PassivePerMinute = 1700,
+			TargetBreakEvenMinutes = 168 / 17, -- SELL $16,800
+			EconomicTier = "Strong",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
+		Safe = table.freeze({
+			PassivePerMinute = 2000,
+			TargetBreakEvenMinutes = 12, -- SELL $24,000
+			EconomicTier = "Exceptional",
+			FutureRarityMultiplier = 1,
+			FutureSectionMultiplier = 1,
+		}),
 	}),
 
-	-- These are architectural headroom bands, not M5 rarity/content assignments.
+	-- Architectural headroom only; these are not M5 rarity assignments.
 	ProgressionBands = table.freeze({
-		BeginnerPassivePerMinute = Vector2.new(150, 900),
-		EarlyPassivePerMinute = Vector2.new(900, 20_000),
+		BeginnerPassivePerMinute = Vector2.new(400, 1_300),
+		EarlyPassivePerMinute = Vector2.new(1_300, 20_000),
 		EstablishedPassivePerMinute = Vector2.new(20_000, 500_000),
 		LatePassivePerMinute = Vector2.new(500_000, 10_000_000),
 	}),
