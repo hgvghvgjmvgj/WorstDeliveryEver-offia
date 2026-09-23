@@ -6,6 +6,7 @@ local Services = ServerScriptService:WaitForChild("Services")
 
 local RemoteService = require(Services:WaitForChild("RemoteService"))
 local WorldService = require(Services:WaitForChild("WorldService"))
+local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local BayService = require(Services:WaitForChild("BayService"))
 local ItemService = require(Services:WaitForChild("ItemService"))
@@ -20,6 +21,7 @@ RemoteService.Initialize()
 CollisionService.Start()
 
 local world = WorldService.Build()
+WarehouseAccessService.Start(world)
 
 BayService.Start(world)
 ItemService.Start(world)
@@ -35,4 +37,4 @@ EconomyService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService)
 
-print("[ONE TRIP] M4.2 passive economy + premium opportunity tuning loaded")
+print("[ONE TRIP] M5A long warehouse architecture loaded")
