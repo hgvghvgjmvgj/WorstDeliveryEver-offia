@@ -11,4 +11,6 @@ return table.freeze({
 
 	EconomyState = "EconomyState",
 	EconomyAction = "EconomyAction",
+	ProgressionState = "ProgressionState",
+	ProgressionAction = "ProgressionAction",
 })
