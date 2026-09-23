@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local HandlingConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("HandlingConfig"))
 local ProgressionConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ProgressionConfig"))
 local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
@@ -38,12 +39,52 @@ local function applyTrack(player: Player, profile: any, trackName: string)
 	player:SetAttribute(track.Attribute, levelValue(trackName, levelIndex))
 end
 
+local function handlingStats(player: Player): (number, number, number)
+	return tonumber(player:GetAttribute("CarryStrength")) or 15,
+		tonumber(player:GetAttribute("CarrySpace")) or 13,
+		tonumber(player:GetAttribute("CarryControl")) or 1.0
+end
+
+local function applyHandlingRig(player: Player)
+	local strength, space, control = handlingStats(player)
+	local tier = HandlingConfig.RigTierFromStats(strength, space, control)
+	player:SetAttribute("HandlingRigTier", tier)
+	player:SetAttribute("HandlingRigName", HandlingConfig.RigName(tier))
+end
+
 local function applyAll(player: Player, profile: any)
 	for _, trackName in ProgressionConfig.TrackOrder do
 		applyTrack(player, profile, trackName)
 	end
+	-- Keep the legacy persisted CarryRigTier field untouched for schema
+	-- compatibility. M5B.1's readable rig is derived from real handling stats.
 	player:SetAttribute("CarryRigTier", profile.Progression.CarryRigTier or ProgressionConfig.DefaultCarryRigTier)
+	applyHandlingRig(player)
 	player:SetAttribute("ProgressionReady", true)
+end
+
+local function handlingSnapshot(player: Player)
+	local strength, space, control = handlingStats(player)
+	local tier = HandlingConfig.RigTierFromStats(strength, space, control)
+	local nextMilestone = HandlingConfig.NextRigMilestone(tier)
+	local nextInfo = nil
+	if nextMilestone then
+		nextInfo = {
+			tier = nextMilestone.Tier,
+			name = nextMilestone.Name,
+			strengthNeeded = math.max(0, nextMilestone.Strength - strength),
+			carrySpaceNeeded = math.max(0, nextMilestone.CarrySpace - space),
+			controlNeeded = math.max(0, nextMilestone.Control - control),
+		}
+	end
+	return {
+		tier = tier,
+		name = HandlingConfig.RigName(tier),
+		strength = strength,
+		carrySpace = space,
+		control = control,
+		nextMilestone = nextInfo,
+	}
 end
 
 local function snapshotFor(player: Player, profile: any)
@@ -69,6 +110,7 @@ local function snapshotFor(player: Player, profile: any)
 		cash = PlayerDataService.GetCash(player),
 		tracks = tracks,
 		carryRigTier = profile.Progression.CarryRigTier or ProgressionConfig.DefaultCarryRigTier,
+		handlingRig = handlingSnapshot(player),
 	}
 end
 
@@ -89,7 +131,7 @@ local function purchase(player: Player, trackName: string): boolean
 	local currentLevel = getLevel(profile, trackName)
 	local nextLevel = currentLevel + 1
 	if nextLevel > #track.Levels then
-		noticeRemote:FireClient(player, track.DisplayName .. " IS MAXED FOR M4.")
+		noticeRemote:FireClient(player, track.DisplayName .. " IS MAXED FOR M5.")
 		return false
 	end
 
@@ -101,6 +143,9 @@ local function purchase(player: Player, trackName: string): boolean
 
 	profile.Progression[track.ProfileField] = nextLevel
 	applyTrack(player, profile, trackName)
+	if trackName == "Strength" or trackName == "CarrySpace" or trackName == "Control" then
+		applyHandlingRig(player)
+	end
 	PlayerDataService.MarkDirty(player)
 	PlayerDataService.RequestSave(player)
 	noticeRemote:FireClient(player, ("%s UPGRADED TO LEVEL %d"):format(track.DisplayName, nextLevel))
