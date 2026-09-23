@@ -126,6 +126,31 @@ local function addCash(player: Player, state: EconomyState, amount: number)
 	player:SetAttribute("Cash", state.Cash)
 end
 
+local function settlePassive(
+	player: Player,
+	state: EconomyState,
+	nowServer: number
+): number
+	local elapsed = math.max(0, nowServer - state.LastPassiveServerTime)
+	state.LastPassiveServerTime = nowServer
+
+	local ratePerMinute = totalPassiveRate(state)
+	if ratePerMinute <= 0 or elapsed <= 0 then
+		return 0
+	end
+
+	state.PassiveRemainder += (ratePerMinute / 60)
+		* elapsed
+		* passiveIncomeMultiplier(player)
+
+	local wholeCash = math.floor(state.PassiveRemainder + 0.000001)
+	if wholeCash > 0 then
+		state.PassiveRemainder -= wholeCash
+		addCash(player, state, wholeCash)
+	end
+	return wholeCash
+end
+
 local function ensureSlotLabel(marker: BasePart, index: number): TextLabel
 	local existingGui = marker:FindFirstChild("StockSlotLabel")
 	local gui: BillboardGui
@@ -454,8 +479,6 @@ local function keepSelected(player: Player, state: EconomyState, ids: {string}):
 		return false
 	end
 
-	-- Validate the entire request before mutating anything. This prevents a
-	-- partially-kept haul when a duplicated/stale/spammed review ID is supplied.
 	local validated: {{Entry: DeliveredEntry, Index: number}} = {}
 	for _, id in orderedIds do
 		local entry, index = findDelivered(state, id)
@@ -464,6 +487,9 @@ local function keepSelected(player: Player, state: EconomyState, ids: {string}):
 		end
 		table.insert(validated, { Entry = entry, Index = index })
 	end
+
+	-- Settle the old Stock composition before new passive generators are added.
+	settlePassive(player, state, Workspace:GetServerTimeNow())
 
 	for listIndex, record in validated do
 		createStockEntry(state, record.Entry, slots[listIndex])
@@ -492,8 +518,9 @@ local function sellStockItem(
 		return 0
 	end
 
-	-- Remove Stock state before granting Cash. A repeated Remote immediately
-	-- fails validation and cannot pay for the same kept item twice.
+	-- Credit everything legitimately earned by the old composition first, then
+	-- remove Stock state before the sell payout. A repeated Remote cannot pay twice.
+	settlePassive(player, state, Workspace:GetServerTimeNow())
 	state.Stock[slotIndex] = nil
 	destroyDisplay(state, slotIndex)
 
@@ -715,22 +742,8 @@ function EconomyService.Start()
 
 		local nowServer = Workspace:GetServerTimeNow()
 		for player, state in states do
-			local elapsed = math.max(0, nowServer - state.LastPassiveServerTime)
-			state.LastPassiveServerTime = nowServer
-
-			local ratePerMinute = totalPassiveRate(state)
-			if ratePerMinute > 0 and elapsed > 0 then
-				local earned = (ratePerMinute / 60)
-					* elapsed
-					* passiveIncomeMultiplier(player)
-				state.PassiveRemainder += earned
-
-				local wholeCash = math.floor(state.PassiveRemainder + 0.000001)
-				if wholeCash > 0 then
-					state.PassiveRemainder -= wholeCash
-					addCash(player, state, wholeCash)
-					sendState(player, state)
-				end
+			if settlePassive(player, state, nowServer) > 0 then
+				sendState(player, state)
 			end
 		end
 	end)
