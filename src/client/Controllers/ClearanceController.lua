@@ -19,7 +19,7 @@ local lastTier: number? = nil
 local scanAccumulator = 0
 local toastToken = 0
 
-local LOCKED = Color3.fromRGB(214, 70, 70)
+local LOCKED = Color3.fromRGB(228, 105, 61)
 local CLEARED = Color3.fromRGB(75, 211, 118)
 
 local function roundCorner(instance: GuiObject, radius: number)
@@ -57,18 +57,16 @@ local function paintGate(model: Model, tier: number)
 	local cleared = tier >= required
 	local color = if cleared then CLEARED else LOCKED
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") and descendant:GetAttribute("ClearanceVisual") == true then
+		if descendant:IsA("BasePart") and descendant:GetAttribute("ClearanceStateAccent") == true then
 			descendant.Color = color
-			if descendant.Name == "BarrierField" then
-				descendant.LocalTransparencyModifier = if cleared then 0.18 else 0
-			end
+			descendant.LocalTransparencyModifier = if cleared then 0.18 else 0
 		elseif descendant:IsA("TextLabel") and descendant.Name == "ClearanceText" then
 			local sectionId = tostring(model:GetAttribute("BeforeSection") or "")
 			descendant.Text = if cleared
 				then ("%s — CLEARED\n%s"):format(ClearanceConfig.RigName(required), ClearanceConfig.SectionName(sectionId))
 				else ("%s REQUIRED\n%s"):format(ClearanceConfig.RigName(required), ClearanceConfig.SectionName(sectionId))
 			descendant.TextColor3 = color
-			descendant.BackgroundColor3 = if cleared then Color3.fromRGB(18,54,31) else Color3.fromRGB(54,18,18)
+			descendant.BackgroundColor3 = if cleared then Color3.fromRGB(23,50,32) else Color3.fromRGB(40,43,49)
 		end
 	end
 end
@@ -199,8 +197,6 @@ function Controller.Start()
 		local old = lastTier
 		lastTier = nextTier
 		repaintAll()
-		-- ProgressionService writes the derived tier before setting ProgressionReady.
-		-- Suppress a fake "unlock" celebration when an existing profile first loads.
 		if player:GetAttribute("ProgressionReady") == true and old ~= nil and nextTier > old then
 			showToast(nextTier)
 		end
