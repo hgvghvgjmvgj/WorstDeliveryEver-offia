@@ -41,7 +41,9 @@ return table.freeze({
 		RestockFlashTransparency = 0.02,
 	}),
 	Performance = table.freeze({
-		MaximumDecorativePartsPerSlot = 7,
+		-- First pass stays at or below roughly nine simple anchored primitives per
+		-- opportunity, including the platform/light and focal treatment.
+		MaximumDecorativePartsPerSlot = 9,
 		UsePerSlotPointLights = false,
 		UseTextures = false,
 	}),
