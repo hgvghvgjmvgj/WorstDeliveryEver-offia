@@ -44,6 +44,18 @@ if requestedMode == "D" then
 	-- Sections 4-15 extend the same warehouse with deliberately escalating
 	-- storage architecture rather than copy/pasted rack families.
 	M6BDeepStorageService.Build(world)
+
+	local presentationParts = 0
+	local departmentLights = 0
+	for _, descendant in world:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant:GetAttribute("M6BEnvironment") == true then
+			presentationParts += 1
+		elseif descendant:IsA("PointLight") and descendant.Name == "DepartmentLight" then
+			departmentLights += 1
+		end
+	end
+	world:SetAttribute("M6BEnvironmentPartCount", presentationParts)
+	world:SetAttribute("M6BDepartmentLightCount", departmentLights)
 end
 WarehouseAccessService.Start(world)
 
