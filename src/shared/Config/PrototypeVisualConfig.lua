@@ -15,17 +15,40 @@ for _, sectionId in LootCatalog.SectionOrder do
 	end
 end
 
+-- M6B art rule: rarity must preserve the identity of the base object. Common is
+-- the normal polished object, Uncommon is only subtly nicer, and the stronger
+-- visual escalation increasingly comes from modular geometry/details rather
+-- than turning the whole object into a rarity-colored glowing block.
+local COLOR_BLEND_BY_RANK = table.freeze({
+	[1] = 0.00,
+	[2] = 0.04,
+	[3] = 0.12,
+	[4] = 0.20,
+	[5] = 0.27,
+	[6] = 0.33,
+	[7] = 0.40,
+	[8] = 0.44,
+})
+
+local function baseMaterialForRank(rank: number): Enum.Material
+	-- Neon is reserved for rarity accent pieces, never the entire cargo body.
+	if rank >= 5 then
+		return Enum.Material.Metal
+	end
+	return Enum.Material.SmoothPlastic
+end
+
 for baseItemId, base in LootCatalog.ById do
 	for _, rarity in RarityConfig.Order do
 		local tier = RarityConfig.Tiers[rarity]
 		local variantId = RarityConfig.MakeVariantId(baseItemId, rarity)
-		local blend = math.clamp((tier.Rank - 1) * 0.09, 0, 0.58)
+		local blend = COLOR_BLEND_BY_RANK[tier.Rank] or 0
 		items[variantId] = table.freeze({
 			Size = base.Size,
 			Color = base.Color:Lerp(tier.Color, blend),
 			BaseColor = base.Color,
 			RarityColor = tier.Color,
-			Material = tier.Material,
+			Material = baseMaterialForRank(tier.Rank),
 			ModelKind = base.ModelKind,
 			Rarity = rarity,
 			RarityRank = tier.Rank,
