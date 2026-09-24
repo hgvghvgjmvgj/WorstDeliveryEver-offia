@@ -16,8 +16,8 @@ return table.freeze({
 	Mobility = table.freeze({
 		SuppressionStartWeightRatio = 0.35,
 		FullSuppressionWeightRatio = 1.35,
-		MinimumBonusFractionAtMaxLoad = 0.22,
-		LoadedMinimumBonusFraction = 0.16,
+		MinimumBonusFractionAtMaxLoad = 0.30,
+		LoadedMinimumBonusFraction = 0.25,
 	}),
 
 	Movement = table.freeze({
