@@ -16,6 +16,7 @@ local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local M6CCargoArtService = require(Services:WaitForChild("M6CCargoArtService"))
+local M6CItemIdentityService = require(Services:WaitForChild("M6CItemIdentityService"))
 local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
@@ -80,10 +81,11 @@ world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
 -- M6C becomes the final visual layer after the legacy presentation service has
--- created labels/root transforms. Its welded visual parts remain non-colliding
--- and massless, preserving carry gameplay.
+-- created labels/root transforms. All added visual pieces are welded, massless
+-- and non-colliding so art cannot alter carry gameplay.
 LootPresentationService.Start(world)
 M6CCargoArtService.Start(world)
+M6CItemIdentityService.Start(world)
 M6CRarityGalleryService.Start(world)
 
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
@@ -99,4 +101,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6C cargo base + modular rarity art pass loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6C cargo base + item identity + modular rarity art loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
