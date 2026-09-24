@@ -16,8 +16,8 @@ local HERO_SOURCE_OVERRIDES = table.freeze({
 	ShowCarEngine = "BLENDER_CANDIDATE",
 	TitanVaultSafe = "CUSTOM_MESH_CANDIDATE",
 	CosmicReactorCore = "BLENDER_CANDIDATE",
-	ExperimentalReactorCore = "BLENDER_CANDIDATE",
 	BlackProjectContainmentUnit = "BLENDER_CANDIDATE",
+	ZeroPointContainmentUnit = "BLENDER_CANDIDATE",
 })
 
 local REQUIRED_RARITY_TESTS = table.freeze({
@@ -29,11 +29,11 @@ local REQUIRED_RARITY_TESTS = table.freeze({
 	ShowCarEngine = true,
 	EngineBlock = true,
 	DesignerFragranceTrunk = true,
-	LuxuryFragranceTrunk = true,
-	PaintingTransportFrame = true,
-	FineArtCrate = true,
+	PaintingTransportCrate = true,
+	ArtworkCrate = true,
 	JewelrySafe = true,
 	BlackProjectContainmentUnit = true,
+	ExperimentalPowerCore = true,
 })
 
 local function rarityStrategy(base: any): string
