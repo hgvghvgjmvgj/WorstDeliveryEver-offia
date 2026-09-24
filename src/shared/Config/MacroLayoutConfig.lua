@@ -150,6 +150,19 @@ local Config = {
 
 		MarkersPerSection = 16,
 		SharedFocalMarkersPerSection = 4,
+
+		-- M6A.1 uses a compact six-section gameplay run for fast testing, but this
+		-- is NOT the final intended warehouse depth. The visible facility should
+		-- continue past Secure while the current gameplay boundary stays fixed.
+		LongTermDepth = frozen({
+			FinalLengthLocked = false,
+			VisualContinuationLength = 280,
+			CurrentPlayableBackZ = -272,
+			EarlySectionsCompact = frozen({ "Receiving", "Appliances" }),
+			MidSectionsExpanded = frozen({ "Furniture", "HeavyGoods" }),
+			LateSectionsDeep = frozen({ "Industrial", "Secure" }),
+			FutureExpansionPurpose = "FutureRunwayExtensionOrAnnex",
+		}),
 	}),
 }
 
