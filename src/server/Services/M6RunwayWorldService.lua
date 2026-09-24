@@ -9,14 +9,7 @@ local WarehouseConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitFor
 local Service = {}
 local ROOT_NAME = "OneTripPrototype"
 
-local function makePart(
-	parent: Instance,
-	name: string,
-	size: Vector3,
-	cframe: CFrame,
-	color: Color3,
-	transparency: number?
-): Part
+local function makePart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, transparency: number?): Part
 	local part = Instance.new("Part")
 	part.Name = name
 	part.Size = size
@@ -32,14 +25,7 @@ local function makePart(
 	return part
 end
 
-local function addBillboard(
-	adornee: BasePart,
-	name: string,
-	text: string,
-	color: Color3?,
-	size: UDim2?,
-	maxDistance: number?
-): TextLabel
+local function addBillboard(adornee: BasePart, name: string, text: string, color: Color3?, size: UDim2?, maxDistance: number?): TextLabel
 	local gui = Instance.new("BillboardGui")
 	gui.Name = name
 	gui.Adornee = adornee
@@ -63,14 +49,7 @@ local function addBillboard(
 	return label
 end
 
-local function makeLabelAnchor(
-	parent: Instance,
-	name: string,
-	position: Vector3,
-	text: string,
-	color: Color3,
-	maxDistance: number?
-): BasePart
+local function makeLabelAnchor(parent: Instance, name: string, position: Vector3, text: string, color: Color3, maxDistance: number?): BasePart
 	local anchor = makePart(parent, name, Vector3.new(1, 1, 1), CFrame.new(position), Color3.new(1, 1, 1), 1)
 	anchor.CanCollide = false
 	anchor.CanQuery = false
@@ -78,27 +57,12 @@ local function makeLabelAnchor(
 	return anchor
 end
 
-local function laneBetween(
-	parent: Instance,
-	name: string,
-	a: Vector3,
-	b: Vector3,
-	width: number,
-	color: Color3,
-	transparency: number
-): Part
+local function laneBetween(parent: Instance, name: string, a: Vector3, b: Vector3, width: number, color: Color3, transparency: number): Part
 	local flatA = Vector3.new(a.X, 0.14, a.Z)
 	local flatB = Vector3.new(b.X, 0.14, b.Z)
 	local midpoint = (flatA + flatB) * 0.5
 	local length = (flatB - flatA).Magnitude
-	local part = makePart(
-		parent,
-		name,
-		Vector3.new(width, 0.08, length),
-		CFrame.lookAt(midpoint, flatB),
-		color,
-		transparency
-	)
+	local part = makePart(parent, name, Vector3.new(width, 0.08, length), CFrame.lookAt(midpoint, flatB), color, transparency)
 	part.CanCollide = false
 	return part
 end
@@ -108,7 +72,6 @@ local function resetWorld(): Folder
 	if previous then previous:Destroy() end
 	local baseplate = Workspace:FindFirstChild("Baseplate")
 	if baseplate and baseplate:IsA("BasePart") then baseplate:Destroy() end
-
 	local root = Instance.new("Folder")
 	root.Name = ROOT_NAME
 	root.Parent = Workspace
@@ -137,44 +100,24 @@ local function buildStockSlots(bay: Model, bayCFrame: CFrame)
 		marker:SetAttribute("ActiveByDefault", activeByDefault)
 		marker:SetAttribute("ReservedForExpansion", true)
 		if activeByDefault then
-			addBillboard(
-				marker,
-				"StockSlotLabel",
-				("STOCK %d"):format(index),
-				Color3.fromRGB(205, 224, 241),
-				UDim2.fromOffset(115, 30),
-				40
-			)
+			addBillboard(marker, "StockSlotLabel", ("STOCK %d"):format(index), Color3.fromRGB(205, 224, 241), UDim2.fromOffset(115, 30), 40)
 		end
 	end
 
-	local futureSell = makePart(
-		bay,
-		"FutureQuickSellAnchor",
-		Vector3.new(1, 1, 1),
-		bayCFrame * CFrame.new(-13.5, 1, -6.5),
-		Color3.new(1, 1, 1),
-		1
-	)
+	local futureSell = makePart(bay, "FutureQuickSellAnchor", Vector3.new(1, 1, 1), bayCFrame * CFrame.new(-13.5, 1, -6.5), Color3.new(1, 1, 1), 1)
 	futureSell.CanCollide = false
 	futureSell.CanQuery = false
 	futureSell:SetAttribute("ReservedPurpose", "Sell")
 
-	local futureUpgrade = makePart(
-		bay,
-		"FutureBayUpgradeAnchor",
-		Vector3.new(1, 1, 1),
-		bayCFrame * CFrame.new(13.5, 1, 13.5),
-		Color3.new(1, 1, 1),
-		1
-	)
+	local futureUpgrade = makePart(bay, "FutureBayUpgradeAnchor", Vector3.new(1, 1, 1), bayCFrame * CFrame.new(13.5, 1, 13.5), Color3.new(1, 1, 1), 1)
 	futureUpgrade.CanCollide = false
 	futureUpgrade.CanQuery = false
 	futureUpgrade:SetAttribute("ReservedPurpose", "BayUpgrade")
 end
 
-local function buildBayAt(baysFolder: Folder, index: number, bayCFrame: CFrame)
+local function buildBayAt(baysFolder: Folder, index: number, position: Vector3, lookTarget: Vector3)
 	local config = WarehouseConfig.Bay
+	local bayCFrame = CFrame.lookAt(position, lookTarget)
 	local bay = Instance.new("Model")
 	bay.Name = ("Bay%02d"):format(index)
 	bay:SetAttribute("BayIndex", index)
@@ -187,47 +130,19 @@ local function buildBayAt(baysFolder: Folder, index: number, bayCFrame: CFrame)
 	local pad = makePart(bay, "BayPad", config.PadSize, bayCFrame, Color3.fromRGB(61, 71, 86))
 	pad.Material = Enum.Material.Concrete
 
-	local processing = makePart(
-		bay,
-		"ProcessingArea",
-		config.ProcessingSize,
-		bayCFrame * config.ProcessingOffset,
-		Color3.fromRGB(76, 111, 94),
-		0.22
-	)
+	local processing = makePart(bay, "ProcessingArea", config.ProcessingSize, bayCFrame * config.ProcessingOffset, Color3.fromRGB(76, 111, 94), 0.22)
 	processing.CanCollide = false
 	processing:SetAttribute("ReservedPurpose", "DeliveryProcessing")
 
-	local unload = makePart(
-		bay,
-		"UnloadZone",
-		config.UnloadSize,
-		bayCFrame * config.UnloadOffset,
-		Color3.fromRGB(84, 195, 122),
-		0.72
-	)
+	local unload = makePart(bay, "UnloadZone", config.UnloadSize, bayCFrame * config.UnloadOffset, Color3.fromRGB(84, 195, 122), 0.72)
 	unload.CanCollide = false
 	unload.CanTouch = true
 	unload:SetAttribute("BayIndex", index)
 
-	local processingAnchor = makePart(
-		bay,
-		"ProcessingLabelAnchor",
-		Vector3.new(1, 1, 1),
-		bayCFrame * CFrame.new(0, 1.3, -7.4),
-		Color3.new(1, 1, 1),
-		1
-	)
+	local processingAnchor = makePart(bay, "ProcessingLabelAnchor", Vector3.new(1, 1, 1), bayCFrame * CFrame.new(0, 1.3, -7.4), Color3.new(1, 1, 1), 1)
 	processingAnchor.CanCollide = false
 	processingAnchor.CanQuery = false
-	addBillboard(
-		processingAnchor,
-		"ProcessingLabel",
-		"DELIVERY / PROCESSING",
-		Color3.fromRGB(180, 255, 202),
-		UDim2.fromOffset(200, 36),
-		50
-	)
+	addBillboard(processingAnchor, "ProcessingLabel", "DELIVERY / PROCESSING", Color3.fromRGB(180, 255, 202), UDim2.fromOffset(200, 36), 50)
 
 	buildStockSlots(bay, bayCFrame)
 
@@ -235,43 +150,16 @@ local function buildBayAt(baysFolder: Folder, index: number, bayCFrame: CFrame)
 	van.Name = "Van"
 	van.Parent = bay
 	makePart(van, "Body", Vector3.new(12.5, 5.2, 8.2), bayCFrame * config.VanOffset, Color3.fromRGB(126, 132, 143))
-	makePart(
-		van,
-		"Cab",
-		Vector3.new(8.2, 4.2, 4.2),
-		bayCFrame * config.VanOffset * CFrame.new(0, -0.25, -5.4),
-		Color3.fromRGB(148, 154, 164)
-	)
+	makePart(van, "Cab", Vector3.new(8.2, 4.2, 4.2), bayCFrame * config.VanOffset * CFrame.new(0, -0.25, -5.4), Color3.fromRGB(148, 154, 164))
 
-	local spawnMarker = makePart(
-		bay,
-		"SpawnMarker",
-		Vector3.new(1, 1, 1),
-		bayCFrame * config.SpawnOffset,
-		Color3.new(1, 1, 1),
-		1
-	)
+	local spawnMarker = makePart(bay, "SpawnMarker", Vector3.new(1, 1, 1), bayCFrame * config.SpawnOffset, Color3.new(1, 1, 1), 1)
 	spawnMarker.CanCollide = false
 	spawnMarker.CanQuery = false
 
-	local ownerAnchor = makePart(
-		bay,
-		"OwnerLabelAnchor",
-		Vector3.new(1, 1, 1),
-		bayCFrame * config.OwnerLabelOffset,
-		Color3.new(1, 1, 1),
-		1
-	)
+	local ownerAnchor = makePart(bay, "OwnerLabelAnchor", Vector3.new(1, 1, 1), bayCFrame * config.OwnerLabelOffset, Color3.new(1, 1, 1), 1)
 	ownerAnchor.CanCollide = false
 	ownerAnchor.CanQuery = false
-	local label = addBillboard(
-		ownerAnchor,
-		"OwnerLabel",
-		("OPEN BAY %02d"):format(index),
-		Color3.fromRGB(185, 193, 207),
-		UDim2.fromOffset(240, 62),
-		95
-	)
+	local label = addBillboard(ownerAnchor, "OwnerLabel", ("OPEN BAY %02d"):format(index), Color3.fromRGB(185, 193, 207), UDim2.fromOffset(240, 62), 95)
 	label:SetAttribute("BayIndex", index)
 	bay.PrimaryPart = pad
 end
@@ -281,14 +169,17 @@ local function buildBays(root: Folder, config)
 	baysFolder.Name = "Bays"
 	baysFolder.Parent = root
 
-	for row = 0, 5 do
-		local z = config.BayStartZ - row * config.BaySpacingZ
-		local leftIndex = row + 1
-		local rightIndex = row + 7
-		local leftPosition = Vector3.new(-config.BaySideX, 0, z)
-		local rightPosition = Vector3.new(config.BaySideX, 0, z)
-		buildBayAt(baysFolder, leftIndex, CFrame.lookAt(leftPosition, config.BayLookTarget))
-		buildBayAt(baysFolder, rightIndex, CFrame.lookAt(rightPosition, config.BayLookTarget))
+	local leftIndex = 1
+	local rightIndex = 7
+	for _, z in config.BayRowsZ do
+		for _, x in { -config.BayOuterX, -config.BayInnerX } do
+			buildBayAt(baysFolder, leftIndex, Vector3.new(x, 0, z), config.BayLookTarget)
+			leftIndex += 1
+		end
+		for _, x in { config.BayInnerX, config.BayOuterX } do
+			buildBayAt(baysFolder, rightIndex, Vector3.new(x, 0, z), config.BayLookTarget)
+			rightIndex += 1
+		end
 	end
 end
 
@@ -314,7 +205,7 @@ local function buildHomeApron(root: Folder, gameplay: Folder, config)
 		root,
 		"HomeApronFloor",
 		config.HomeApronSize,
-		CFrame.new(config.HomeApronCenter + Vector3.new(0, -0.44, 0)),
+		CFrame.new(config.HomeApronCenter + Vector3.new(0, -config.HomeApronSize.Y * 0.5, 0)),
 		Color3.fromRGB(52, 58, 68)
 	)
 	apron.Material = Enum.Material.Concrete
@@ -323,7 +214,7 @@ local function buildHomeApron(root: Folder, gameplay: Folder, config)
 		gameplay,
 		"SharedDepartureArea",
 		Vector3.new(172, 0.10, 46),
-		CFrame.new(0, 0.10, config.SharedDepartureZ + 4),
+		CFrame.new(0, 0.10, config.SharedDepartureZ),
 		Color3.fromRGB(78, 88, 102),
 		0.28
 	)
@@ -339,13 +230,7 @@ local function buildHomeApron(root: Folder, gameplay: Folder, config)
 	)
 end
 
-local function makeSpawnMarker(
-	spawnFolder: Folder,
-	sectionId: string,
-	index: number,
-	position: Vector3,
-	opportunityKind: string
-)
+local function makeSpawnMarker(spawnFolder: Folder, sectionId: string, index: number, position: Vector3, opportunityKind: string)
 	local meta = MacroLayoutConfig.Sections[sectionId]
 	local marker = makePart(
 		spawnFolder,
@@ -388,18 +273,16 @@ local function buildSectionStructures(sectionModel: Model, sectionId: string, ce
 	local folder = Instance.new("Folder")
 	folder.Name = "StorageStructures"
 	folder.Parent = sectionModel
-
 	local size, transparency, collides, material, kind = sectionStructureSpec(sectionId)
 	local index = 0
 	for _, side in { -1, 1 } do
 		for _, zOffset in { 26, 0, -26 } do
 			index += 1
-			local x = 76 * side
 			local part = makePart(
 				folder,
 				("%02d_%s"):format(index, kind),
 				size,
-				CFrame.new(x, size.Y * 0.5, centerZ + zOffset),
+				CFrame.new(76 * side, size.Y * 0.5, centerZ + zOffset),
 				meta.Color:Lerp(Color3.fromRGB(48, 52, 59), 0.34),
 				transparency
 			)
@@ -417,7 +300,6 @@ local function buildSectionIdentity(sectionModel: Model, sectionId: string, fron
 	local identity = Instance.new("Folder")
 	identity.Name = "SectionIdentity"
 	identity.Parent = sectionModel
-
 	for _, x in { -(runwayWidth * 0.5 - 7), runwayWidth * 0.5 - 7 } do
 		local post = makePart(
 			identity,
@@ -429,7 +311,6 @@ local function buildSectionIdentity(sectionModel: Model, sectionId: string, fron
 		)
 		post.Material = Enum.Material.Metal
 	end
-
 	local beam = makePart(
 		identity,
 		"TransitionBeam",
@@ -440,15 +321,7 @@ local function buildSectionIdentity(sectionModel: Model, sectionId: string, fron
 	)
 	beam.Material = Enum.Material.Metal
 	beam.CanCollide = false
-
-	makeLabelAnchor(
-		identity,
-		"SectionSignAnchor",
-		Vector3.new(-61, 4.5, frontZ - 5),
-		meta.DisplayName,
-		Color3.fromRGB(235, 238, 244),
-		135
-	)
+	makeLabelAnchor(identity, "SectionSignAnchor", Vector3.new(-61, 4.5, frontZ - 5), meta.DisplayName, Color3.fromRGB(235, 238, 244), 135)
 end
 
 local function markerLayout(centerZ: number): {{Position: Vector3, Kind: string}}
@@ -472,13 +345,7 @@ local function markerLayout(centerZ: number): {{Position: Vector3, Kind: string}
 	}
 end
 
-local function buildSection(
-	sectionsFolder: Folder,
-	spawnFolder: Folder,
-	routeFolder: Folder,
-	sectionId: string,
-	config
-)
+local function buildSection(sectionsFolder: Folder, spawnFolder: Folder, routeFolder: Folder, sectionId: string, config)
 	local meta = MacroLayoutConfig.Sections[sectionId]
 	local centerZ = config.SectionCenters[sectionId]
 	local frontZ = centerZ + config.SectionDepth * 0.5
@@ -495,16 +362,8 @@ local function buildSection(
 	sectionModel:SetAttribute("CenterZ", centerZ)
 	sectionModel.Parent = sectionsFolder
 
-	local floor = makePart(
-		sectionModel,
-		"SectionFloor",
-		Vector3.new(config.RunwayWidth, 0.08, config.SectionDepth),
-		CFrame.new(0, 0.11, centerZ),
-		meta.Color,
-		0.86
-	)
+	local floor = makePart(sectionModel, "SectionFloor", Vector3.new(config.RunwayWidth, 0.08, config.SectionDepth), CFrame.new(0, 0.11, centerZ), meta.Color, 0.86)
 	floor.CanCollide = false
-
 	buildSectionIdentity(sectionModel, sectionId, frontZ, config.RunwayWidth)
 	buildSectionStructures(sectionModel, sectionId, centerZ)
 
@@ -541,9 +400,7 @@ local function buildSection(
 	local markers = markerLayout(centerZ)
 	for index, markerSpec in markers do
 		makeSpawnMarker(spawnFolder, sectionId, index, markerSpec.Position, markerSpec.Kind)
-		if markerSpec.Kind == "SharedFocal" or markerSpec.Kind == "SharedStaging" then
-			focalCount += 1
-		end
+		if markerSpec.Kind == "SharedFocal" or markerSpec.Kind == "SharedStaging" then focalCount += 1 end
 	end
 
 	local root = sectionsFolder.Parent and sectionsFolder.Parent.Parent
@@ -561,27 +418,9 @@ local function buildWarehouseWalls(root: Folder, config)
 	local runwayLength = config.RunwayFrontZ - config.RunwayBackZ
 	local halfRunway = config.RunwayWidth * 0.5
 
-	makePart(
-		root,
-		"RunwayWestWall",
-		Vector3.new(1.5, config.WallHeight, runwayLength),
-		CFrame.new(-halfRunway, wallY, runwayCenterZ),
-		wallColor
-	)
-	makePart(
-		root,
-		"RunwayEastWall",
-		Vector3.new(1.5, config.WallHeight, runwayLength),
-		CFrame.new(halfRunway, wallY, runwayCenterZ),
-		wallColor
-	)
-	makePart(
-		root,
-		"SecureBackWall",
-		Vector3.new(config.RunwayWidth, config.WallHeight, 1.5),
-		CFrame.new(0, wallY, config.RunwayBackZ),
-		wallColor
-	)
+	makePart(root, "RunwayWestWall", Vector3.new(1.5, config.WallHeight, runwayLength), CFrame.new(-halfRunway, wallY, runwayCenterZ), wallColor)
+	makePart(root, "RunwayEastWall", Vector3.new(1.5, config.WallHeight, runwayLength), CFrame.new(halfRunway, wallY, runwayCenterZ), wallColor)
+	makePart(root, "SecureBackWall", Vector3.new(config.RunwayWidth, config.WallHeight, 1.5), CFrame.new(0, wallY, config.RunwayBackZ), wallColor)
 
 	local apronHalfX = config.HomeApronSize.X * 0.5
 	local apronHalfZ = config.HomeApronSize.Z * 0.5
@@ -605,14 +444,7 @@ local function buildExpansionMarkers(root: Folder, config)
 	folder.Name = "FutureExpansionPoints"
 	folder.Parent = root
 	for index, x in { -56, 0, 56 } do
-		local marker = makePart(
-			folder,
-			("ExpansionPoint%02d"):format(index),
-			Vector3.new(2, 2, 2),
-			CFrame.new(x, 1, config.RunwayBackZ - 18),
-			Color3.fromRGB(124, 104, 155),
-			1
-		)
+		local marker = makePart(folder, ("ExpansionPoint%02d"):format(index), Vector3.new(2, 2, 2), CFrame.new(x, 1, config.RunwayBackZ - 18), Color3.fromRGB(124, 104, 155), 1)
 		marker.CanCollide = false
 		marker.CanQuery = false
 		marker:SetAttribute("ReservedPurpose", "FutureRunwayExtensionOrAnnex")
@@ -653,13 +485,11 @@ function Service.Build(): Folder
 	local gameplay = Instance.new("Folder")
 	gameplay.Name = "WarehouseGameplay"
 	gameplay.Parent = root
-
 	local spawnFolder = Instance.new("Folder")
 	spawnFolder.Name = "ItemSpawns"
 	spawnFolder.Parent = root
 
 	buildHomeApron(root, gameplay, config)
-
 	local runwayFloor = makePart(
 		root,
 		"WarehouseFloor",
@@ -696,7 +526,6 @@ function Service.Build(): Folder
 	buildExpansionMarkers(root, config)
 	buildFallbackAndFeedback(root, config.FallbackSpawnPosition)
 	publishMetrics(root, config)
-
 	return root
 end
 
