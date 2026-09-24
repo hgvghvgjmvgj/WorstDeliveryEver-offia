@@ -12,6 +12,8 @@ local player = Players.LocalPlayer
 local tripActive = false
 local reviewSeen = false
 local tripStartedAt = 0
+local sessionStartedAt = 0
+local firstSellRecorded = false
 local previousItemCount = 0
 local peakItemCount = 0
 local peakSellPotential = 0
@@ -50,6 +52,7 @@ local function finishTrip()
 	local estimatedPassiveDuringTrip = (passiveRateAtStart / 60) * elapsed
 	local adjustedCashDelta = math.max(0, rawCashDelta - estimatedPassiveDuringTrip)
 	local adjustedCashPerMinute = adjustedCashDelta * 60 / elapsed
+	local passiveToActiveRatio = if adjustedCashPerMinute > 0 then passiveRateAtStart / adjustedCashPerMinute else 0
 
 	player:SetAttribute("DevLastTripSeconds", elapsed)
 	player:SetAttribute("DevLastTripItems", peakItemCount)
@@ -57,21 +60,30 @@ local function finishTrip()
 	player:SetAttribute("DevLastTripPotentialCashPerMinute", potentialPerMinute)
 	player:SetAttribute("DevLastTripCashDelta", rawCashDelta)
 	player:SetAttribute("DevLastTripAdjustedCashPerMinute", adjustedCashPerMinute)
+	player:SetAttribute("DevLastTripPassiveToActiveRatio", passiveToActiveRatio)
+
+	if adjustedCashDelta > 0 and not firstSellRecorded then
+		firstSellRecorded = true
+		player:SetAttribute("DevFirstSellSeconds", math.max(0, os.clock() - sessionStartedAt))
+	end
 
 	print(string.format(
-		"[ONE TRIP][M4 ECON TEST] %d items | %s SELL potential | %.1fs | %s/min potential | cash delta %s | adjusted active ~%s/min",
+		"[ONE TRIP][M6A.3 ECON] %d items | %s SELL potential | %.1fs | %s/min potential | cash delta %s | adjusted active ~%s/min | passive/active %.1f%%",
 		peakItemCount,
 		NumberFormat.Cash(peakSellPotential),
 		elapsed,
 		NumberFormat.Cash(potentialPerMinute),
 		NumberFormat.Cash(rawCashDelta),
-		NumberFormat.Cash(adjustedCashPerMinute)
+		NumberFormat.Cash(adjustedCashPerMinute),
+		passiveToActiveRatio * 100
 	))
 
 	resetTrip()
 end
 
 function Controller.Start()
+	sessionStartedAt = os.clock()
+	firstSellRecorded = false
 	local remoteFolder = ReplicatedStorage:WaitForChild(RemoteNames.Folder)
 	local carryState = remoteFolder:WaitForChild(RemoteNames.CarryState) :: RemoteEvent
 	local economyState = remoteFolder:WaitForChild(RemoteNames.EconomyState) :: RemoteEvent
