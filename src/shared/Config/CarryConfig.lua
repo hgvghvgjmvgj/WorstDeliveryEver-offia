@@ -54,7 +54,7 @@ return table.freeze({
 		ReversalDegrees = 145.0,
 
 		SpeedAmplificationStart = 20.0,
-		SpeedAmplificationFull = 47.0,
+		SpeedAmplificationFull = 65.0,
 		MaximumEventSwayMultiplier = 1.85,
 		MinimumEventRecoveryMultiplier = 0.52,
 		ControlReductionExponent = 0.72,
