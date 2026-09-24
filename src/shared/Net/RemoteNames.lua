@@ -17,4 +17,6 @@ return table.freeze({
 	CollectionState = "CollectionState",
 	CollectionAction = "CollectionAction",
 	CollectionEvent = "CollectionEvent",
+
+	TutorialAction = "TutorialAction",
 })
