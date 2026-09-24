@@ -13,8 +13,6 @@ Config.Milestones = table.freeze({
 	table.freeze({ Key = "100", Ratio = 1.00, BaseCash = 30_000, Cosmetic = nil }),
 })
 
--- Existing six-section values remain intact. New values are M6A.2 test values,
--- not a final economy rebalance; telemetry decides the later reward pass.
 Config.SectionRewardScale = table.freeze({
 	Receiving = 1.00,
 	HomeBasics = 1.20,
@@ -78,7 +76,9 @@ end
 
 function Config.NewProfile(): any
 	local sections = {}
-	for _, sectionId in LootCatalog.SectionOrder do sections[sectionId] = { Discovered = {}, RewardMilestones = {} } end
+	for _, sectionId in LootCatalog.SectionOrder do
+		sections[sectionId] = { Discovered = {}, RewardMilestones = {} }
+	end
 	return { Sections = sections, RareFinds = {} }
 end
 
@@ -96,6 +96,7 @@ function Config.Sanitize(raw: any, nowUnix: number): any
 	local result = Config.NewProfile()
 	if typeof(raw) ~= "table" then return result end
 	local sourceSections = if typeof(raw.Sections) == "table" then raw.Sections else {}
+
 	for _, sectionId in LootCatalog.SectionOrder do
 		local destination = result.Sections[sectionId]
 		local source = sourceSections[sectionId]
@@ -110,7 +111,9 @@ function Config.Sanitize(raw: any, nowUnix: number): any
 			end
 			local rewards = if typeof(source.RewardMilestones) == "table" then source.RewardMilestones else {}
 			for key, value in rewards do
-				if milestoneKeys[tostring(key)] and value == true then destination.RewardMilestones[tostring(key)] = true end
+				if milestoneKeys[tostring(key)] and value == true then
+					destination.RewardMilestones[tostring(key)] = true
+				end
 			end
 		end
 	end
@@ -120,7 +123,10 @@ function Config.Sanitize(raw: any, nowUnix: number): any
 		local base = LootCatalog.ById[baseItemId]
 		if typeof(baseItemId) == "string" and base then
 			local clean = sanitizeEntry(rawEntry, nowUnix)
-			if clean then clean.SectionId = base.SectionId result.RareFinds[baseItemId] = clean end
+			if clean then
+				clean.SectionId = base.SectionId
+				result.RareFinds[baseItemId] = clean
+			end
 		end
 	end
 	return result
@@ -129,7 +135,9 @@ end
 function Config.CashReward(sectionId: string, milestoneKey: string): number
 	local scale = Config.SectionRewardScale[sectionId] or 1
 	for _, milestone in Config.Milestones do
-		if milestone.Key == milestoneKey then return math.max(0, math.floor(milestone.BaseCash * scale + 0.5)) end
+		if milestone.Key == milestoneKey then
+			return math.max(0, math.floor(milestone.BaseCash * scale + 0.5))
+		end
 	end
 	return 0
 end
@@ -162,8 +170,14 @@ local function upgradeEntry(entry: any?, rarity: string, nowUnix: number, sellVa
 	if not entry then return newEntry(rarity, nowUnix, sellValue), true, nil end
 	local oldRarity = validRarity(entry.BestRarity)
 	entry.TimesDelivered = math.max(1, math.floor(finiteNumber(entry.TimesDelivered, 1) + 0.5)) + 1
-	entry.BestSellValueDelivered = math.max(math.max(0, math.floor(finiteNumber(entry.BestSellValueDelivered, 0) + 0.5)), math.max(0, math.floor(finiteNumber(sellValue, 0) + 0.5)))
-	if RarityConfig.Rank(rarity) > RarityConfig.Rank(oldRarity) then entry.BestRarity = rarity return entry, false, oldRarity end
+	entry.BestSellValueDelivered = math.max(
+		math.max(0, math.floor(finiteNumber(entry.BestSellValueDelivered, 0) + 0.5)),
+		math.max(0, math.floor(finiteNumber(sellValue, 0) + 0.5))
+	)
+	if RarityConfig.Rank(rarity) > RarityConfig.Rank(oldRarity) then
+		entry.BestRarity = rarity
+		return entry, false, oldRarity
+	end
 	entry.BestRarity = oldRarity
 	return entry, false, nil
 end
@@ -191,6 +205,7 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 	local changedSections: {[string]: boolean} = {}
 	local slots = stock and stock.Slots
 	if typeof(slots) ~= "table" then return end
+
 	for _, raw in slots do
 		if typeof(raw) == "table" and typeof(raw.ItemId) == "string" then
 			local definition = ItemConfig[raw.ItemId]
@@ -209,7 +224,9 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 								section.Discovered[baseItemId] = newEntry(rarity, stockTime, stockSell)
 								changedSections[base.SectionId] = true
 							else
-								if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(previous.BestRarity)) then previous.BestRarity = rarity end
+								if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(previous.BestRarity)) then
+									previous.BestRarity = rarity
+								end
 								previous.BestSellValueDelivered = math.max(finiteNumber(previous.BestSellValueDelivered, 0), stockSell)
 							end
 						end
@@ -221,7 +238,9 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 							rare.SectionId = base.SectionId
 							collection.RareFinds[baseItemId] = rare
 						else
-							if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(rare.BestRarity)) then rare.BestRarity = rarity end
+							if RarityConfig.Rank(rarity) > RarityConfig.Rank(validRarity(rare.BestRarity)) then
+								rare.BestRarity = rarity
+							end
 							rare.BestSellValueDelivered = math.max(finiteNumber(rare.BestSellValueDelivered, 0), stockSell)
 						end
 					end
@@ -236,7 +255,9 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 		local ratio = if total > 0 then count / total else 0
 		local section = collection.Sections[sectionId]
 		for _, milestone in Config.Milestones do
-			if ratio + 1e-6 >= milestone.Ratio then section.RewardMilestones[milestone.Key] = true end
+			if ratio + 1e-6 >= milestone.Ratio then
+				section.RewardMilestones[milestone.Key] = true
+			end
 		end
 	end
 end
