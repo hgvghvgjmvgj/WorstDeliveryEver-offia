@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 
 local CarryConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("CarryConfig"))
 local HandlingConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("HandlingConfig"))
+local ProgressionConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("ProgressionConfig"))
 local NumberFormat = require(ReplicatedStorage:WaitForChild("NumberFormat"))
 local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
@@ -58,6 +59,21 @@ local function nearestItem(): BasePart?
 	return best
 end
 
+local function nextTrackCost(trackName: string): number
+	local track = ProgressionConfig.Tracks[trackName]
+	local levelIndex = math.max(1, math.floor((tonumber(player:GetAttribute(track.ProfileField)) or 1) + 0.5))
+	local nextIndex = levelIndex + 1
+	if nextIndex > #track.Levels then return 0 end
+	return track.Levels[nextIndex].Cost
+end
+
+local function requirementStatus(label: string, trackName: string, current: number, required: number): string
+	if current + 1e-6 >= required then
+		return label .. " ✓"
+	end
+	return label .. " " .. NumberFormat.Cash(nextTrackCost(trackName))
+end
+
 local function refreshRigCard()
 	local tier = tonumber(player:GetAttribute("HandlingRigTier")) or 0
 	local strength = tonumber(player:GetAttribute("CarryStrength")) or 15
@@ -68,15 +84,18 @@ local function refreshRigCard()
 		rigLabel.Text = ("CURRENT HANDLING: %s\nMAX CURRENT RIG MILESTONE"):format(rigDisplay(tier))
 		return
 	end
-	local needs = {}
-	local strengthNeed = math.max(0, nextMilestone.Strength - strength)
-	local spaceNeed = math.max(0, nextMilestone.CarrySpace - space)
-	local controlNeed = math.max(0, nextMilestone.Control - control)
-	if strengthNeed > 0.01 then table.insert(needs, ("Strength +%.1f"):format(strengthNeed)) end
-	if spaceNeed > 0.01 then table.insert(needs, ("Space +%.1f"):format(spaceNeed)) end
-	if controlNeed > 0.005 then table.insert(needs, ("Control +%.2f"):format(controlNeed)) end
-	local needText = if #needs > 0 then table.concat(needs, "  ") else "Milestone ready"
-	rigLabel.Text = ("CURRENT HANDLING: %s\nNEXT %s  -  %s"):format(rigDisplay(tier), nextMilestone.Name, needText)
+
+	local strengthStatus = requirementStatus("STRENGTH", "Strength", strength, nextMilestone.Strength)
+	local spaceStatus = requirementStatus("SPACE", "CarrySpace", space, nextMilestone.CarrySpace)
+	local controlStatus = requirementStatus("CONTROL", "Control", control, nextMilestone.Control)
+	rigLabel.Text = string.format(
+		"CURRENT %s   →   NEXT %s\n%s   |   %s   |   %s",
+		rigDisplay(tier),
+		nextMilestone.Name,
+		strengthStatus,
+		spaceStatus,
+		controlStatus
+	)
 end
 
 local function refreshSectionSigns()
@@ -142,7 +161,7 @@ local function buildUi()
 	rigFrame.Name = "RigSummary"
 	rigFrame.AnchorPoint = Vector2.new(0.5, 0)
 	rigFrame.Position = UDim2.new(0.5, 0, 0, 16)
-	rigFrame.Size = UDim2.fromOffset(390, 58)
+	rigFrame.Size = UDim2.fromOffset(470, 70)
 	rigFrame.BackgroundColor3 = Color3.fromRGB(27, 31, 37)
 	rigFrame.BackgroundTransparency = 0.12
 	rigFrame.BorderSizePixel = 0
@@ -209,7 +228,10 @@ function Controller.Start()
 		lastRequested = nil
 		requestPreview(true)
 	end
-	for _, attribute in { "HandlingRigTier", "CarryStrength", "CarrySpace", "CarryControl" } do
+	for _, attribute in {
+		"HandlingRigTier", "CarryStrength", "CarrySpace", "CarryControl",
+		"StrengthLevel", "CarrySpaceLevel", "ControlLevel",
+	} do
 		player:GetAttributeChangedSignal(attribute):Connect(progressionChanged)
 	end
 
