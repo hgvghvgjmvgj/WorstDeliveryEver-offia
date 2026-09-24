@@ -110,6 +110,57 @@ local function addModelDetails(root: BasePart, itemId: string)
 	end
 end
 
+local function addRarityGeometry(root: BasePart, tier: any)
+	local folder = root:FindFirstChild("LootDetails")
+	if not folder or not folder:IsA("Folder") then return end
+	local rank = tier.Rank
+	local size = root.Size
+	local accent = tier.Color
+	local pale = accent:Lerp(Color3.new(1,1,1), 0.42)
+
+	-- Uncommon: intentionally close to normal. One small quality badge only.
+	if rank == 2 then
+		detail(root, folder, "UncommonBadge", Vector3.new(math.max(0.22,size.X*0.14), math.max(0.18,size.Y*0.08), 0.16), CFrame.new(size.X*0.25, size.Y*0.25, -size.Z*0.53), accent, Enum.Material.Metal)
+		return
+	end
+	if rank < 3 then return end
+
+	-- Rare: visible upgraded trim, still recognizably the ordinary object.
+	detail(root, folder, "RareTrimTop", Vector3.new(size.X*0.68, math.max(0.16,size.Y*0.055), 0.18), CFrame.new(0,size.Y*0.48,-size.Z*0.53), accent, Enum.Material.Neon)
+	if rank == 3 then return end
+
+	-- Epic: silhouette starts changing with a top cap + side accent plates.
+	detail(root, folder, "EpicCap", Vector3.new(size.X*0.76, math.max(0.20,size.Y*0.08), size.Z*0.36), CFrame.new(0,size.Y*0.54,0), accent, Enum.Material.Metal)
+	detail(root, folder, "EpicSideL", Vector3.new(math.max(0.18,size.X*0.06), size.Y*0.46, size.Z*0.46), CFrame.new(-size.X*0.53,0,0), accent, Enum.Material.Metal)
+	detail(root, folder, "EpicSideR", Vector3.new(math.max(0.18,size.X*0.06), size.Y*0.46, size.Z*0.46), CFrame.new(size.X*0.53,0,0), accent, Enum.Material.Metal)
+	if rank == 4 then return end
+
+	-- Legendary: a structural premium frame rather than a gold recolor.
+	detail(root, folder, "LegendaryHeader", Vector3.new(size.X*0.94, math.max(0.22,size.Y*0.07), 0.24), CFrame.new(0,size.Y*0.62,0), accent, Enum.Material.Metal)
+	detail(root, folder, "LegendaryRailL", Vector3.new(math.max(0.20,size.X*0.055), size.Y*0.82, 0.24), CFrame.new(-size.X*0.55,0,-size.Z*0.46), accent, Enum.Material.Metal)
+	detail(root, folder, "LegendaryRailR", Vector3.new(math.max(0.20,size.X*0.055), size.Y*0.82, 0.24), CFrame.new(size.X*0.55,0,-size.Z*0.46), accent, Enum.Material.Metal)
+	if rank == 5 then return end
+
+	-- Mythic: floating-looking energy nodes and a stronger central construction.
+	local nodeL = detail(root, folder, "MythicNodeL", Vector3.new(math.max(0.32,size.X*0.12), math.max(0.32,size.X*0.12), math.max(0.32,size.X*0.12)), CFrame.new(-size.X*0.62,size.Y*0.18,0), accent, Enum.Material.Neon)
+	nodeL.Shape = Enum.PartType.Ball
+	local nodeR = detail(root, folder, "MythicNodeR", nodeL.Size, CFrame.new(size.X*0.62,size.Y*0.18,0), accent, Enum.Material.Neon)
+	nodeR.Shape = Enum.PartType.Ball
+	detail(root, folder, "MythicSpine", Vector3.new(math.max(0.20,size.X*0.05), size.Y*0.72, math.max(0.20,size.Z*0.08)), CFrame.new(0,0,size.Z*0.54), accent, Enum.Material.Neon)
+	if rank == 6 then return end
+
+	-- Cosmic: object is redesigned around energy containment, not just painted cyan.
+	detail(root, folder, "CosmicFinL", Vector3.new(0.26,size.Y*0.86,0.26), CFrame.new(-size.X*0.64,0,0) * CFrame.Angles(0,0,math.rad(18)), accent, Enum.Material.Neon)
+	detail(root, folder, "CosmicFinR", Vector3.new(0.26,size.Y*0.86,0.26), CFrame.new(size.X*0.64,0,0) * CFrame.Angles(0,0,math.rad(-18)), accent, Enum.Material.Neon)
+	detail(root, folder, "CosmicBridge", Vector3.new(size.X*0.72,0.20,size.Z*0.72), CFrame.new(0,-size.Y*0.58,0), accent, Enum.Material.Neon)
+	if rank == 7 then return end
+
+	-- Eternal: clean white-gold prestige geometry. No rainbow particle wall.
+	detail(root, folder, "EternalCrown", Vector3.new(size.X*0.80,0.26,0.26), CFrame.new(0,size.Y*0.72,0), pale, Enum.Material.Neon)
+	detail(root, folder, "EternalPillarL", Vector3.new(math.max(0.20,size.X*0.06),size.Y*0.92,math.max(0.20,size.Z*0.07)), CFrame.new(-size.X*0.58,0,size.Z*0.46), pale, Enum.Material.Metal)
+	detail(root, folder, "EternalPillarR", Vector3.new(math.max(0.20,size.X*0.06),size.Y*0.92,math.max(0.20,size.Z*0.07)), CFrame.new(size.X*0.58,0,size.Z*0.46), pale, Enum.Material.Metal)
+end
+
 local function addRarity(root: BasePart, itemId: string, playCue: boolean)
 	local definition = ItemConfig[itemId]
 	if not definition then return end
@@ -117,14 +168,16 @@ local function addRarity(root: BasePart, itemId: string, playCue: boolean)
 	local tier = RarityConfig.Tiers[rarity]
 	if not tier then return end
 
+	addRarityGeometry(root, tier)
+
 	if tier.Rank >= 3 then
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "RarityHighlight"
 		highlight.Adornee = root
 		highlight.FillColor = tier.Color
 		highlight.OutlineColor = tier.Color:Lerp(Color3.new(1,1,1),0.35)
-		highlight.FillTransparency = if tier.Rank >= 7 then 0.48 elseif tier.Rank >= 5 then 0.62 else 0.78
-		highlight.OutlineTransparency = if tier.Rank >= 5 then 0.08 else 0.28
+		highlight.FillTransparency = if tier.Rank >= 7 then 0.70 elseif tier.Rank >= 5 then 0.78 else 0.88
+		highlight.OutlineTransparency = if tier.Rank >= 5 then 0.16 else 0.38
 		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 		highlight.Parent = root
 	end
@@ -133,13 +186,14 @@ local function addRarity(root: BasePart, itemId: string, playCue: boolean)
 		local light = Instance.new("PointLight")
 		light.Name = "RarityLight"
 		light.Color = tier.Color
-		light.Brightness = math.min(2.4, 0.45 + tier.Rank * 0.18)
-		light.Range = math.min(18, 6 + tier.Rank * 1.3)
+		light.Brightness = math.min(1.35, 0.30 + tier.Rank * 0.11)
+		light.Range = math.min(13, 4 + tier.Rank * 1.0)
 		light.Shadows = false
 		light.Parent = root
 	end
 
-	if tier.Rank >= 6 then
+	-- Particles are reserved for the truly extraordinary tiers and kept subtle.
+	if tier.Rank >= 7 then
 		local attachment = Instance.new("Attachment")
 		attachment.Name = "RarityAttachment"
 		attachment.Parent = root
@@ -147,25 +201,12 @@ local function addRarity(root: BasePart, itemId: string, playCue: boolean)
 		emitter.Name = "RarityParticles"
 		emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 		emitter.Color = ColorSequence.new(tier.Color)
-		emitter.LightEmission = 0.65
-		emitter.Rate = if tier.Rank >= 8 then 8 elseif tier.Rank == 7 then 5 else 2
-		emitter.Lifetime = NumberRange.new(0.45, 0.90)
-		emitter.Speed = NumberRange.new(0.6, 1.6)
-		emitter.SpreadAngle = Vector2.new(180,180)
+		emitter.LightEmission = 0.55
+		emitter.Rate = if tier.Rank >= 8 then 3 else 2
+		emitter.Lifetime = NumberRange.new(0.40, 0.75)
+		emitter.Speed = NumberRange.new(0.35, 0.9)
+		emitter.SpreadAngle = Vector2.new(150,150)
 		emitter.Parent = attachment
-	end
-
-	if tier.Rank >= 7 then
-		local folder = root:FindFirstChild("LootDetails")
-		if folder and folder:IsA("Folder") then
-			local size = root.Size
-			local accent = tier.Color
-			detail(root, folder, "RareFinL", Vector3.new(0.24,size.Y*0.78,0.24), CFrame.new(-size.X*0.60,0,0) * CFrame.Angles(0,0,math.rad(18)), accent, Enum.Material.Neon)
-			detail(root, folder, "RareFinR", Vector3.new(0.24,size.Y*0.78,0.24), CFrame.new(size.X*0.60,0,0) * CFrame.Angles(0,0,math.rad(-18)), accent, Enum.Material.Neon)
-			if tier.Rank >= 8 then
-				detail(root, folder, "EternalCrown", Vector3.new(size.X*0.72,0.22,0.22), CFrame.new(0,size.Y*0.67,0), accent, Enum.Material.Neon)
-			end
-		end
 	end
 
 	if playCue and tier.Rank >= 3 then
