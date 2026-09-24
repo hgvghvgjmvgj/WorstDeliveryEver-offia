@@ -5,7 +5,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Services = ServerScriptService:WaitForChild("Services")
 
 local RemoteService = require(Services:WaitForChild("RemoteService"))
-local WorldService = require(Services:WaitForChild("WorldService"))
+local WorldService = require(Services:WaitForChild("M6WorldService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local BayService = require(Services:WaitForChild("BayService"))
@@ -44,4 +44,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print("[ONE TRIP] M5C collection + section mastery + rare finds loaded")
+print(("[ONE TRIP] M6A macro layout challenge loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
