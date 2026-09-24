@@ -15,8 +15,6 @@ local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService")
 local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
-local M6CCargoArtService = require(Services:WaitForChild("M6CCargoArtService"))
-local M6CItemIdentityService = require(Services:WaitForChild("M6CItemIdentityService"))
 local M6CProductionBatchService = require(Services:WaitForChild("M6CProductionBatchService"))
 local M6CProfessionalVFXService = require(Services:WaitForChild("M6CProfessionalVFXService"))
 local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
@@ -82,15 +80,12 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
--- M6C checkpoint visual authority:
--- 1) generic M6C base/identity remains fallback for non-batch catalog items;
--- 2) the 11-item representative production service replaces those layers;
--- 3) professional VFX is the only active rarity aura system for the batch.
--- Rejected M6C.1 ModelCorrection/Prestige/EnergyAura services intentionally do
--- not start, preventing deferred callbacks from rebuilding the old visuals.
+-- M6C production checkpoint intentionally proves only the required 11-item
+-- representative batch. Generic M6C/M6C.1 art layers are disabled here so no
+-- deferred legacy renderer can re-layer rejected geometry/aura over the proof.
+-- Non-batch cargo remains on the existing LootPresentation fallback until the
+-- representative batch is visually approved and mass production is authorized.
 LootPresentationService.Start(world)
-M6CCargoArtService.Start(world)
-M6CItemIdentityService.Start(world)
 M6CProductionBatchService.Start(world)
 M6CProfessionalVFXService.Start(world)
 M6CRarityGalleryService.Start(world)
@@ -108,4 +103,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6C production representative batch + layered VFX loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6C production 11-item checkpoint + layered VFX loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
