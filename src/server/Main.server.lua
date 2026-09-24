@@ -11,6 +11,7 @@ local RemoteService = require(Services:WaitForChild("RemoteService"))
 local ComparisonWorldService = require(Services:WaitForChild("M6WorldService"))
 local RunwayWorldService = require(Services:WaitForChild("M6RunwayWorldService"))
 local RunwayTransitionService = require(Services:WaitForChild("M6RunwayTransitionService"))
+local DepthIllusionService = require(Services:WaitForChild("M6DepthIllusionService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local BayService = require(Services:WaitForChild("BayService"))
@@ -31,7 +32,10 @@ CollisionService.Start()
 
 local requestedMode = MacroLayoutConfig.ResolveMode(Workspace:GetAttribute("M6LayoutMode"))
 local world = if requestedMode == "D" then RunwayWorldService.Build() else ComparisonWorldService.Build()
-if requestedMode == "D" then RunwayTransitionService.Apply(world) end
+if requestedMode == "D" then
+	RunwayTransitionService.Apply(world)
+	DepthIllusionService.Apply(world)
+end
 WarehouseAccessService.Start(world)
 
 BayService.Start(world)
