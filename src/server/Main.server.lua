@@ -45,6 +45,11 @@ if requestedMode == "D" then
 	-- storage architecture rather than copy/pasted rack families.
 	M6BDeepStorageService.Build(world)
 
+	local storageSlots = world:FindFirstChild("M6BStorageSlots")
+	if storageSlots and storageSlots:IsA("Folder") then
+		world:SetAttribute("M6BStorageSlotCount", #storageSlots:GetChildren())
+	end
+
 	local presentationParts = 0
 	local departmentLights = 0
 	for _, descendant in world:GetDescendants() do
