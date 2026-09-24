@@ -1,8 +1,9 @@
 --!strict
 
--- Central warehouse supply tuning. M6A.2 expands from six to fifteen sections,
--- so the active population target is intentionally reduced rather than blindly
--- turning 15 × 16 into 240 active world cargo objects.
+-- Central warehouse supply tuning. M6A.3 keeps the 15-section population model
+-- but rebases absolute value bands for the corrected big-number economy. Rarity
+-- service still owns Legendary+ warehouse caps/cooldowns; these bands only shape
+-- how quickly a consumed spawn location becomes eligible again.
 return table.freeze({
 	FullServerPlayers = 12,
 
@@ -28,9 +29,12 @@ return table.freeze({
 		LowRatio = 0.30,
 	}),
 
+	-- Previous 4,999 / 11,999 cutoffs came from the small M4 economy and made
+	-- ordinary deep-section cargo behave like scarce premium cargo. These test
+	-- bands preserve replenishment cadence under the 15-section value curve.
 	ValueBands = table.freeze({
-		Ordinary = table.freeze({ MaxSellValue = 4_999, MinVacancySeconds = 11, MaxVacancySeconds = 26, SelectionWeight = 1.00 }),
-		Strong = table.freeze({ MaxSellValue = 11_999, MinVacancySeconds = 26, MaxVacancySeconds = 56, SelectionWeight = 0.55 }),
+		Ordinary = table.freeze({ MaxSellValue = 149_999, MinVacancySeconds = 11, MaxVacancySeconds = 26, SelectionWeight = 1.00 }),
+		Strong = table.freeze({ MaxSellValue = 399_999, MinVacancySeconds = 26, MaxVacancySeconds = 56, SelectionWeight = 0.55 }),
 		High = table.freeze({ MaxSellValue = math.huge, MinVacancySeconds = 41, MaxVacancySeconds = 86, SelectionWeight = 0.22 }),
 	}),
 
