@@ -13,6 +13,7 @@ local ComparisonWorldService = require(Services:WaitForChild("M6WorldService"))
 local M6A2WorldService = require(Services:WaitForChild("M6A2WorldService"))
 local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService"))
 local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
+local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
@@ -38,7 +39,11 @@ local requestedMode = MacroLayoutConfig.ResolveMode(Workspace:GetAttribute("M6La
 local world = if requestedMode == "D" then M6A2WorldService.Build() else ComparisonWorldService.Build()
 if requestedMode == "D" then
 	M6A3IdentityService.Apply(world)
+	-- Sections 1-3 stay on the already-approved proof implementation.
 	M6BStorageService.Build(world)
+	-- Sections 4-15 extend the same warehouse with deliberately escalating
+	-- storage architecture rather than copy/pasted rack families.
+	M6BDeepStorageService.Build(world)
 end
 WarehouseAccessService.Start(world)
 
@@ -72,4 +77,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6B Sections 1-3 visual proof loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6B progressive warehouse world pass loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
