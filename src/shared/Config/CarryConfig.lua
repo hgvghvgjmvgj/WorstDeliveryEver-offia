@@ -7,26 +7,17 @@ return table.freeze({
 	TechnicalMaxItems = 28,
 	DroppedItemProtectionSeconds = 2.5,
 
-	Beginner = table.freeze({
-		Strength = 15,
-		CarrySpace = 13,
-		Control = 1.0,
-	}),
-
-	Veteran = table.freeze({
-		Strength = 38,
-		CarrySpace = 28,
-		Control = 2.2,
-	}),
+	Beginner = table.freeze({ Strength = 15, CarrySpace = 13, Control = 1.0 }),
+	Veteran = table.freeze({ Strength = 38, CarrySpace = 28, Control = 2.2 }),
 
 	-- Mobility upgrades are intentionally strongest while unloaded/lightly loaded.
-	-- As Weight approaches a dangerous ratio, most of the bonus is suppressed so
-	-- late-game players still have consequential return trips.
+	-- Dangerous loads still suppress much of the bonus, but progressed players do
+	-- not collapse all the way back to starter traversal speed merely for carrying.
 	Mobility = table.freeze({
 		SuppressionStartWeightRatio = 0.35,
 		FullSuppressionWeightRatio = 1.35,
-		MinimumBonusFractionAtMaxLoad = 0.18,
-		LoadedMinimumBonusFraction = 0.12,
+		MinimumBonusFractionAtMaxLoad = 0.22,
+		LoadedMinimumBonusFraction = 0.16,
 	}),
 
 	Movement = table.freeze({
@@ -36,13 +27,38 @@ return table.freeze({
 		TurnAngleDeadzoneDegrees = 7,
 		AccelerationGain = 0.075,
 		TurnGain = 0.82,
-		MovingRecoveryRate = 0.82,
+		MovingRecoveryRate = 0.95,
 		StoppedRecoveryRate = 3.8,
 		MovementOscillationScale = 0.22,
 		WideTurnMultiplierPerItem = 0.14,
 		MaxDynamicSway = 1.35,
 		VisualUpdateHz = 24,
 		StateUpdateHz = 10,
+	}),
+
+	-- M6A.2 high-speed rule: speed itself is not the punishment. Abrupt velocity
+	-- change is. HandlingRuntimeService turns these motion events into temporary
+	-- Sway-generation/recovery multipliers consumed by the existing carry engine.
+	SpeedHandling = table.freeze({
+		CruiseSettleSeconds = 0.65,
+		CruiseAccelerationTolerance = 7.0,
+		CruiseTurnToleranceDegrees = 5.0,
+		CruiseMinimumSpeed = 10.0,
+
+		AccelerationStart = 12.0,
+		AccelerationFull = 85.0,
+		BrakeSpeedDropStart = 4.0,
+		BrakeSpeedDropFull = 22.0,
+		TurnStartDegrees = 8.0,
+		TurnFullDegrees = 90.0,
+		ReversalDegrees = 145.0,
+
+		SpeedAmplificationStart = 20.0,
+		SpeedAmplificationFull = 47.0,
+		MaximumEventSwayMultiplier = 1.85,
+		MinimumEventRecoveryMultiplier = 0.52,
+		ControlReductionExponent = 0.72,
+		EventDecayPerSecond = 5.5,
 	}),
 
 	BaseInstability = table.freeze({
@@ -76,7 +92,6 @@ return table.freeze({
 
 	Strain = table.freeze({
 		Max = 1.0,
-
 		StartWeightRatio = 0.85,
 		FullWeightRatio = 1.50,
 		StartBulkRatio = 0.90,
@@ -85,57 +100,44 @@ return table.freeze({
 		FullBaseInstability = 1.15,
 		StartLayer = 3,
 		FullLayer = 7,
-
 		WeightWeight = 0.30,
 		BulkWeight = 0.25,
 		BaseWeight = 0.35,
 		HeightWeight = 0.10,
 		PeakPressureWeight = 0.60,
 		CombinedPressureWeight = 0.40,
-
 		MinimumLoadSeverity = 0.10,
 		MaxAccumulationPerSecond = 0.070,
 		AccumulationExponent = 1.25,
 		ComfortDecayPerSecond = 0.080,
 		UnloadedRecoveryPerSecond = 0.140,
-
 		Moderate = 0.30,
 		High = 0.62,
 		Critical = 0.86,
-
 		SwayGenerationMultiplierAtMax = 1.55,
 		MinimumRecoveryMultiplierAtMax = 0.48,
-
 		TremorStart = 0.24,
 		TremorAmplitudeAtMax = 0.30,
 		TremorFrequency = 7.0,
 		TremorVerticalRatio = 0.65,
-
 		VisualShakeAtMax = 0.065,
 		TutorialMessageStrain = 0.12,
 	}),
 
-	Ditch = table.freeze({
-		ScatterSeconds = 0.34,
-		VisualLifetimeSeconds = 2.4,
-		FadeSeconds = 0.40,
-	}),
+	Ditch = table.freeze({ ScatterSeconds = 0.34, VisualLifetimeSeconds = 2.4, FadeSeconds = 0.40 }),
 
 	Failure = table.freeze({
 		Mode = "ScaledPartialCollapse",
 		MinimumDroppedItems = 1,
 		CollapseScatterSeconds = 0.34,
 		LostVisualLifetimeSeconds = 2.2,
-
 		MinorSeverityMax = 0.24,
 		SevereSeverityMin = 0.68,
 		NormalLossFraction = 0.30,
 		SevereLossFraction = 0.55,
-
 		RiskOvershootForMaxSeverity = 0.40,
 		BaseInstabilityForMaxSeverity = 1.15,
 		ExtraWarningSecondsForMaxSeverity = 1.20,
-
 		RiskSeverityWeight = 0.48,
 		BaseSeverityWeight = 0.32,
 		TimeSeverityWeight = 0.20,
