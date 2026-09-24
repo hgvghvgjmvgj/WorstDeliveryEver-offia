@@ -65,7 +65,9 @@ local function carriedItemIds(player: Player): {string}
 		if descendant:IsA("BasePart") then
 			local itemId, indexText = string.match(descendant.Name, "^Carry_(.+)_(%d+)$")
 			local index = tonumber(indexText)
-			if itemId and index and ItemConfig[itemId] then table.insert(found, { Index = index, ItemId = itemId }) end
+			if itemId and index and ItemConfig[itemId] then
+				table.insert(found, { Index = index, ItemId = itemId })
+			end
 		end
 	end
 	table.sort(found, function(a, b) return a.Index < b.Index end)
@@ -145,13 +147,13 @@ local function updateMotion(player: Player, state: RuntimeState, dt: number)
 
 	local speedAlpha = normalized(math.max(speed, previousSpeed), tuning.SpeedAmplificationStart, tuning.SpeedAmplificationFull)
 	local accelerationAlpha = 0
-	if speedGain > 0.2 then accelerationAlpha = normalized(acceleration, tuning.AccelerationStart, tuning.AccelerationFull) end
+	if speedGain > 0.2 then
+		accelerationAlpha = normalized(acceleration, tuning.AccelerationStart, tuning.AccelerationFull)
+	end
 	local brakingAlpha = normalized(speedDrop, tuning.BrakeSpeedDropStart, tuning.BrakeSpeedDropFull)
 	local turnAlpha = normalized(turnDegrees, tuning.TurnStartDegrees, tuning.TurnFullDegrees)
 	if turnDegrees >= tuning.ReversalDegrees then turnAlpha = 1 end
 
-	-- Low-speed starts still produce ordinary carry recoil, while high-speed
-	-- velocity changes receive the large M6A.2 amplification.
 	local rawEvent = math.max(accelerationAlpha, brakingAlpha, turnAlpha)
 	rawEvent *= 0.35 + 0.65 * speedAlpha
 	state.EventSeverity = math.max(rawEvent, state.EventSeverity * math.exp(-tuning.EventDecayPerSecond * dt))
@@ -180,24 +182,27 @@ local function updateMotion(player: Player, state: RuntimeState, dt: number)
 
 	state.LastVelocity = velocity
 	state.LastSpeed = speed
-	if direction then state.LastDirection = direction elseif speed <= CarryConfig.Movement.VelocityDeadzone then state.LastDirection = nil end
+	if direction then
+		state.LastDirection = direction
+	elseif speed <= CarryConfig.Movement.VelocityDeadzone then
+		state.LastDirection = nil
+	end
 end
 
-local function penaltyKey(evaluation, state: RuntimeState): string
-	if not evaluation then
-		return string.format("NONE|%.2f|%.2f", state.MotionSwayMultiplier, state.MotionRecoveryMultiplier)
-	end
+-- Motion multipliers are deliberately excluded. CarryService reads their
+-- attributes every frame, so a velocity sample must not trigger a full pile
+-- recompute/WalkSpeed refresh at 10 Hz.
+local function penaltyKey(evaluation): string
+	if not evaluation then return "NONE" end
 	return string.format(
-		"%s|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f|%.2f|%.2f",
+		"%s|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f",
 		evaluation.Band,
 		evaluation.BaseInstabilityBonus,
 		evaluation.InstabilityFloor,
 		evaluation.SwayMultiplier,
 		evaluation.RecoveryMultiplier,
 		evaluation.MovementMultiplier,
-		evaluation.StrainFloor,
-		state.MotionSwayMultiplier,
-		state.MotionRecoveryMultiplier
+		evaluation.StrainFloor
 	)
 end
 
@@ -219,7 +224,7 @@ local function clearHandling(player: Player, state: RuntimeState)
 	state.GripDuration = 0
 	state.GripWarned = false
 	state.GripItemCount = 0
-	local key = penaltyKey(nil, state)
+	local key = penaltyKey(nil)
 	if state.PenaltyKey ~= key then
 		state.PenaltyKey = key
 		carryService.RefreshHandling(player)
@@ -227,7 +232,10 @@ local function clearHandling(player: Player, state: RuntimeState)
 end
 
 local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
-	if not evaluation then clearHandling(player, state) return end
+	if not evaluation then
+		clearHandling(player, state)
+		return
+	end
 	setAttributeIfChanged(player, "HandlingBand", evaluation.Band)
 	setAttributeIfChanged(player, "HandlingWeakness", evaluation.Weakness)
 	setAttributeIfChanged(player, "HandlingRatio", evaluation.Ratio)
@@ -241,8 +249,11 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 	setAttributeIfChanged(player, "HandlingMovementMultiplier", evaluation.MovementMultiplier)
 	setAttributeIfChanged(player, "HandlingStrainFloor", evaluation.StrainFloor)
 
-	local key = penaltyKey(evaluation, state)
-	if state.PenaltyKey ~= key then state.PenaltyKey = key carryService.RefreshHandling(player) end
+	local key = penaltyKey(evaluation)
+	if state.PenaltyKey ~= key then
+		state.PenaltyKey = key
+		carryService.RefreshHandling(player)
+	end
 
 	if evaluation.Band == "UNMANAGEABLE" then
 		local itemCount = math.max(0, math.floor(tonumber(evaluation.ItemCount) or 0))
@@ -258,7 +269,10 @@ local function applyEvaluation(player: Player, state: RuntimeState, evaluation)
 		else
 			state.GripItemCount = itemCount
 		end
-		if not state.GripWarned then state.GripWarned = true noticeRemote:FireClient(player, HandlingConfig.GripFailure.WarningText) end
+		if not state.GripWarned then
+			state.GripWarned = true
+			noticeRemote:FireClient(player, HandlingConfig.GripFailure.WarningText)
+		end
 		local elapsed = os.clock() - (state.GripStartedAt or os.clock())
 		local remaining = math.max(0, state.GripDuration - elapsed)
 		setAttributeIfChanged(player, "HandlingGripRemaining", remaining)
@@ -280,9 +294,19 @@ end
 local function initializePlayer(player: Player)
 	if runtime[player] then return end
 	runtime[player] = {
-		PenaltyKey = "", GripStartedAt = nil, GripDuration = 0, GripWarned = false, GripItemCount = 0,
-		LastPreviewAt = -math.huge, LastVelocity = Vector3.zero, LastDirection = nil, LastSpeed = 0,
-		CruiseSeconds = 0, EventSeverity = 0, MotionSwayMultiplier = 1, MotionRecoveryMultiplier = 1,
+		PenaltyKey = "",
+		GripStartedAt = nil,
+		GripDuration = 0,
+		GripWarned = false,
+		GripItemCount = 0,
+		LastPreviewAt = -math.huge,
+		LastVelocity = Vector3.zero,
+		LastDirection = nil,
+		LastSpeed = 0,
+		CruiseSeconds = 0,
+		EventSeverity = 0,
+		MotionSwayMultiplier = 1,
+		MotionRecoveryMultiplier = 1,
 	}
 	setAttributeIfChanged(player, "HandlingBand", "READY")
 	setAttributeIfChanged(player, "HandlingWeakness", "")
@@ -327,7 +351,10 @@ local function handlePreview(player: Player, candidate: any)
 	if now - state.LastPreviewAt < PREVIEW_COOLDOWN_SECONDS then return end
 	state.LastPreviewAt = now
 	local part = validPreviewCandidate(player, candidate)
-	if not part then previewRemote:FireClient(player, { clear = true }) return end
+	if not part then
+		previewRemote:FireClient(player, { clear = true })
+		return
+	end
 	local itemId = part:GetAttribute("ItemId")
 	if typeof(itemId) ~= "string" then return end
 	local definition = ItemConfig[itemId]
@@ -336,11 +363,20 @@ local function handlePreview(player: Player, candidate: any)
 	if not evaluation then return end
 	local stats = statsFor(player)
 	previewRemote:FireClient(player, {
-		instance = part, itemId = itemId, name = definition.Name, rarity = definition.Rarity or "Common",
-		sellValue = definition.Value, band = evaluation.Band, weakness = evaluation.Weakness,
-		requiredStrength = evaluation.RequiredStrength, requiredCarrySpace = evaluation.RequiredCarrySpace,
-		requiredControl = evaluation.RequiredControl, strength = stats.Strength, carrySpace = stats.CarrySpace,
-		control = stats.Control, rigTier = tonumber(player:GetAttribute("HandlingRigTier")) or 0,
+		instance = part,
+		itemId = itemId,
+		name = definition.Name,
+		rarity = definition.Rarity or "Common",
+		sellValue = definition.Value,
+		band = evaluation.Band,
+		weakness = evaluation.Weakness,
+		requiredStrength = evaluation.RequiredStrength,
+		requiredCarrySpace = evaluation.RequiredCarrySpace,
+		requiredControl = evaluation.RequiredControl,
+		strength = stats.Strength,
+		carrySpace = stats.CarrySpace,
+		control = stats.Control,
+		rigTier = tonumber(player:GetAttribute("HandlingRigTier")) or 0,
 	})
 end
 
@@ -350,9 +386,11 @@ function HandlingRuntimeService.Start(world: Folder, carryServiceModule: any)
 	previewRemote = RemoteService.Get(RemoteNames.HandlingPreview)
 	noticeRemote = RemoteService.Get(RemoteNames.PrototypeNotice)
 	previewRemote.OnServerEvent:Connect(handlePreview)
+
 	Players.PlayerAdded:Connect(initializePlayer)
 	Players.PlayerRemoving:Connect(function(player) runtime[player] = nil end)
 	for _, player in Players:GetPlayers() do initializePlayer(player) end
+
 	RunService.Heartbeat:Connect(function(dt)
 		accumulator += dt
 		if accumulator < UPDATE_SECONDS then return end
