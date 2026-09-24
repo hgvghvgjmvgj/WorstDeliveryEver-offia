@@ -13,12 +13,15 @@ local Service = {}
 local DEFAULT_ITEM = "ShippingBox"
 local DEFAULT_ORIGIN = Vector3.new(0, 4.5, 470)
 local PROOF_SET = table.freeze({
+	"ShippingBox",
 	"Refrigerator",
 	"Couch",
 	"GamingPC",
 	"ArcadeCabinet",
 	"ShowCarEngine",
+	"EngineBlock",
 	"DesignerFragranceTrunk",
+	"PaintingTransportCrate",
 	"JewelrySafe",
 	"BlackProjectContainmentUnit",
 })
@@ -74,7 +77,6 @@ local function resolveBaseItemIds(): {string}
 		return {DEFAULT_ITEM}
 	end
 
-	-- Default M6C.1 workflow: show the full cross-category proof set at once.
 	local result = {}
 	for _, baseItemId in PROOF_SET do
 		if LootCatalog.ById[baseItemId] then table.insert(result,baseItemId) end
@@ -143,7 +145,7 @@ local function build(world: Folder)
 	local attrOrigin = Workspace:GetAttribute("M6CGalleryOrigin")
 	if typeof(attrOrigin) == "Vector3" then origin = attrOrigin end
 	local requestedRowSpacing = tonumber(Workspace:GetAttribute("M6CGalleryRowSpacing"))
-	local rowSpacing = requestedRowSpacing or 18
+	local rowSpacing = requestedRowSpacing or 19
 
 	local widest = 0
 	for rowIndex, baseItemId in baseItemIds do
