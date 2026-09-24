@@ -72,4 +72,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6B stylized storage foundation loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6B Sections 1-3 visual proof loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
