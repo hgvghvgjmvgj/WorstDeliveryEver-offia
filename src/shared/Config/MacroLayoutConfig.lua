@@ -19,7 +19,7 @@ local SECTION_META = frozen({
 		DisplayName = "APPLIANCES & ELECTRONICS",
 		Color = Color3.fromRGB(70, 91, 116),
 		Depth = 1,
-		FallbackItemId = "Microwave",
+		FallbackItemId = "TV",
 	}),
 	Furniture = frozen({
 		Index = 3,
@@ -33,7 +33,7 @@ local SECTION_META = frozen({
 		DisplayName = "HEAVY GOODS & EQUIPMENT",
 		Color = Color3.fromRGB(93, 89, 73),
 		Depth = 2,
-		FallbackItemId = "Safe",
+		FallbackItemId = "Tire",
 	}),
 	Industrial = frozen({
 		Index = 5,
@@ -47,7 +47,7 @@ local SECTION_META = frozen({
 		DisplayName = "SECURE HIGH-VALUE STORAGE",
 		Color = Color3.fromRGB(79, 73, 70),
 		Depth = 3,
-		FallbackItemId = "Safe",
+		FallbackItemId = "TV",
 	}),
 })
 
