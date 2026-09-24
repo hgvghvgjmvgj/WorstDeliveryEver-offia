@@ -63,6 +63,13 @@ local function connectZone(zone: BasePart, carryService: any, economyService: an
 			return
 		end
 
+		-- M6A.3 economy telemetry. A successful delivery is counted before the
+		-- SELL/KEEP decision because both are legitimate completed hauls.
+		local haulCount = math.max(0, math.floor(tonumber(player:GetAttribute("DevSuccessfulHauls")) or 0)) + 1
+		player:SetAttribute("DevSuccessfulHauls", haulCount)
+		player:SetAttribute("DevLastDeliveryItems", #deliveredItems)
+		player:SetAttribute("DevLastDeliverySellPotential", unloadResult)
+
 		-- Delivery itself is the accomplishment. Collection credit happens before
 		-- the SELL/KEEP decision, so both review outcomes count exactly once.
 		collectionService.RecordDelivery(player, deliveredItems)
