@@ -14,6 +14,7 @@ local ClearanceController = require(Controllers:WaitForChild("ClearanceControlle
 local TutorialController = require(Controllers:WaitForChild("TutorialController"))
 local CollectionController = require(Controllers:WaitForChild("CollectionController"))
 local EconomyTelemetryController = require(Controllers:WaitForChild("EconomyTelemetryController"))
+local MobileResponsiveController = require(Controllers:WaitForChild("MobileResponsiveController"))
 
 PrototypeUIController.Start()
 EconomyController.Start()
@@ -27,5 +28,6 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 TutorialController.Start()
+MobileResponsiveController.Start()
 
-print("[ONE TRIP] M6A.3 onboarding + Rig clearance + long-map Speed client loaded")
+print("[ONE TRIP] M6B 1-3 proof + compact mobile HUD client loaded")
