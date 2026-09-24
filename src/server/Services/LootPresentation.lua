@@ -110,6 +110,76 @@ local function addModelDetails(root: BasePart, itemId: string)
 	end
 end
 
+-- M6B Sections 1-3 visual proof. These are intentionally recognizable, chunky
+-- Roblox silhouettes built from a small reusable part budget. They are not the
+-- final asset library for every cargo item.
+local function addProofItemDetails(root: BasePart, itemId: string)
+	local definition = ItemConfig[itemId]
+	local folder = root:FindFirstChild("LootDetails")
+	if not definition or not folder or not folder:IsA("Folder") then return end
+	local baseId = definition.BaseItemId or itemId
+	local size = root.Size
+	local base = root.Color
+	local dark = base:Lerp(Color3.new(0,0,0), 0.34)
+	local light = base:Lerp(Color3.new(1,1,1), 0.26)
+	local metal = Color3.fromRGB(72, 78, 86)
+
+	if baseId == "ShippingBox" then
+		detail(root, folder, "TapeTop", Vector3.new(size.X*0.20,0.12,size.Z*1.02), CFrame.new(0,size.Y*0.51,0), Color3.fromRGB(226,195,139), Enum.Material.SmoothPlastic)
+		detail(root, folder, "ParcelLabel", Vector3.new(size.X*0.46,size.Y*0.24,0.10), CFrame.new(size.X*0.16,size.Y*0.08,-size.Z*0.52), Color3.fromRGB(240,236,219), Enum.Material.SmoothPlastic)
+	elseif baseId == "Toolbox" then
+		detail(root, folder, "ToolboxLid", Vector3.new(size.X*1.02,size.Y*0.18,size.Z*1.02), CFrame.new(0,size.Y*0.48,0), light, Enum.Material.Metal)
+		detail(root, folder, "ToolboxHandle", Vector3.new(size.X*0.42,0.24,0.28), CFrame.new(0,size.Y*0.70,0), metal, Enum.Material.Metal)
+	elseif baseId == "Suitcase" then
+		for _, x in {-size.X*0.30, size.X*0.30} do
+			detail(root, folder, "SuitcaseWheel", Vector3.new(0.34,0.34,0.34), CFrame.new(x,-size.Y*0.57,0), metal, Enum.Material.Metal)
+		end
+		detail(root, folder, "SuitcasePull", Vector3.new(size.X*0.42,0.20,0.22), CFrame.new(0,size.Y*0.66,0), metal, Enum.Material.Metal)
+	elseif baseId == "OfficeChair" then
+		detail(root, folder, "ChairStem", Vector3.new(0.34,size.Y*0.40,0.34), CFrame.new(0,-size.Y*0.32,0), metal, Enum.Material.Metal)
+		for _, x in {-size.X*0.34, size.X*0.34} do
+			detail(root, folder, "ChairFoot", Vector3.new(size.X*0.30,0.22,0.28), CFrame.new(x,-size.Y*0.53,0), metal, Enum.Material.Metal)
+		end
+	elseif baseId == "DeskLamp" then
+		detail(root, folder, "LampBase", Vector3.new(size.X*1.10,0.30,size.Z*1.10), CFrame.new(0,-size.Y*0.48,0), dark, Enum.Material.Metal)
+		detail(root, folder, "LampStem", Vector3.new(0.28,size.Y*0.70,0.28), CFrame.new(0,-size.Y*0.05,0), metal, Enum.Material.Metal)
+	elseif baseId == "DiningChairBasic" then
+		for _, x in {-size.X*0.34, size.X*0.34} do
+			for _, z in {-size.Z*0.30, size.Z*0.30} do
+				detail(root, folder, "ChairLeg", Vector3.new(0.28,size.Y*0.48,0.28), CFrame.new(x,-size.Y*0.38,z), dark, Enum.Material.WoodPlanks)
+			end
+		end
+	elseif baseId == "CountertopOven" then
+		detail(root, folder, "OvenWindow", Vector3.new(size.X*0.66,size.Y*0.48,0.12), CFrame.new(0,-size.Y*0.08,-size.Z*0.54), Color3.fromRGB(35,43,52), Enum.Material.Glass)
+		for _, x in {-size.X*0.25, size.X*0.25} do
+			detail(root, folder, "OvenKnob", Vector3.new(0.34,0.34,0.20), CFrame.new(x,size.Y*0.34,-size.Z*0.56), metal, Enum.Material.Metal)
+		end
+	elseif baseId == "HomeStorageShelf" then
+		for _, y in {-size.Y*0.28, 0, size.Y*0.28} do
+			detail(root, folder, "ShelfBoard", Vector3.new(size.X*0.92,0.24,size.Z*0.90), CFrame.new(0,y,0), light, Enum.Material.WoodPlanks)
+		end
+	elseif baseId == "Refrigerator" then
+		detail(root, folder, "FridgeSplit", Vector3.new(0.12,size.Y*0.82,0.12), CFrame.new(0,0,-size.Z*0.56), dark, Enum.Material.Metal)
+		for _, x in {-size.X*0.20, size.X*0.20} do
+			detail(root, folder, "FridgeHandle", Vector3.new(0.22,size.Y*0.42,0.22), CFrame.new(x,0,-size.Z*0.59), metal, Enum.Material.Metal)
+		end
+		detail(root, folder, "FridgeDisplay", Vector3.new(size.X*0.28,size.Y*0.12,0.14), CFrame.new(size.X*0.20,size.Y*0.26,-size.Z*0.61), Color3.fromRGB(92,190,223), Enum.Material.Neon)
+	elseif baseId == "Washer" then
+		local door = detail(root, folder, "WasherRoundDoor", Vector3.new(0.30,size.Y*0.52,size.Y*0.52), CFrame.new(0,-size.Y*0.06,-size.Z*0.57) * CFrame.Angles(0,math.rad(90),0), Color3.fromRGB(54,67,78), Enum.Material.Glass)
+		door.Shape = Enum.PartType.Cylinder
+		detail(root, folder, "WasherPanel", Vector3.new(size.X*0.72,size.Y*0.12,0.14), CFrame.new(0,size.Y*0.36,-size.Z*0.59), light, Enum.Material.Metal)
+	elseif baseId == "Television" then
+		for _, x in {-size.X*0.28, size.X*0.28} do
+			detail(root, folder, "TVFoot", Vector3.new(size.X*0.18,0.20,size.Z*0.70), CFrame.new(x,-size.Y*0.54,0), dark, Enum.Material.Metal)
+		end
+	elseif baseId == "OvenRange" then
+		detail(root, folder, "CookTop", Vector3.new(size.X*0.94,0.20,size.Z*0.90), CFrame.new(0,size.Y*0.53,0), Color3.fromRGB(47,51,57), Enum.Material.Metal)
+		for _, x in {-size.X*0.30,-size.X*0.10,size.X*0.10,size.X*0.30} do
+			detail(root, folder, "RangeKnob", Vector3.new(0.30,0.30,0.18), CFrame.new(x,size.Y*0.28,-size.Z*0.55), metal, Enum.Material.Metal)
+		end
+	end
+end
+
 local function addRarityGeometry(root: BasePart, tier: any)
 	local folder = root:FindFirstChild("LootDetails")
 	if not folder or not folder:IsA("Folder") then return end
@@ -118,30 +188,25 @@ local function addRarityGeometry(root: BasePart, tier: any)
 	local accent = tier.Color
 	local pale = accent:Lerp(Color3.new(1,1,1), 0.42)
 
-	-- Uncommon: intentionally close to normal. One small quality badge only.
 	if rank == 2 then
 		detail(root, folder, "UncommonBadge", Vector3.new(math.max(0.22,size.X*0.14), math.max(0.18,size.Y*0.08), 0.16), CFrame.new(size.X*0.25, size.Y*0.25, -size.Z*0.53), accent, Enum.Material.Metal)
 		return
 	end
 	if rank < 3 then return end
 
-	-- Rare: visible upgraded trim, still recognizably the ordinary object.
 	detail(root, folder, "RareTrimTop", Vector3.new(size.X*0.68, math.max(0.16,size.Y*0.055), 0.18), CFrame.new(0,size.Y*0.48,-size.Z*0.53), accent, Enum.Material.Neon)
 	if rank == 3 then return end
 
-	-- Epic: silhouette starts changing with a top cap + side accent plates.
 	detail(root, folder, "EpicCap", Vector3.new(size.X*0.76, math.max(0.20,size.Y*0.08), size.Z*0.36), CFrame.new(0,size.Y*0.54,0), accent, Enum.Material.Metal)
 	detail(root, folder, "EpicSideL", Vector3.new(math.max(0.18,size.X*0.06), size.Y*0.46, size.Z*0.46), CFrame.new(-size.X*0.53,0,0), accent, Enum.Material.Metal)
 	detail(root, folder, "EpicSideR", Vector3.new(math.max(0.18,size.X*0.06), size.Y*0.46, size.Z*0.46), CFrame.new(size.X*0.53,0,0), accent, Enum.Material.Metal)
 	if rank == 4 then return end
 
-	-- Legendary: a structural premium frame rather than a gold recolor.
 	detail(root, folder, "LegendaryHeader", Vector3.new(size.X*0.94, math.max(0.22,size.Y*0.07), 0.24), CFrame.new(0,size.Y*0.62,0), accent, Enum.Material.Metal)
 	detail(root, folder, "LegendaryRailL", Vector3.new(math.max(0.20,size.X*0.055), size.Y*0.82, 0.24), CFrame.new(-size.X*0.55,0,-size.Z*0.46), accent, Enum.Material.Metal)
 	detail(root, folder, "LegendaryRailR", Vector3.new(math.max(0.20,size.X*0.055), size.Y*0.82, 0.24), CFrame.new(size.X*0.55,0,-size.Z*0.46), accent, Enum.Material.Metal)
 	if rank == 5 then return end
 
-	-- Mythic: floating-looking energy nodes and a stronger central construction.
 	local nodeL = detail(root, folder, "MythicNodeL", Vector3.new(math.max(0.32,size.X*0.12), math.max(0.32,size.X*0.12), math.max(0.32,size.X*0.12)), CFrame.new(-size.X*0.62,size.Y*0.18,0), accent, Enum.Material.Neon)
 	nodeL.Shape = Enum.PartType.Ball
 	local nodeR = detail(root, folder, "MythicNodeR", nodeL.Size, CFrame.new(size.X*0.62,size.Y*0.18,0), accent, Enum.Material.Neon)
@@ -149,13 +214,11 @@ local function addRarityGeometry(root: BasePart, tier: any)
 	detail(root, folder, "MythicSpine", Vector3.new(math.max(0.20,size.X*0.05), size.Y*0.72, math.max(0.20,size.Z*0.08)), CFrame.new(0,0,size.Z*0.54), accent, Enum.Material.Neon)
 	if rank == 6 then return end
 
-	-- Cosmic: object is redesigned around energy containment, not just painted cyan.
 	detail(root, folder, "CosmicFinL", Vector3.new(0.26,size.Y*0.86,0.26), CFrame.new(-size.X*0.64,0,0) * CFrame.Angles(0,0,math.rad(18)), accent, Enum.Material.Neon)
 	detail(root, folder, "CosmicFinR", Vector3.new(0.26,size.Y*0.86,0.26), CFrame.new(size.X*0.64,0,0) * CFrame.Angles(0,0,math.rad(-18)), accent, Enum.Material.Neon)
 	detail(root, folder, "CosmicBridge", Vector3.new(size.X*0.72,0.20,size.Z*0.72), CFrame.new(0,-size.Y*0.58,0), accent, Enum.Material.Neon)
 	if rank == 7 then return end
 
-	-- Eternal: clean white-gold prestige geometry. No rainbow particle wall.
 	detail(root, folder, "EternalCrown", Vector3.new(size.X*0.80,0.26,0.26), CFrame.new(0,size.Y*0.72,0), pale, Enum.Material.Neon)
 	detail(root, folder, "EternalPillarL", Vector3.new(math.max(0.20,size.X*0.06),size.Y*0.92,math.max(0.20,size.Z*0.07)), CFrame.new(-size.X*0.58,0,size.Z*0.46), pale, Enum.Material.Metal)
 	detail(root, folder, "EternalPillarR", Vector3.new(math.max(0.20,size.X*0.06),size.Y*0.92,math.max(0.20,size.Z*0.07)), CFrame.new(size.X*0.58,0,size.Z*0.46), pale, Enum.Material.Metal)
@@ -192,7 +255,6 @@ local function addRarity(root: BasePart, itemId: string, playCue: boolean)
 		light.Parent = root
 	end
 
-	-- Particles are reserved for the truly extraordinary tiers and kept subtle.
 	if tier.Rank >= 7 then
 		local attachment = Instance.new("Attachment")
 		attachment.Name = "RarityAttachment"
@@ -238,6 +300,7 @@ function LootPresentation.Apply(root: BasePart, itemId: string, playCue: boolean
 	root:SetAttribute("SellValue", definition.Value)
 	root:SetAttribute("PresentationAppliedItemId", itemId)
 	addModelDetails(root, itemId)
+	addProofItemDetails(root, itemId)
 	addRarity(root, itemId, playCue == true)
 
 	local gui = root:FindFirstChild("PrototypeLabel")
