@@ -1,55 +1,14 @@
 --!strict
 
+local SectionConfig = require(script.Parent:WaitForChild("SectionConfig"))
+
 local function frozen<T>(value: T): T
 	return table.freeze(value)
 end
 
-local SECTION_ORDER = frozen({ "Receiving", "Appliances", "Furniture", "HeavyGoods", "Industrial", "Secure" })
-
-local SECTION_META = frozen({
-	Receiving = frozen({
-		Index = 1,
-		DisplayName = "RECEIVING / GENERAL",
-		Color = Color3.fromRGB(76, 92, 104),
-		Depth = 1,
-		FallbackItemId = "Box",
-	}),
-	Appliances = frozen({
-		Index = 2,
-		DisplayName = "APPLIANCES / ELECTRONICS",
-		Color = Color3.fromRGB(70, 91, 116),
-		Depth = 1,
-		FallbackItemId = "TV",
-	}),
-	Furniture = frozen({
-		Index = 3,
-		DisplayName = "FURNITURE / OVERSIZED",
-		Color = Color3.fromRGB(104, 83, 68),
-		Depth = 2,
-		FallbackItemId = "Chair",
-	}),
-	HeavyGoods = frozen({
-		Index = 4,
-		DisplayName = "HEAVY GOODS / EQUIPMENT",
-		Color = Color3.fromRGB(93, 89, 73),
-		Depth = 2,
-		FallbackItemId = "Tire",
-	}),
-	Industrial = frozen({
-		Index = 5,
-		DisplayName = "INDUSTRIAL STORAGE",
-		Color = Color3.fromRGB(82, 86, 78),
-		Depth = 3,
-		FallbackItemId = "Tire",
-	}),
-	Secure = frozen({
-		Index = 6,
-		DisplayName = "SECURE / HIGH-VALUE",
-		Color = Color3.fromRGB(79, 73, 70),
-		Depth = 3,
-		FallbackItemId = "TV",
-	}),
-})
+-- A/B/C remain temporarily recoverable for comparison/debug, so their old six
+-- section traversal list stays isolated from the 15-section launch runway.
+local LEGACY_SECTION_ORDER = frozen({ "Receiving", "Appliances", "Furniture", "HeavyGoods", "Industrial", "Secure" })
 
 local B_SECTION_CENTERS = frozen({
 	Receiving = 245,
@@ -69,25 +28,20 @@ local C_RINGS = frozen({
 	Secure = frozen({ Inner = 440, Outer = 500 }),
 })
 
-local D_SECTION_CENTERS = frozen({
-	Receiving = 212,
-	Appliances = 124,
-	Furniture = 36,
-	HeavyGoods = -52,
-	Industrial = -140,
-	Secure = -228,
-})
+local runwayFrontZ = 256
+local runwayBackZ = runwayFrontZ - SectionConfig.TotalLength
 
 local Config = {
-	-- M6A comparison mode. A/B/C remain recoverable while M6A.1 tests D.
-	-- Workspace attribute `M6LayoutMode` may override this before Play starts.
 	DefaultMode = "D",
-	SectionOrder = SECTION_ORDER,
-	Sections = SECTION_META,
+
+	-- Legacy comparison compatibility.
+	SectionOrder = LEGACY_SECTION_ORDER,
+	LaunchSectionOrder = SectionConfig.Order,
+	Sections = SectionConfig.Sections,
 
 	OptionA = frozen({
 		Name = "CURRENT WIDE WAREHOUSE",
-		Description = "M5A baseline; preserved exactly through legacy WorldService.",
+		Description = "M5A baseline; preserved through legacy WorldService.",
 	}),
 
 	OptionB = frozen({
@@ -126,17 +80,16 @@ local Config = {
 	}),
 
 	OptionD = frozen({
-		Name = "SHARED WAREHOUSE RUNWAY",
+		Name = "15-SECTION SHARED WAREHOUSE RUNWAY",
+		SectionOrder = SectionConfig.Order,
 		RunwayWidth = 176,
-		RunwayFrontZ = 256,
-		RunwayBackZ = -272,
-		RunwayLength = 528,
-		SectionDepth = 88,
-		SectionCenters = D_SECTION_CENTERS,
+		RunwayFrontZ = runwayFrontZ,
+		RunwayBackZ = runwayBackZ,
+		RunwayLength = SectionConfig.TotalLength,
 		FreightWidth = 38,
 		StoragePathWidth = 14,
 		CrossAisleWidth = 18,
-		WallHeight = 32,
+		WallHeight = 34,
 
 		HomeApronCenter = Vector3.new(0, 0, 325),
 		HomeApronSize = Vector3.new(380, 0.12, 150),
@@ -151,16 +104,13 @@ local Config = {
 		MarkersPerSection = 16,
 		SharedFocalMarkersPerSection = 4,
 
-		-- M6A.1 uses a compact six-section gameplay run for fast testing, but this
-		-- is NOT the final intended warehouse depth. The visible facility should
-		-- continue past Secure while the current gameplay boundary stays fixed.
+		-- The playable launch plan is already very deep, but Section 15 still
+		-- visually continues into a non-playable future facility instead of ending
+		-- on a visible back wall.
 		LongTermDepth = frozen({
 			FinalLengthLocked = false,
-			VisualContinuationLength = 280,
-			CurrentPlayableBackZ = -272,
-			EarlySectionsCompact = frozen({ "Receiving", "Appliances" }),
-			MidSectionsExpanded = frozen({ "Furniture", "HeavyGoods" }),
-			LateSectionsDeep = frozen({ "Industrial", "Secure" }),
+			VisualContinuationLength = 260,
+			CurrentPlayableBackZ = runwayBackZ,
 			FutureExpansionPurpose = "FutureRunwayExtensionOrAnnex",
 		}),
 	}),
