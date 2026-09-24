@@ -51,14 +51,14 @@ local function addLabel(anchor: BasePart, requiredRig: number, sectionId: string
 	local label = Instance.new("TextLabel")
 	label.Name = "ClearanceText"
 	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 0.22
-	label.BackgroundColor3 = Color3.fromRGB(54, 18, 18)
+	label.BackgroundTransparency = 0.16
+	label.BackgroundColor3 = Color3.fromRGB(40, 43, 49)
 	label.BorderSizePixel = 0
 	label.Font = Enum.Font.GothamBold
 	label.TextScaled = true
 	label.TextWrapped = true
-	label.TextColor3 = Color3.fromRGB(255, 126, 126)
-	label.TextStrokeTransparency = 0.5
+	label.TextColor3 = Color3.fromRGB(255, 156, 88)
+	label.TextStrokeTransparency = 0.55
 	label.Text = ("%s REQUIRED\n%s"):format(ClearanceConfig.RigName(requiredRig), ClearanceConfig.SectionName(sectionId))
 	label.Parent = gui
 end
@@ -80,34 +80,43 @@ local function buildGate(folder: Folder, requiredRig: number, beforeSection: str
 	model:SetAttribute("GateZ", z)
 	model.Parent = folder
 
-	local red = Color3.fromRGB(168, 54, 54)
-	local dark = Color3.fromRGB(65, 69, 76)
-	for _, x in {-82, 82} do
-		local post = makePart(model, if x < 0 then "LeftSecurityPost" else "RightSecurityPost", Vector3.new(6, 20, 4), CFrame.new(x, 10, z), dark, 0.05, false)
-		post:SetAttribute("ClearanceVisual", true)
-	end
-	local beam = makePart(model, "SecurityArch", Vector3.new(170, 3, 4), CFrame.new(0, 18.5, z), dark, 0.04, false)
-	beam:SetAttribute("ClearanceVisual", true)
-	local scanTop = makePart(model, "ScannerTop", Vector3.new(155, 0.8, 1.2), CFrame.new(0, 15.5, z - 1.4), red, 0.12, false)
-	scanTop.Material = Enum.Material.Neon
-	scanTop:SetAttribute("ClearanceVisual", true)
-	local scanLow = makePart(model, "ScannerLow", Vector3.new(155, 0.55, 1.0), CFrame.new(0, 6.2, z - 1.2), red, 0.22, false)
-	scanLow.Material = Enum.Material.Neon
-	scanLow:SetAttribute("ClearanceVisual", true)
-	local field = makePart(model, "BarrierField", Vector3.new(164, 15, 0.8), CFrame.new(0, 8.2, z), red, 0.76, false)
-	field.Material = Enum.Material.Neon
-	field:SetAttribute("ClearanceVisual", true)
+	local lockedAccent = Color3.fromRGB(228, 105, 61)
+	local dark = Color3.fromRGB(56, 63, 72)
+	local mid = Color3.fromRGB(91, 99, 109)
 
-	-- Invisible collision is separated from presentation so clients may display a
-	-- green CLEARED state without ever becoming authoritative over access.
+	-- Static industrial frame. These pieces NEVER get recolored by client state.
+	for _, x in {-82, 82} do
+		local post = makePart(model, if x < 0 then "LeftSecurityPost" else "RightSecurityPost", Vector3.new(6, 19, 4), CFrame.new(x, 9.5, z), dark, 0.02, false)
+		post:SetAttribute("ClearanceStructure", true)
+		local scanner = makePart(model, "ScannerHousing", Vector3.new(7.2, 4.0, 5.0), CFrame.new(x, 7.0, z - 0.6), mid, 0.02, false)
+		scanner:SetAttribute("ClearanceStructure", true)
+	end
+	local beam = makePart(model, "SecurityArch", Vector3.new(170, 3, 4), CFrame.new(0, 17.8, z), dark, 0.02, false)
+	beam:SetAttribute("ClearanceStructure", true)
+
+	-- Lock-state lighting is intentionally thin/transparent so the checkpoint reads
+	-- as an industrial scanner, not a giant glowing wall. Future content stays visible.
+	for index, y in {3.4, 8.2, 13.0} do
+		local strip = makePart(model, "ScannerStrip" .. index, Vector3.new(154, 0.34, 0.42), CFrame.new(0, y, z - 1.25), lockedAccent, 0.34, false)
+		strip.Material = Enum.Material.Neon
+		strip:SetAttribute("ClearanceStateAccent", true)
+	end
+	for _, x in {-64, 64} do
+		local lamp = makePart(model, "GateStateLamp", Vector3.new(2.0, 2.0, 1.0), CFrame.new(x, 14.8, z - 1.4), lockedAccent, 0.06, false)
+		lamp.Material = Enum.Material.Neon
+		lamp:SetAttribute("ClearanceStateAccent", true)
+	end
+
+	-- Invisible collision stays authoritative and full-width. Presentation is open;
+	-- access security is not weakened.
 	local blocker = makePart(model, "ClearanceBlocker", Vector3.new(172, 22, 2.4), CFrame.new(0, 11, z), Color3.new(1,1,1), 1, true)
 	blocker.CanQuery = false
 	blocker:SetAttribute("ClearanceBlocker", true)
 	CollisionService.SetGatePart(blocker, requiredRig)
 
-	local labelAnchor = makePart(model, "ClearanceLabelAnchor", Vector3.new(1,1,1), CFrame.new(0, 14, z + 2), Color3.new(1,1,1), 1, false)
+	local labelAnchor = makePart(model, "ClearanceLabelAnchor", Vector3.new(1,1,1), CFrame.new(0, 13.5, z + 2), Color3.new(1,1,1), 1, false)
 	labelAnchor.CanQuery = false
-	labelAnchor:SetAttribute("ClearanceVisual", true)
+	labelAnchor:SetAttribute("ClearanceLabelAnchor", true)
 	addLabel(labelAnchor, requiredRig, beforeSection)
 end
 
@@ -159,14 +168,10 @@ local function recoverExploit(player: Player)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not root or not root:IsA("BasePart") or not humanoid or humanoid.Health <= 0 then return end
 
-	-- Runway progression travels toward decreasing Z. If a player somehow gets
-	-- meaningfully beyond their first locked gate, put them back on its home side.
 	if root.Position.Z < checkpoint.Z - 7 then
 		local x = math.clamp(root.Position.X, -70, 70)
 		local target = Vector3.new(x, root.Position.Y, checkpoint.Z + 9)
 		root.CFrame = CFrame.new(target) * root.CFrame.Rotation
-		-- Do not reset carry Sway/Pressure. An exploit recovery is a movement event,
-		-- not a safe zone or free pile repair.
 		root.AssemblyLinearVelocity = Vector3.zero
 		noticeRemote:FireClient(player, ("%s CLEARANCE REQUIRED"):format(ClearanceConfig.RigName(checkpoint.RequiredRig)))
 	end
@@ -201,6 +206,7 @@ function ClearanceService.Start(world: Folder, itemService: any)
 
 	world:SetAttribute("M6A3ClearanceEnabled", true)
 	world:SetAttribute("M6A3CheckpointCount", #checkpoints)
+	world:SetAttribute("M6BGatePresentation", "IndustrialScannerOpenSightline")
 
 	Players.PlayerRemoving:Connect(function(player) lastRejectAt[player] = nil end)
 	RunService.Heartbeat:Connect(function(dt)
