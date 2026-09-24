@@ -95,6 +95,14 @@ local function clearLegacyLayers(root: BasePart)
 	end
 end
 
+local function clearProduction(root: BasePart)
+	local existing = root:FindFirstChild("M6CProductionModel")
+	if existing then existing:Destroy() end
+	root:SetAttribute("M6CProductionItemId",nil)
+	root:SetAttribute("M6CProductionBaseItemId",nil)
+	root.Transparency = 0
+end
+
 local function transform(spec: any): CFrame
 	local r = spec.Rotation or Vector3.zero
 	return CFrame.new(spec.Position) * CFrame.Angles(math.rad(r.X),math.rad(r.Y),math.rad(r.Z))
@@ -117,16 +125,13 @@ local function addRarityGeometry(root: BasePart, folder: Folder, family: string,
 	local accent = if rank == 8 then WHITE_GOLD else rarityColor
 	local premium = if rank == 8 then PEARL else rarityColor:Lerp(Color3.new(1,1,1),0.18)
 
-	-- Uncommon remains nearly normal.
 	trim(root,folder,"QualityBadge",Vector3.new(math.max(0.20,s.X*0.10),math.max(0.12,s.Y*0.035),0.08),CFrame.new(s.X*0.32,s.Y*0.34,-s.Z*0.53),accent,Enum.Material.Metal)
 	if rank == 2 then return end
 
-	-- Rare: restrained trim that upgrades the object without turning magical.
 	trim(root,folder,"RareTrimL",Vector3.new(math.max(0.10,s.X*0.035),s.Y*0.72,0.08),CFrame.new(-s.X*0.43,0,-s.Z*0.535),accent,Enum.Material.Metal)
 	trim(root,folder,"RareTrimR",Vector3.new(math.max(0.10,s.X*0.035),s.Y*0.72,0.08),CFrame.new(s.X*0.43,0,-s.Z*0.535),accent,Enum.Material.Metal)
 	if rank == 3 then return end
 
-	-- Epic+: family-aware silhouette changes.
 	if family == "FURNITURE" then
 		trim(root,folder,"EpicFurnitureCrest",Vector3.new(s.X*0.46,0.24,0.30),CFrame.new(0,s.Y*0.51,s.Z*0.31),accent,Enum.Material.Metal)
 		trim(root,folder,"EpicFurnitureArmL",Vector3.new(s.X*0.12,0.28,s.Z*0.46),CFrame.new(-s.X*0.44,s.Y*0.20,0),accent,Enum.Material.Metal)
@@ -143,9 +148,11 @@ local function addRarityGeometry(root: BasePart, folder: Folder, family: string,
 		trim(root,folder,"EpicLuxuryTop",Vector3.new(s.X*0.82,0.22,0.22),CFrame.new(0,s.Y*0.51,-s.Z*0.49),accent,Enum.Material.Metal)
 		trim(root,folder,"EpicLuxuryBottom",Vector3.new(s.X*0.82,0.22,0.22),CFrame.new(0,-s.Y*0.51,-s.Z*0.49),accent,Enum.Material.Metal)
 	elseif family == "ART" then
-		for _, x in {-1,1} do for _, y in {-1,1} do
-			trim(root,folder,"EpicArtCorner",Vector3.new(s.X*0.14,s.Y*0.14,0.18),CFrame.new(x*s.X*0.43,y*s.Y*0.42,-s.Z*0.56),accent,Enum.Material.Metal)
-		end end
+		for _, x in {-1,1} do
+			for _, y in {-1,1} do
+				trim(root,folder,"EpicArtCorner",Vector3.new(s.X*0.14,s.Y*0.14,0.18),CFrame.new(x*s.X*0.43,y*s.Y*0.42,-s.Z*0.56),accent,Enum.Material.Metal)
+			end
+		end
 	elseif family == "SECURE" then
 		for _, y in {-0.32,0.32} do
 			trim(root,folder,"EpicVaultBar",Vector3.new(s.X*0.78,0.17,0.17),CFrame.new(0,s.Y*y,-s.Z*0.56),accent,Enum.Material.Metal)
@@ -159,12 +166,10 @@ local function addRarityGeometry(root: BasePart, folder: Folder, family: string,
 	end
 	if rank == 4 then return end
 
-	-- Legendary: obvious premium structural redesign.
 	trim(root,folder,"LegendaryCrown",Vector3.new(s.X*0.72,0.30,s.Z*0.20),CFrame.new(0,s.Y*0.59,0),accent,Enum.Material.Metal)
 	trim(root,folder,"LegendaryBase",Vector3.new(s.X*0.68,0.22,s.Z*0.28),CFrame.new(0,-s.Y*0.57,0),accent,Enum.Material.Metal)
 	if rank == 5 then return end
 
-	-- Mythic: suspended-looking pieces break the normal silhouette.
 	for _, x in {-1,1} do
 		local node = makePart(root,folder,"MythicNode","Ball",Vector3.new(0.42,0.42,0.42),CFrame.new(x*s.X*0.60,s.Y*0.18,0),accent,Enum.Material.Neon,0.03)
 		node:SetAttribute("RarityGeometry",true)
@@ -172,7 +177,6 @@ local function addRarityGeometry(root: BasePart, folder: Folder, family: string,
 	trim(root,folder,"MythicSpine",Vector3.new(0.16,s.Y*0.66,0.16),CFrame.new(0,0,s.Z*0.57),accent,Enum.Material.Neon)
 	if rank == 6 then return end
 
-	-- Cosmic: containment/orbit hardware integrated into the object.
 	for _, z in {-1,1} do
 		trim(root,folder,"CosmicOrbitRail",Vector3.new(s.X*1.16,0.12,0.12),CFrame.new(0,0,z*s.Z*0.62)*CFrame.Angles(0,0,math.rad(if z > 0 then 16 else -16)),accent,Enum.Material.Neon)
 	end
@@ -181,19 +185,27 @@ local function addRarityGeometry(root: BasePart, folder: Folder, family: string,
 	end
 	if rank == 7 then return end
 
-	-- Eternal: clean white-gold final form rather than more particle density.
 	trim(root,folder,"EternalHaloBar",Vector3.new(s.X*0.84,0.18,0.18),CFrame.new(0,s.Y*0.66,0),WHITE_GOLD,Enum.Material.Neon)
 	trim(root,folder,"EternalPearlCrest",Vector3.new(s.X*0.42,0.34,s.Z*0.24),CFrame.new(0,s.Y*0.61,-s.Z*0.20),PEARL,Enum.Material.SmoothPlastic)
 end
 
 local function apply(root: BasePart)
 	local itemId = itemIdFromRoot(root)
-	if not itemId then return end
+	if not itemId then
+		if root:FindFirstChild("M6CProductionModel") then clearProduction(root) end
+		return
+	end
 	local def = ItemConfig[itemId]
-	if not def then return end
+	if not def then
+		if root:FindFirstChild("M6CProductionModel") then clearProduction(root) end
+		return
+	end
 	local baseId = tostring(def.BaseItemId or itemId)
 	local recipe = BatchConfig.Recipes[baseId]
-	if not recipe then return end
+	if not recipe then
+		if root:FindFirstChild("M6CProductionModel") then clearProduction(root) end
+		return
+	end
 	if root:GetAttribute("M6CProductionItemId") == itemId and root:FindFirstChild("M6CProductionModel") then return end
 
 	clearLegacyLayers(root)
