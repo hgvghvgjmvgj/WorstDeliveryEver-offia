@@ -17,6 +17,7 @@ local progressionActionRemote: RemoteEvent
 local noticeRemote: RemoteEvent
 local lastActionAt: {[Player]: number} = {}
 local lastStateRequestAt: {[Player]: number} = {}
+local sessionStartedAt: {[Player]: number} = {}
 local STATE_REQUEST_COOLDOWN_SECONDS = 0.20
 
 local function levelValue(trackName: string, levelIndex: number): number
@@ -47,11 +48,12 @@ local function handlingStats(player: Player): (number, number, number)
 		tonumber(player:GetAttribute("CarryControl")) or 1.0
 end
 
-local function applyHandlingRig(player: Player)
+local function applyHandlingRig(player: Player): number
 	local strength, space, control = handlingStats(player)
 	local tier = HandlingConfig.RigTierFromStats(strength, space, control)
 	player:SetAttribute("HandlingRigTier", tier)
 	player:SetAttribute("HandlingRigName", HandlingConfig.RigName(tier))
+	return tier
 end
 
 local function applyAll(player: Player, profile: any)
@@ -123,6 +125,24 @@ local function sendState(player: Player)
 	end
 end
 
+local function recordRigUnlock(player: Player, oldTier: number, newTier: number)
+	if newTier <= oldTier then return end
+	local started = sessionStartedAt[player] or os.clock()
+	local elapsed = math.max(0, os.clock() - started)
+	local hauls = math.max(0, math.floor(tonumber(player:GetAttribute("DevSuccessfulHauls")) or 0))
+	for tier = oldTier + 1, newTier do
+		player:SetAttribute(("DevRig%dUnlockSeconds"):format(tier), elapsed)
+		player:SetAttribute(("DevRig%dUnlockHauls"):format(tier), hauls)
+	end
+	print(string.format(
+		"[ONE TRIP][M6A.3 ECON] %s unlocked %s at %.1fs after %d successful hauls",
+		player.Name,
+		HandlingConfig.RigName(newTier),
+		elapsed,
+		hauls
+	))
+end
+
 local function purchase(player: Player, trackName: string): boolean
 	local track = ProgressionConfig.Tracks[trackName]
 	local profile = PlayerDataService.GetProfile(player)
@@ -133,7 +153,7 @@ local function purchase(player: Player, trackName: string): boolean
 	local currentLevel = getLevel(profile, trackName)
 	local nextLevel = currentLevel + 1
 	if nextLevel > #track.Levels then
-		noticeRemote:FireClient(player, track.DisplayName .. " IS MAXED FOR M5.")
+		noticeRemote:FireClient(player, track.DisplayName .. " IS MAXED FOR M6A.3.")
 		return false
 	end
 
@@ -143,10 +163,12 @@ local function purchase(player: Player, trackName: string): boolean
 		return false
 	end
 
+	local oldRigTier = math.max(0, math.floor(tonumber(player:GetAttribute("HandlingRigTier")) or 0))
 	profile.Progression[track.ProfileField] = nextLevel
 	applyTrack(player, profile, trackName)
 	if trackName == "Strength" or trackName == "CarrySpace" or trackName == "Control" then
-		applyHandlingRig(player)
+		local newRigTier = applyHandlingRig(player)
+		recordRigUnlock(player, oldRigTier, newRigTier)
 	end
 	PlayerDataService.MarkDirty(player)
 	PlayerDataService.RequestSave(player)
@@ -200,6 +222,9 @@ function ProgressionService.Start()
 	progressionActionRemote.OnServerEvent:Connect(handleAction)
 
 	PlayerDataService.OnLoaded(function(player, profile)
+		sessionStartedAt[player] = os.clock()
+		player:SetAttribute("DevSuccessfulHauls", 0)
+		player:SetAttribute("DevFirstSellSeconds", nil)
 		applyAll(player, profile)
 		sendState(player)
 	end)
@@ -207,6 +232,7 @@ function ProgressionService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		lastActionAt[player] = nil
 		lastStateRequestAt[player] = nil
+		sessionStartedAt[player] = nil
 	end)
 end
 
