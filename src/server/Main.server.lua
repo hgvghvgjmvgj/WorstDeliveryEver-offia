@@ -15,6 +15,7 @@ local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService")
 local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
+local M6CCargoArtService = require(Services:WaitForChild("M6CCargoArtService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local ClearanceService = require(Services:WaitForChild("ClearanceService"))
@@ -39,10 +40,7 @@ local requestedMode = MacroLayoutConfig.ResolveMode(Workspace:GetAttribute("M6La
 local world = if requestedMode == "D" then M6A2WorldService.Build() else ComparisonWorldService.Build()
 if requestedMode == "D" then
 	M6A3IdentityService.Apply(world)
-	-- Sections 1-3 stay on the already-approved proof implementation.
 	M6BStorageService.Build(world)
-	-- Sections 4-15 extend the same warehouse with deliberately escalating
-	-- storage architecture rather than copy/pasted rack families.
 	M6BDeepStorageService.Build(world)
 
 	local storageSlots = world:FindFirstChild("M6BStorageSlots")
@@ -80,7 +78,12 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
+-- The M6C layer deliberately starts AFTER the legacy presentation service. It
+-- replaces generic detail/effect geometry while retaining its world label and
+-- base item transforms, and it applies to world, carried and Stock copies.
 LootPresentationService.Start(world)
+M6CCargoArtService.Start(world)
+
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
 CarryService.Start(ItemService)
 HandlingRuntimeService.Start(world, CarryService)
@@ -94,4 +97,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6B progressive warehouse world pass loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6C cargo base + modular rarity art pass loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
