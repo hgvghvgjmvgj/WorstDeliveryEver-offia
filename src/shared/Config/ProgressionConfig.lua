@@ -41,24 +41,22 @@ return table.freeze({
 			}),
 		}),
 
-		-- Mobility remains the persisted/internal stat. M6A.2 makes it the real
-		-- solution to 1,300+ stud outward traversal rather than adding a second
-		-- redundant Speed stat. The endgame ceiling is intentionally dramatic so
-		-- mastered early sections become something advanced players can blast
-		-- through; loaded return speed is still constrained by Weight/handling.
+		-- M6A.3 test curve. Mobility remains the persisted/internal stat; player
+		-- facing language is SPEED. Costs stay unchanged until runtime proves the
+		-- long-map curve and economy together.
 		Mobility = table.freeze({
 			DisplayName = "SPEED",
 			ProfileField = "MobilityLevel",
 			Attribute = "MobilityWalkSpeed",
 			Description = "Run through mastered sections much faster; heavy/dangerous loads suppress part of the bonus.",
 			Levels = table.freeze({
-				level(16.0, 0),
-				level(22.0, 700),
-				level(29.0, 1_600),
-				level(37.0, 3_800),
-				level(46.0, 9_000),
-				level(55.0, 22_000),
-				level(65.0, 55_000),
+				level(20.0, 0),
+				level(28.0, 700),
+				level(38.0, 1_600),
+				level(49.0, 3_800),
+				level(61.0, 9_000),
+				level(74.0, 22_000),
+				level(88.0, 55_000),
 			}),
 		}),
 
