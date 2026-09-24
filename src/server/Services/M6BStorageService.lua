@@ -65,9 +65,6 @@ local function addFocalEdge(model: Model, marker: BasePart, style: any, length: 
 	model:SetAttribute("GuaranteedRare", false)
 end
 
--- RECEIVING: busy, industrial and high-throughput. Outer opportunities use chunky
--- rack/cage language; inner focal opportunities remain open staging positions so
--- desirable cargo is visible from the shared freight lane.
 local function buildReceivingSlot(model: Model, marker: BasePart, style: any, focal: boolean)
 	local p = marker.Position
 	local outer = math.abs(p.X) >= 45
@@ -76,7 +73,6 @@ local function buildReceivingSlot(model: Model, marker: BasePart, style: any, fo
 	local side = if p.X < 0 then -1 else 1
 
 	if focal then
-		-- Open intake/staging pallet: low profile, highly visible from center lane.
 		for _, zOffset in {-3.7, 3.7} do
 			makePart(model, "StagingBumper", Vector3.new(0.55, 1.1, 0.75), CFrame.new(p.X + side * 4.2, 0.75, p.Z + zOffset), style.Accent, Enum.Material.Metal, 0, false)
 		end
@@ -90,7 +86,6 @@ local function buildReceivingSlot(model: Model, marker: BasePart, style: any, fo
 			makePart(model, "PalletRackBeam", Vector3.new(0.78, 0.52, 7.0), CFrame.new(backX - side * 0.35, y, p.Z), if y == 7.8 then style.Accent else style.Secondary, Enum.Material.Metal, 0, false)
 		end
 	else
-		-- Package cage/sorting slot: shorter than pallet racks, still industrial.
 		local backX = p.X + side * 3.5
 		makePart(model, "SortingBack", Vector3.new(0.55, 5.2, 6.5), CFrame.new(backX, 2.8, p.Z), style.Base, Enum.Material.Metal, 0.12, true)
 		for _, y in {2.0, 4.0} do
@@ -99,8 +94,6 @@ local function buildReceivingSlot(model: Model, marker: BasePart, style: any, fo
 	end
 end
 
--- HOME BASICS: lower, warmer, softer and more open. It deliberately avoids the
--- tall industrial rack silhouette from Receiving.
 local function buildHomeSlot(model: Model, marker: BasePart, style: any, focal: boolean)
 	local p = marker.Position
 	local side = if p.X < 0 then -1 else 1
@@ -108,7 +101,6 @@ local function buildHomeSlot(model: Model, marker: BasePart, style: any, focal: 
 	addEmptySlotBase(model, marker, style, platformSize, Enum.Material.WoodPlanks)
 
 	if focal then
-		-- Open small-furniture pocket / display pad.
 		makePart(model, "HomePocketBack", Vector3.new(0.48, 3.8, 7.4), CFrame.new(p.X + side * 3.8, 2.1, p.Z), Color3.fromRGB(217, 199, 165), Enum.Material.SmoothPlastic, 0.02, false)
 		makePart(model, "SoftAccentRail", Vector3.new(0.62, 0.48, 6.6), CFrame.new(p.X + side * 3.5, 3.8, p.Z), Color3.fromRGB(111, 153, 111), Enum.Material.SmoothPlastic, 0, false)
 		addFocalEdge(model, marker, style, 8.0)
@@ -118,13 +110,10 @@ local function buildHomeSlot(model: Model, marker: BasePart, style: any, focal: 
 		for _, y in {1.8, 3.6, 5.2} do
 			makePart(model, "HomeShelf", Vector3.new(3.0, 0.34, 6.2), CFrame.new(p.X + side * 1.8, y, p.Z), Color3.fromRGB(209, 185, 144), Enum.Material.WoodPlanks, 0, false)
 		end
-		-- Basket/bin block gives a domestic retail-storage silhouette without tiny detail.
 		makePart(model, "StorageBasket", Vector3.new(2.2, 1.2, 2.6), CFrame.new(p.X - side * 1.9, 0.95, p.Z + 2.0), Color3.fromRGB(106, 149, 104), Enum.Material.SmoothPlastic, 0, false)
 	end
 end
 
--- APPLIANCES: larger, cleaner, taller and more organized. Cargo should visually
--- dominate the bay, so frames sit behind/around the item rather than enclosing it.
 local function buildApplianceSlot(model: Model, marker: BasePart, style: any, focal: boolean)
 	local p = marker.Position
 	local side = if p.X < 0 then -1 else 1
@@ -171,7 +160,6 @@ local function addReceivingDepartment(folder: Folder, section: Model, style: any
 	if not front or not back or not center then return end
 	local length = front - back
 
-	-- Industrial overhead trusses and busy intake staging cues.
 	for _, t in {0.18, 0.52, 0.84} do
 		local z = front - length * t
 		makePart(folder, "ReceivingTruss", Vector3.new(164, 1.6, 2.2), CFrame.new(0, style.OverheadHeight, z), style.Base, Enum.Material.Metal, 0.03, false)
@@ -179,7 +167,6 @@ local function addReceivingDepartment(folder: Folder, section: Model, style: any
 			makePart(folder, "ReceivingColumn", Vector3.new(2.4, style.OverheadHeight, 2.4), CFrame.new(x, style.OverheadHeight * 0.5, z), style.Base, Enum.Material.Metal, 0, true)
 		end
 	end
-
 	for _, side in {-1, 1} do
 		local x = 72 * side
 		for _, t in {0.10, 0.62} do
@@ -197,8 +184,6 @@ local function addHomeDepartment(folder: Folder, section: Model, style: any)
 	if not front or not back or not center then return end
 	local length = front - back
 
-	-- Lower ceiling rhythm and warmer side-floor pockets make this read as a
-	-- friendlier household-storage department instead of another industrial bay.
 	for _, side in {-1, 1} do
 		makePart(folder, "HomeFloorPocket", Vector3.new(54, 0.05, math.max(12, length - 8)), CFrame.new(53 * side, 0.20, center), Color3.fromRGB(215, 196, 163), Enum.Material.SmoothPlastic, 0.48, false)
 		for _, t in {0.24, 0.72} do
@@ -246,7 +231,6 @@ local function addSectionEntryAccent(sectionModel: Model, sectionId: string, sty
 	local folder = Instance.new("Folder")
 	folder.Name = "M6BSectionAccent"
 	folder.Parent = sectionModel
-
 	local postHeight = if sectionId == "HomeBasics" then 10.5 elseif sectionId == "Appliances" then 15 else 13
 	for _, x in {-82, 82} do
 		makePart(folder, "ChunkyEntryPost", Vector3.new(3.2, postHeight, 3.2), CFrame.new(x, postHeight * 0.5, frontZ - 2.5), style.Base, Enum.Material.Metal, 0, true)
@@ -265,14 +249,11 @@ local function buildFreightLane(root: Folder, sections: Instance)
 	if not front or not back then return end
 	local center = (front + back) * 0.5
 	local length = front - back
-
 	local old = root:FindFirstChild("M6BFreightLane")
 	if old then old:Destroy() end
 	local folder = Instance.new("Folder")
 	folder.Name = "M6BFreightLane"
 	folder.Parent = root
-
-	-- Continuous edge language: immediately readable fast route without giant arrows.
 	for _, x in {-18.2, 18.2} do
 		makePart(folder, "FreightLaneEdge", Vector3.new(0.65, 0.06, length), CFrame.new(x, 0.24, center), Color3.fromRGB(220, 225, 229), Enum.Material.SmoothPlastic, 0.10, false)
 	end
@@ -311,6 +292,8 @@ function Service.Build(root: Folder)
 					if style and builder then
 						local graybox = sectionModel:FindFirstChild("StorageStructures")
 						if graybox then graybox:Destroy() end
+						local grayIdentity = sectionModel:FindFirstChild("M6A3Identity")
+						if grayIdentity then grayIdentity:Destroy() end
 						local previous = sectionModel:FindFirstChild("M6BSectionAccent")
 						if previous then previous:Destroy() end
 						local oldDepartment = sectionModel:FindFirstChild("M6BDepartmentSet")
