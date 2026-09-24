@@ -20,6 +20,8 @@ local M6CItemIdentityService = require(Services:WaitForChild("M6CItemIdentitySer
 local M6C1ModelCorrectionService = require(Services:WaitForChild("M6C1ModelCorrectionService"))
 local M6C1PrestigeService = require(Services:WaitForChild("M6C1PrestigeService"))
 local M6C1EnergyAuraService = require(Services:WaitForChild("M6C1EnergyAuraService"))
+local M6CProductionBatchService = require(Services:WaitForChild("M6CProductionBatchService"))
+local M6CProfessionalVFXService = require(Services:WaitForChild("M6CProfessionalVFXService"))
 local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
@@ -83,14 +85,17 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
--- Layered visual pipeline. All new pieces remain visual-only; physics continues
--- to use the authoritative root item part and original carry/economy systems.
+-- Existing M6C layers remain as fallback coverage for the rest of the catalog.
+-- The representative production batch then replaces those visual layers for its
+-- 11 BaseItemIds and supplies the authoritative proof models + professional VFX.
 LootPresentationService.Start(world)
 M6CCargoArtService.Start(world)
 M6CItemIdentityService.Start(world)
 M6C1ModelCorrectionService.Start(world)
 M6C1PrestigeService.Start(world)
 M6C1EnergyAuraService.Start(world)
+M6CProductionBatchService.Start(world)
+M6CProfessionalVFXService.Start(world)
 M6CRarityGalleryService.Start(world)
 
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
@@ -106,4 +111,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6C.1 reference aura + corrected couch/PC + multi-row gallery loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6C production representative batch + layered VFX loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
