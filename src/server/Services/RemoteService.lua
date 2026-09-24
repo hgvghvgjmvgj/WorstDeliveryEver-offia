@@ -48,6 +48,7 @@ function RemoteService.Initialize()
 	ensureRemote(RemoteNames.CollectionState)
 	ensureRemote(RemoteNames.CollectionAction)
 	ensureRemote(RemoteNames.CollectionEvent)
+	ensureRemote(RemoteNames.TutorialAction)
 end
 
 function RemoteService.Get(name: string): RemoteEvent
