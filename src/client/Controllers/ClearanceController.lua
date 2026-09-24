@@ -120,7 +120,10 @@ local function nearestLockedGate(): (Model?, number)
 				local z = tonumber(child:GetAttribute("GateZ"))
 				if z then
 					local distance = math.abs(root.Position.Z - z)
-					if distance < bestDistance then bestDistance = distance best = child end
+					if distance < bestDistance then
+						bestDistance = distance
+						best = child
+					end
 				end
 			end
 		end
