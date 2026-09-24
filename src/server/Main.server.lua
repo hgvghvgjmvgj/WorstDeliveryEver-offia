@@ -16,6 +16,7 @@ local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local M6CCargoArtService = require(Services:WaitForChild("M6CCargoArtService"))
+local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local ClearanceService = require(Services:WaitForChild("ClearanceService"))
@@ -78,11 +79,12 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
--- The M6C layer deliberately starts AFTER the legacy presentation service. It
--- replaces generic detail/effect geometry while retaining its world label and
--- base item transforms, and it applies to world, carried and Stock copies.
+-- M6C becomes the final visual layer after the legacy presentation service has
+-- created labels/root transforms. Its welded visual parts remain non-colliding
+-- and massless, preserving carry gameplay.
 LootPresentationService.Start(world)
 M6CCargoArtService.Start(world)
+M6CRarityGalleryService.Start(world)
 
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
 CarryService.Start(ItemService)
