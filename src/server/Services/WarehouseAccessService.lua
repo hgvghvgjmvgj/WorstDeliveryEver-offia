@@ -13,8 +13,8 @@ function WarehouseAccessService.Start(root: Folder)
 	if existing then existing:Destroy() end
 
 	-- The old linear future-expansion wall belongs only to Option A. M6A B/C
-	-- create their own complete graybox boundaries and must remain physically
-	-- open through all six sections.
+	-- and M6A.1 D create complete graybox boundaries and remain physically
+	-- open through all six playable sections. Loot/handling is the gate.
 	local mode = root:GetAttribute("MacroLayoutMode")
 	if mode ~= nil and mode ~= "A" then
 		return
