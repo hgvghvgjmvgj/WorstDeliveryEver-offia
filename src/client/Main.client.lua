@@ -24,4 +24,4 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M5C collection client loaded")
+print("[ONE TRIP] M6A macro layout challenge client loaded")
