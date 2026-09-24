@@ -24,4 +24,4 @@ CameraProtectionController.Start()
 FeelFeedbackController.Start()
 BayController.Start()
 
-print("[ONE TRIP] M6A macro layout challenge client loaded")
+print("[ONE TRIP] M6A.1 shared warehouse runway client loaded")
