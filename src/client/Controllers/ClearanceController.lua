@@ -199,7 +199,17 @@ function Controller.Start()
 		local old = lastTier
 		lastTier = nextTier
 		repaintAll()
-		if old ~= nil and nextTier > old then showToast(nextTier) end
+		-- ProgressionService writes the derived tier before setting ProgressionReady.
+		-- Suppress a fake "unlock" celebration when an existing profile first loads.
+		if player:GetAttribute("ProgressionReady") == true and old ~= nil and nextTier > old then
+			showToast(nextTier)
+		end
+	end)
+	player:GetAttributeChangedSignal("ProgressionReady"):Connect(function()
+		if player:GetAttribute("ProgressionReady") == true then
+			lastTier = currentTier()
+			repaintAll()
+		end
 	end)
 
 	RunService.RenderStepped:Connect(function(dt)
