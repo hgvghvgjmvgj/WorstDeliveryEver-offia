@@ -17,6 +17,7 @@ local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageServi
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local M6CProductionBatchService = require(Services:WaitForChild("M6CProductionBatchService"))
 local M6CProfessionalVFXService = require(Services:WaitForChild("M6CProfessionalVFXService"))
+local M6CProductionCleanupService = require(Services:WaitForChild("M6CProductionCleanupService"))
 local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
@@ -88,6 +89,7 @@ world:SetAttribute("M6A2HeroLootCount", heroCount)
 LootPresentationService.Start(world)
 M6CProductionBatchService.Start(world)
 M6CProfessionalVFXService.Start(world)
+M6CProductionCleanupService.Start(world)
 M6CRarityGalleryService.Start(world)
 
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
