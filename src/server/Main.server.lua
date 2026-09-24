@@ -13,6 +13,7 @@ local ComparisonWorldService = require(Services:WaitForChild("M6WorldService"))
 local M6A2WorldService = require(Services:WaitForChild("M6A2WorldService"))
 local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService"))
 local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
+local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local ClearanceService = require(Services:WaitForChild("ClearanceService"))
@@ -44,6 +45,7 @@ WarehouseAccessService.Start(world)
 BayService.Start(world)
 ItemService.Start(world)
 LootRarityService.Start(world)
+if requestedMode == "D" then M6BRestockPresentationService.Start(world) end
 
 local coreCount = 0
 local heroCount = 0
