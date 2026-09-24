@@ -1,26 +1,55 @@
 # ONE TRIP — M6B SECTIONS 1–3 VISUAL PROOF
 
-## Scope lock
-M6B is intentionally stopped at:
-1. Receiving & Returns
-2. Home Basics
-3. Appliances
+## Status
+APPROVED by Prompter after player-height/mobile review on 2026-09-24.
 
-Sections 4–15 remain graybox. Do not scale the M6B treatment farther until this proof passes player-height screenshot review.
+The Sections 1–3 proof is now the visual baseline for scaling M6B farther down the warehouse.
 
-## Signless comparison
-To test whether the departments read without labels, set this BEFORE Play:
+## Approved visual reads
+1. Receiving & Returns — warehouse intake / busy / industrial / high-throughput.
+2. Home Basics — warmer / familiar / household storage.
+3. Appliances — larger / cleaner / heavier / organized appliance storage.
+
+## Scaling rule for Sections 4–15
+Do NOT copy the exact racks/layouts from Sections 1–3.
+
+Reuse the visual principles, while making storage architecture progressively more distinctive and cooler as the player advances.
+
+Progression should increasingly affect:
+- shelf/frame silhouette;
+- bay scale;
+- structural complexity;
+- verticality;
+- department landmarks;
+- controlled accent lighting;
+- storage specialization;
+- visible cargo presentation.
+
+Later sections should feel increasingly aspirational and unusual rather than simply changing colors.
+
+Examples of intended escalation:
+- Furniture: open bulky display/storage bays rather than ordinary shelving.
+- Electronics: cleaner illuminated tech racks and product walls.
+- Recreation: playful mixed-height equipment bays.
+- Garage/Construction: heavier workshop/job-site structures.
+- Heavy/Industrial: oversized reinforced cells, gantries, machine staging.
+- Premium/Luxury: cleaner protected cabinets and premium display storage.
+- Art: gallery/backroom transport frames and pedestals.
+- Secure: armored cells and security architecture.
+- Restricted: advanced containment/docking frames that feel beyond an ordinary warehouse department.
+
+The facility must remain stylistically unified. Escalation should not turn each section into a different game.
+
+## Signless comparison command
+For future validation:
 ```lua
 workspace:SetAttribute("M6BHideSectionSigns", true)
 ```
 Set it back to false for normal testing.
 
-## What changed
+## What the approved proof implemented
 
 ### Receiving & Returns
-Target read: busy / industrial / high-throughput / ordinary.
-
-Implemented:
 - chunky pallet racks on outer opportunities;
 - lower package/sorting shelves on inner storage opportunities;
 - open intake/staging pallets on focal opportunities;
@@ -30,9 +59,6 @@ Implemented:
 - cardboard/blue/yellow/industrial palette.
 
 ### Home Basics
-Target read: warmer / familiar / friendly / household storage.
-
-Implemented:
 - lower warm wood shelves;
 - open small-furniture pockets at focal positions;
 - domestic storage bins;
@@ -42,9 +68,6 @@ Implemented:
 - cream/wood/orange/muted-green palette.
 
 ### Appliances
-Target read: larger / cleaner / heavier / more organized.
-
-Implemented:
 - larger spawn platforms;
 - tall reinforced appliance frames;
 - open focal appliance bays;
@@ -53,85 +76,49 @@ Implemented:
 - cool department lighting;
 - white/silver/slate/cool-blue language.
 
-## Main freight lane
-Sections 1–3 now share a continuous fast-route language:
-- clean lane-edge stripes around the 38-stud freight route;
-- repeated subtle center rhythm marks;
-- no decorative obstacles added to the central lane.
+## Main freight lane baseline
+- clear 38-stud shared route;
+- lane-edge stripes;
+- subtle repeated center rhythm;
+- no decorative blockers;
+- remains the intuitive high-Speed route.
 
-The route should read as the fastest/shared social path without giant arrows.
-
-## Rig I gate correction
-The first gate no longer uses a giant translucent red slab.
-
-Current treatment:
-- neutral dark industrial posts and arch;
+## Rig I checkpoint baseline
+- neutral industrial structure;
 - scanner housings;
-- thin amber/red scanner strips when locked;
-- thin green scanner strips when cleared;
-- visible RIG I REQUIRED / CLEARED label;
-- full invisible collision remains authoritative;
-- future Appliances content remains visible through the structure.
+- red/amber accents only while locked;
+- green accents when cleared;
+- visible future content;
+- authoritative invisible collision remains separate from presentation.
 
-## Representative cargo proof
-The following base cargo now has additional recognizable stylized geometry beyond generic ModelKind treatment.
+## Representative proof cargo
+Receiving:
+- Shipping Box
+- Toolbox
+- Suitcase
+- Office Chair
 
-### Receiving
-- Shipping Box — tape + parcel label
-- Toolbox — lid + chunky handle
-- Suitcase — wheels + pull handle
-- Office Chair — stem + feet
+Home Basics:
+- Desk Lamp
+- Dining Chair
+- Countertop Oven
+- Home Storage Shelf
 
-### Home Basics
-- Desk Lamp — base + stem
-- Dining Chair — four simplified legs
-- Countertop Oven — glass window + knobs
-- Home Storage Shelf — visible shelf boards
+Appliances:
+- Refrigerator
+- Washer
+- Television
+- Oven Range
 
-### Appliances
-- Refrigerator — split doors + chunky handles + display
-- Washer — round washer door + control panel
-- Television — twin feet
-- Oven Range — cooktop + control knobs
+These remain proof-quality stylized assets, not a declaration that every Section 1–3 cargo model is final.
 
-These are visual-proof assets, not a claim that all cargo in Sections 1–3 is final.
-
-## Restock readability
-Only Sections 1–3 currently receive M6B storage slots.
-
-When cargo leaves:
-- its platform/bay remains;
-- vacancy light remains visible;
+## Restock readability baseline
+- empty platform/bay remains after cargo leaves;
+- vacancy indicator remains visible;
 - restock pulses the slot light;
-- focal opportunities remain normal RNG positions, not guaranteed rare shelves.
+- focal opportunities remain normal RNG positions and receive no rarity bonus.
 
-## Screenshot gate
-Do not continue to Section 4 before reviewing all four:
+## Mobile correction discovered during approval
+The visual proof passed, but the phone-landscape screenshot exposed excessive UI occupancy. A compact mobile HUD correction is therefore being treated as a blocking usability fix before broad M6B propagation.
 
-A. Player-height from Receiving looking deeper.
-B. Player-height inside Home Basics.
-C. Player-height inside Appliances.
-D. Aerial/angled shot showing all three together.
-
-For the strongest test, repeat A–D once with `M6BHideSectionSigns = true`.
-
-## Pass questions
-Without reading signs:
-- Does Receiving look like warehouse intake?
-- Does Home Basics look like household goods storage?
-- Does Appliances look like large appliance storage?
-- Does the freight lane remain visually obvious?
-- Can a large pile still turn through side storage?
-- Are Rare+ items visible from useful sightlines?
-- Is the Rig I gate a checkpoint rather than a red wall?
-
-## Performance notes to record
-Check:
-- client FPS at player height in each department;
-- mobile emulator camera clipping;
-- Speed 88 freight-lane traversal;
-- large-pile turning in side storage;
-- whether the six strategic department PointLights cause any noticeable cost.
-
-## Current recommendation
-Runtime screenshot review required. The implementation deliberately does NOT authorize Sections 4–15 yet.
+After the compact mobile HUD passes a quick phone test, Sections 4–15 may proceed using the escalation rule above.
