@@ -13,22 +13,42 @@ Config.Milestones = table.freeze({
 	table.freeze({ Key = "100", Ratio = 1.00, BaseCash = 30_000, Cosmetic = nil }),
 })
 
+-- Existing six-section values remain intact. New values are M6A.2 test values,
+-- not a final economy rebalance; telemetry decides the later reward pass.
 Config.SectionRewardScale = table.freeze({
 	Receiving = 1.00,
+	HomeBasics = 1.20,
 	Appliances = 1.50,
 	Furniture = 2.00,
+	Electronics = 2.30,
+	Recreation = 2.50,
+	GarageAuto = 2.70,
+	Construction = 2.90,
 	HeavyGoods = 3.00,
 	Industrial = 4.50,
+	PremiumInteriors = 5.00,
+	LuxuryGoods = 5.50,
+	ArtCollectibles = 6.20,
 	Secure = 7.00,
+	RestrictedPrototype = 8.50,
 })
 
 Config.Trophies = table.freeze({
-	Receiving = table.freeze({ Name = "GOLDEN PALLET JACK", Color = Color3.fromRGB(222, 177, 67), Shape = "Cart" }),
-	Appliances = table.freeze({ Name = "PROTOTYPE APPLIANCE AWARD", Color = Color3.fromRGB(106, 193, 218), Shape = "Appliance" }),
-	Furniture = table.freeze({ Name = "ROYAL FURNITURE AWARD", Color = Color3.fromRGB(187, 135, 82), Shape = "Chair" }),
-	HeavyGoods = table.freeze({ Name = "GOLDEN VAULT AWARD", Color = Color3.fromRGB(217, 177, 67), Shape = "Safe" }),
-	Industrial = table.freeze({ Name = "INDUSTRIAL REACTOR AWARD", Color = Color3.fromRGB(89, 204, 218), Shape = "Core" }),
-	Secure = table.freeze({ Name = "SECURE CONTAINMENT AWARD", Color = Color3.fromRGB(214, 202, 145), Shape = "Case" }),
+	Receiving = table.freeze({ Name = "GOLDEN PALLET JACK", Color = Color3.fromRGB(222,177,67), Shape = "Cart" }),
+	HomeBasics = table.freeze({ Name = "HOME BASICS AWARD", Color = Color3.fromRGB(205,171,117), Shape = "Chair" }),
+	Appliances = table.freeze({ Name = "PROTOTYPE APPLIANCE AWARD", Color = Color3.fromRGB(106,193,218), Shape = "Appliance" }),
+	Furniture = table.freeze({ Name = "ROYAL FURNITURE AWARD", Color = Color3.fromRGB(187,135,82), Shape = "Chair" }),
+	Electronics = table.freeze({ Name = "ELECTRONICS COMMAND AWARD", Color = Color3.fromRGB(102,153,221), Shape = "Appliance" }),
+	Recreation = table.freeze({ Name = "ARCADE MASTER AWARD", Color = Color3.fromRGB(170,103,219), Shape = "Appliance" }),
+	GarageAuto = table.freeze({ Name = "GARAGE MASTER AWARD", Color = Color3.fromRGB(187,91,72), Shape = "Cart" }),
+	Construction = table.freeze({ Name = "CONSTRUCTION MASTER AWARD", Color = Color3.fromRGB(194,163,77), Shape = "Case" }),
+	HeavyGoods = table.freeze({ Name = "GOLDEN VAULT AWARD", Color = Color3.fromRGB(217,177,67), Shape = "Safe" }),
+	Industrial = table.freeze({ Name = "INDUSTRIAL REACTOR AWARD", Color = Color3.fromRGB(89,204,218), Shape = "Core" }),
+	PremiumInteriors = table.freeze({ Name = "PREMIUM INTERIORS AWARD", Color = Color3.fromRGB(210,186,145), Shape = "Chair" }),
+	LuxuryGoods = table.freeze({ Name = "LUXURY COLLECTION AWARD", Color = Color3.fromRGB(216,176,112), Shape = "Case" }),
+	ArtCollectibles = table.freeze({ Name = "COLLECTOR MASTERPIECE AWARD", Color = Color3.fromRGB(184,153,103), Shape = "Core" }),
+	Secure = table.freeze({ Name = "SECURE CONTAINMENT AWARD", Color = Color3.fromRGB(214,202,145), Shape = "Case" }),
+	RestrictedPrototype = table.freeze({ Name = "RESTRICTED PROTOTYPE AWARD", Color = Color3.fromRGB(99,220,230), Shape = "Core" }),
 })
 
 Config.RareFindMinimumRank = 7
@@ -38,16 +58,12 @@ Config.ServerAnnouncementMinimumRank = 7
 local milestoneKeys = table.freeze({ ["25"] = true, ["50"] = true, ["75"] = true, ["100"] = true })
 
 local function validRarity(value: any): string
-	if typeof(value) == "string" and RarityConfig.Tiers[value] then
-		return value
-	end
+	if typeof(value) == "string" and RarityConfig.Tiers[value] then return value end
 	return "Common"
 end
 
 local function finiteNumber(value: any, fallback: number): number
-	if typeof(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then
-		return fallback
-	end
+	if typeof(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge then return fallback end
 	return value
 end
 
@@ -62,9 +78,7 @@ end
 
 function Config.NewProfile(): any
 	local sections = {}
-	for _, sectionId in LootCatalog.SectionOrder do
-		sections[sectionId] = { Discovered = {}, RewardMilestones = {} }
-	end
+	for _, sectionId in LootCatalog.SectionOrder do sections[sectionId] = { Discovered = {}, RewardMilestones = {} } end
 	return { Sections = sections, RareFinds = {} }
 end
 
@@ -106,10 +120,7 @@ function Config.Sanitize(raw: any, nowUnix: number): any
 		local base = LootCatalog.ById[baseItemId]
 		if typeof(baseItemId) == "string" and base then
 			local clean = sanitizeEntry(rawEntry, nowUnix)
-			if clean then
-				clean.SectionId = base.SectionId
-				result.RareFinds[baseItemId] = clean
-			end
+			if clean then clean.SectionId = base.SectionId result.RareFinds[baseItemId] = clean end
 		end
 	end
 	return result
@@ -151,14 +162,8 @@ local function upgradeEntry(entry: any?, rarity: string, nowUnix: number, sellVa
 	if not entry then return newEntry(rarity, nowUnix, sellValue), true, nil end
 	local oldRarity = validRarity(entry.BestRarity)
 	entry.TimesDelivered = math.max(1, math.floor(finiteNumber(entry.TimesDelivered, 1) + 0.5)) + 1
-	entry.BestSellValueDelivered = math.max(
-		math.max(0, math.floor(finiteNumber(entry.BestSellValueDelivered, 0) + 0.5)),
-		math.max(0, math.floor(finiteNumber(sellValue, 0) + 0.5))
-	)
-	if RarityConfig.Rank(rarity) > RarityConfig.Rank(oldRarity) then
-		entry.BestRarity = rarity
-		return entry, false, oldRarity
-	end
+	entry.BestSellValueDelivered = math.max(math.max(0, math.floor(finiteNumber(entry.BestSellValueDelivered, 0) + 0.5)), math.max(0, math.floor(finiteNumber(sellValue, 0) + 0.5)))
+	if RarityConfig.Rank(rarity) > RarityConfig.Rank(oldRarity) then entry.BestRarity = rarity return entry, false, oldRarity end
 	entry.BestRarity = oldRarity
 	return entry, false, nil
 end
@@ -225,7 +230,6 @@ function Config.BackfillFromStock(collection: any, stock: any, nowUnix: number)
 		end
 	end
 
-	-- Backfill proves historical delivery but must not become reconnect Cash.
 	for sectionId in changedSections do
 		local total = Config.CoreCount(sectionId)
 		local count = Config.DiscoveredCount(collection, sectionId)
