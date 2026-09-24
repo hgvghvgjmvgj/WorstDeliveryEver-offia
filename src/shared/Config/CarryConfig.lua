@@ -10,14 +10,14 @@ return table.freeze({
 	Beginner = table.freeze({ Strength = 15, CarrySpace = 13, Control = 1.0 }),
 	Veteran = table.freeze({ Strength = 38, CarrySpace = 28, Control = 2.2 }),
 
-	-- Speed upgrades remain useful while carrying. Heavy loads suppress some of
-	-- the bonus, while handling-band multipliers still make dangerous extraction
-	-- meaningfully slower than empty traversal.
+	-- Speed upgrades remain useful while carrying. Weight still suppresses the
+	-- bonus, but progressed players retain enough of it that long-map extraction
+	-- does not collapse back toward starter travel speed.
 	Mobility = table.freeze({
 		SuppressionStartWeightRatio = 0.35,
 		FullSuppressionWeightRatio = 1.35,
-		MinimumBonusFractionAtMaxLoad = 0.30,
-		LoadedMinimumBonusFraction = 0.25,
+		MinimumBonusFractionAtMaxLoad = 0.65,
+		LoadedMinimumBonusFraction = 0.50,
 	}),
 
 	Movement = table.freeze({
