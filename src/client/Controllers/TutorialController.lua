@@ -22,6 +22,7 @@ local stepStartedAt = 0
 local latestCarry: any = nil
 local latestEconomy: any = nil
 local reviewSeen = false
+local emptySince: number? = nil
 local running = false
 local loopAccumulator = 0
 local tutorialAction: RemoteEvent
@@ -231,11 +232,13 @@ local function setStep(nextStep: string)
 		setTarget(nil)
 		message("SHARP MOVES MAKE YOUR PILE SWAY", "MOVE SMOOTHLY")
 	elseif nextStep == "RETURN" then
+		emptySince = nil
 		local bay = ownBay()
 		local unload = bay and bay:FindFirstChild("UnloadZone")
 		setTarget(if unload and unload:IsA("BasePart") then unload else nil)
 		message("BRING IT BACK", "Return to YOUR bay without losing the pile.")
 	elseif nextStep == "REVIEW" then
+		emptySince = nil
 		setTarget(nil)
 		message("FIRST TRIP COMPLETE!", "SELL = cash now    •    KEEP = Stock income")
 	elseif nextStep == "UPGRADES" then
@@ -308,15 +311,18 @@ local function updateTutorial()
 			local unload = bay and bay:FindFirstChild("UnloadZone")
 			if unload and unload:IsA("BasePart") then setTarget(unload) end
 		end
-		if count <= 0 and not reviewSeen then
-			setStep("GRAB_ONE")
-			return
-		end
 		local reviewId = latestEconomy and latestEconomy.reviewId
 		if typeof(reviewId) == "string" and reviewId ~= "" then
 			reviewSeen = true
 			setStep("REVIEW")
+			return
 		end
+		if count <= 0 and not reviewSeen then
+			emptySince = emptySince or os.clock()
+			if os.clock() - emptySince >= 1.5 then setStep("GRAB_ONE") end
+			return
+		end
+		emptySince = nil
 	elseif step == "REVIEW" then
 		local reviewId = latestEconomy and latestEconomy.reviewId
 		if reviewSeen and (typeof(reviewId) ~= "string" or reviewId == "") then setStep("UPGRADES") end
@@ -332,6 +338,7 @@ local function beginIfNeeded()
 	if running or player:GetAttribute("TutorialReady") ~= true or player:GetAttribute("TutorialCompleted") == true then return end
 	running = true
 	reviewSeen = false
+	emptySince = nil
 	setStep("BAY")
 end
 
