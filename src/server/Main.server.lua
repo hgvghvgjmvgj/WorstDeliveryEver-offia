@@ -12,6 +12,7 @@ local RemoteService = require(Services:WaitForChild("RemoteService"))
 local ComparisonWorldService = require(Services:WaitForChild("M6WorldService"))
 local M6A2WorldService = require(Services:WaitForChild("M6A2WorldService"))
 local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService"))
+local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local ClearanceService = require(Services:WaitForChild("ClearanceService"))
@@ -34,7 +35,10 @@ CollisionService.Start()
 
 local requestedMode = MacroLayoutConfig.ResolveMode(Workspace:GetAttribute("M6LayoutMode"))
 local world = if requestedMode == "D" then M6A2WorldService.Build() else ComparisonWorldService.Build()
-if requestedMode == "D" then M6A3IdentityService.Apply(world) end
+if requestedMode == "D" then
+	M6A3IdentityService.Apply(world)
+	M6BStorageService.Build(world)
+end
 WarehouseAccessService.Start(world)
 
 BayService.Start(world)
@@ -66,4 +70,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6A.3 onboarding + Rig clearance + long-map Speed test loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6B stylized storage foundation loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
