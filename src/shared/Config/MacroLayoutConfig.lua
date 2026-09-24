@@ -9,28 +9,28 @@ local SECTION_ORDER = frozen({ "Receiving", "Appliances", "Furniture", "HeavyGoo
 local SECTION_META = frozen({
 	Receiving = frozen({
 		Index = 1,
-		DisplayName = "RECEIVING & GENERAL STORAGE",
+		DisplayName = "RECEIVING / GENERAL",
 		Color = Color3.fromRGB(76, 92, 104),
 		Depth = 1,
 		FallbackItemId = "Box",
 	}),
 	Appliances = frozen({
 		Index = 2,
-		DisplayName = "APPLIANCES & ELECTRONICS",
+		DisplayName = "APPLIANCES / ELECTRONICS",
 		Color = Color3.fromRGB(70, 91, 116),
 		Depth = 1,
 		FallbackItemId = "TV",
 	}),
 	Furniture = frozen({
 		Index = 3,
-		DisplayName = "FURNITURE & OVERSIZED",
+		DisplayName = "FURNITURE / OVERSIZED",
 		Color = Color3.fromRGB(104, 83, 68),
 		Depth = 2,
 		FallbackItemId = "Chair",
 	}),
 	HeavyGoods = frozen({
 		Index = 4,
-		DisplayName = "HEAVY GOODS & EQUIPMENT",
+		DisplayName = "HEAVY GOODS / EQUIPMENT",
 		Color = Color3.fromRGB(93, 89, 73),
 		Depth = 2,
 		FallbackItemId = "Tire",
@@ -44,7 +44,7 @@ local SECTION_META = frozen({
 	}),
 	Secure = frozen({
 		Index = 6,
-		DisplayName = "SECURE HIGH-VALUE STORAGE",
+		DisplayName = "SECURE / HIGH-VALUE",
 		Color = Color3.fromRGB(79, 73, 70),
 		Depth = 3,
 		FallbackItemId = "TV",
