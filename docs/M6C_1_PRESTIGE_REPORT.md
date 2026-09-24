@@ -1,90 +1,63 @@
 # ONE TRIP — M6C.1 AURA + PRESTIGE POLISH REPORT
 
 ## Status
-Implemented as a new final visual layer on top of M6C. Final M6 polish remains blocked pending Studio/mobile/mixed-pile review.
+Implemented as layered visual-only services on top of M6C. Final M6 polish remains blocked pending Studio/mobile/mixed-pile review.
 
-## Global changes
-- Added `M6C1PrestigeService` after M6C base art + identity.
-- Common: no aura or prestige effects.
-- Uncommon: remains intentionally close to Common.
-- Rare: first subtle occluded Highlight aura.
-- Epic: stronger aura + faint under-object aura plate + additional silhouette shoulders.
-- Legendary: premium aura, very low-rate sparks, crown rail/crest, item-aware premium structure.
-- Mythic: stronger aura, low-rate energy sparks, suspended-looking nodes/spine.
-- Cosmic: strong controlled aura, containment/orbit geometry, low-rate space-like particles, restrained PointLight.
-- Eternal: strongest clean aura, white-gold/prismatic final-form frame, restrained particles + PointLight.
+## Latest correction after screenshot review
+The first M6C.1 aura pass was rejected because it read as a flat showroom halo/outline rather than the stronger Roblox aura language requested.
 
-## Performance discipline
-The aura layer intentionally avoids brute force.
-- Common/Uncommon create no aura emitters/lights.
-- Rare creates Highlight only.
-- Epic adds Highlight + one faint geometry plate.
-- Legendary/Mythic add one low-rate ParticleEmitter.
-- Cosmic/Eternal are the only M6C.1 tiers that add a PointLight.
-- All geometry is welded, Massless, CanCollide=false, CanTouch=false, CanQuery=false.
+The corrected pass now adds:
+- segmented ground sigils/rune rings;
+- curved energy arcs;
+- rising energy lines;
+- stronger vertical energy presence for Mythic+;
+- Cosmic orbit arcs;
+- controlled energy wisps/sparks;
+- PointLights only on Cosmic/Eternal.
 
-Runtime telemetry is exposed on `Workspace.OneTripPrototype`:
-- `M6C1PrestigeEnabled`
-- `M6C1AppliedInstances`
-- `M6C1AuraCount`
-- `M6C1ParticleEmitterCount`
-- `M6C1PointLightCount`
+The old `Highlight` + flat `AuraPlate` presentation is removed by the final aura layer.
 
-## Priority base-item identity polish
-M6C.1 adds additional recognition/detail to the priority categories where procedural bases could still read too generically.
-
-### Appliances
-- Refrigerator / Mini Fridge / Prototype Smart Fridge: clearer door split, kick plate, dispenser/display treatment.
-- Washer / Dryer: dial + lower panel treatment.
-- Microwave / Countertop Oven: dark front glass + controls.
-- Oven Range: oven glass + knob row.
-
-### Furniture
-- Couch / Sectional / Luxury Sofa: stronger back-pillow silhouettes.
-- Office Chair: center post + caster-arm language.
-- Dining/Designer Chairs: clearer back inset.
-- Mattress: edge piping.
-- Coffee/Dining/Marble Tables: distinct top inset/material treatment.
-
-### Electronics / Recreation
-- Gaming PC: glass side, visible fans, GPU accent.
-- Television / Gaming Monitor: clearer display panel.
-- Arcade Cabinet: marquee, control deck, joystick.
-
-### Garage / Industrial
-- Engine family: headers + top intake.
-- Compressor / pump / hydraulic family: tank + motor structure.
-
-### Luxury / Fragrance
-- Fragrance/parfum/oud/perfumer items: premium inner frame + visible bottle set and caps.
-
-### Secure
-- Safe/vault family: locking wheel, spokes, keypad.
-
-### Restricted
-- Restricted prototypes: visible contained energy focus + containment rails.
-
-## Rarity behavior
-| Tier | M6C.1 presence |
+## Rarity aura behavior
+| Tier | Final M6C.1 aura language |
 | --- | --- |
-| Common | Normal polished object; no aura. |
-| Uncommon | Close to normal; no global aura. |
-| Rare | Subtle colored occluded outline/fill. |
-| Epic | Clear aura + faint base plate + extra silhouette structure. |
-| Legendary | Premium aura + low-rate sparks + premium frame/crest. |
-| Mythic | Strong aura + energy nodes + more unusual structure. |
-| Cosmic | Otherworldly aura + containment frames + controlled particles/light. |
-| Eternal | Cleanest/brightest prestige aura + white-gold final-form frame + prismatic focus. |
+| Common | No aura. |
+| Uncommon | No global aura; remains almost normal. |
+| Rare | Small segmented ground ring only. |
+| Epic | Clear double sigil/rune ground presence. |
+| Legendary | Ground sigil + curved energy arcs + rising energy + restrained wisps. |
+| Mythic | Stronger sigil + side energy shell + more rising energy + sparks. |
+| Cosmic | Containment/orbit aura + rising energy + stars/wisps + subtle light. |
+| Eternal | White-gold/prismatic final-form sigil + strongest controlled arcs/rays + subtle light. |
 
-## Studio proof set
-Use the existing M6C gallery. Before Play:
-```lua
-workspace:SetAttribute("M6CBuildRarityGallery", true)
-workspace:SetAttribute("M6CGalleryBaseItemId", "Refrigerator")
-```
-Restart Play after changing the BaseItemId.
+This remains intentionally lighter than simulator-style particle spam. Item silhouette is still the first read.
 
-Required cross-category checks:
+## Base-model corrections after screenshot review
+### Couch
+The procedural couch was rejected. `M6C1ModelCorrectionService` now hides its generic physics-root visual and builds a readable sofa around the same invisible authoritative root:
+- low seat base;
+- tall angled back;
+- thick arms;
+- three separate seat cushions;
+- three separate back cushions;
+- visible feet;
+- rarity trim at Epic+.
+
+### Gaming PC
+The old version read as a generic tech cabinet. It now uses the same invisible authoritative root with a clearer gaming-PC visual:
+- dark tower chassis;
+- glass side panel;
+- motherboard/GPU/PSU structure;
+- three front intake fans;
+- top vent;
+- feet;
+- rarity-colored IO/fan lighting.
+
+Both remain Massless/CanCollide=false visual geometry. Carry physics, Weight, Bulk, economy and rarity selection are unchanged.
+
+## Multi-row Studio gallery
+The old one-item-at-a-time gallery was too slow for review.
+
+Default behavior now shows this proof set as simultaneous rows:
 - Refrigerator
 - Couch
 - GamingPC
@@ -92,32 +65,60 @@ Required cross-category checks:
 - ShowCarEngine
 - DesignerFragranceTrunk
 - JewelrySafe
-- ExperimentalPowerCore
 - BlackProjectContainmentUnit
+
+Before Play:
+```lua
+workspace:SetAttribute("M6CBuildRarityGallery", true)
+```
+
+The default `M6CGalleryMode` is `PROOF`, so no BaseItemId swapping is required.
+
+Single-item mode remains available:
+```lua
+workspace:SetAttribute("M6CGalleryMode", "SINGLE")
+workspace:SetAttribute("M6CGalleryBaseItemId", "Refrigerator")
+```
+
+Custom multiple rows:
+```lua
+workspace:SetAttribute("M6CGalleryBaseItemIds", "Refrigerator,Couch,GamingPC,JewelrySafe")
+```
+
+Optional spacing/origin:
+```lua
+workspace:SetAttribute("M6CGalleryRowSpacing", 18)
+workspace:SetAttribute("M6CGalleryOrigin", Vector3.new(0,4.5,470))
+```
 
 Disable afterward:
 ```lua
 workspace:SetAttribute("M6CBuildRarityGallery", false)
 ```
 
-## Mixed-pile test
-Create real carried stacks at 6 / 8 / 10 / 12 items with mixed rarities.
+## Runtime telemetry
+Under `Workspace.OneTripPrototype`:
+- `M6C1ModelCorrectionsApplied`
+- `M6C1EnergyAuraEnabled`
+- `M6C1EnergyAuraApplied`
+- `M6C1EnergyBeamCount`
+- `M6C1EnergyParticleEmitterCount`
+- `M6C1EnergyPointLightCount`
+- `M6CGalleryRowCount`
+- `M6CGalleryMode`
 
-Pass if:
-- special items remain visible;
-- the base objects remain recognizable;
-- aura does not merge into visual soup;
-- Cosmic/Eternal feel exciting without hiding nearby cargo;
-- mobile camera remains readable.
+## Performance discipline
+- Common/Uncommon: no aura instances.
+- Rare: geometry-only small ring.
+- Epic: geometry/beam presence, no heavy particle stack.
+- Legendary/Mythic: low-rate energy emitters.
+- Cosmic/Eternal: only tiers receiving M6C.1 PointLights.
+- All aura geometry is visual-only, welded, Massless, non-colliding, non-querying.
 
-## Known review risks
-1. `Highlight` presence may need device-specific transparency tuning after mobile testing.
-2. Epic aura plate may need smaller diameter on very wide furniture/industrial objects.
-3. M6C already supplies some high-tier geometry, so a few Eternal/Cosmic objects may become too busy when M6C.1 is layered on top; inspect the full cross-category set before increasing effects further.
-4. Some hero assets still deserve real custom mesh/Blender replacement rather than additional procedural attachments.
-5. Mixed piles are the real truth test; isolated gallery shots are not sufficient.
+## Meshy status
+Meshy was explicitly requested for weak custom assets. The Meshy skill was loaded, but this execution environment cannot currently install/run the required Meshy CLI because the npm fallback times out. No fake Meshy output was claimed. The item architecture keeps stable BaseItemIds and invisible physics roots so later Meshy/custom meshes can replace Couch/PC/hero visuals without changing gameplay data.
 
-## Remaining custom-mesh / Blender priorities
+## Remaining custom-mesh / Blender / Meshy priorities
 Highest-value candidates remain:
 - Royal Grand Piano
 - Show Car Engine
@@ -128,5 +129,7 @@ Highest-value candidates remain:
 - Deluxe Arcade Pod
 - Titan Vault Safe
 
+If Meshy becomes available, Couch and Gaming PC may also be compared against the Studio-native corrections before deciding whether a mesh replacement is worthwhile.
+
 ## Stop condition
-Do not move into final M6 polish automatically. Review cross-category galleries, real carried mixed piles, mobile readability and performance first.
+Do not move into final M6 polish automatically. Review the multi-row proof gallery, real mixed-rarity 6/8/10/12-item piles, mobile readability and runtime effect counts first.
