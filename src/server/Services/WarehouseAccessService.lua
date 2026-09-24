@@ -10,8 +10,14 @@ local WarehouseAccessService = {}
 
 function WarehouseAccessService.Start(root: Folder)
 	local existing = root:FindFirstChild("CurrentPlayableBoundary")
-	if existing then
-		existing:Destroy()
+	if existing then existing:Destroy() end
+
+	-- The old linear future-expansion wall belongs only to Option A. M6A B/C
+	-- create their own complete graybox boundaries and must remain physically
+	-- open through all six sections.
+	local mode = root:GetAttribute("MacroLayoutMode")
+	if mode ~= nil and mode ~= "A" then
+		return
 	end
 
 	local wall = Instance.new("Part")
