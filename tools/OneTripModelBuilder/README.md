@@ -1,28 +1,45 @@
-# ONE TRIP — AI Model Builder (MVP)
+# ONE TRIP — AI Model Builder
 
-A purpose-built Roblox Studio plugin for the ONE TRIP asset workflow.
+Purpose-built Roblox Studio plugin for ONE TRIP cargo production.
 
 ## What it does
 
-1. ChatGPT/dev bot generates a JSON model recipe.
-2. Paste the recipe into the plugin.
+1. ChatGPT/dev bot generates a structured JSON model recipe.
+2. Paste the recipe into the plugin or load one of the built-in M6C examples.
 3. Click **VALIDATE**.
 4. Click **BUILD MODEL**.
 5. The plugin creates a Model in Workspace and automatically adds:
    - `CargoId`, `SectionId`, `Rarity`, and `OneTripGenerated` attributes
    - `_OT_Root` as the `PrimaryPart`
    - an invisible `CarryHitbox`
-   - VFX anchor attachments (`VFX_Core`, `VFX_Top`, `VFX_Left`, `VFX_Right`, `VFX_Front`)
+   - standardized VFX anchors (`VFX_Core`, `VFX_Top`, `VFX_Left`, `VFX_Right`, `VFX_Front`)
    - undo/redo history support
 
-The plugin is intentionally isolated from the runtime game project under `tools/OneTripModelBuilder`.
+The plugin is intentionally isolated from the runtime project under `tools/OneTripModelBuilder`.
+
+## M6C production checkpoint
+
+The built-in example buttons now expose four representative production recipes:
+
+- Refrigerator
+- Couch
+- Gaming PC
+- Designer Fragrance Trunk
+
+These recipes mirror the same strong-silhouette/simple-material construction language used by `src/shared/Config/M6CProductionBatchConfig.lua`. The runtime checkpoint currently contains 11 representative cargo recipes; the plugin remains the Studio inspection/editing path for those recipe patterns.
+
+The current M6C production rule is:
+
+**base model identity first → rarity geometry second → VFX third**.
+
+Do not use VFX to rescue an unreadable base model.
 
 ## Recipe schema
 
 ```json
 {
-  "Name": "LuxuryFragranceTrunk",
-  "CargoId": "LuxuryFragranceTrunk",
+  "Name": "DesignerFragranceTrunk",
+  "CargoId": "DesignerFragranceTrunk",
   "SectionId": "LuxuryGoods",
   "Rarity": "Common",
   "Origin": [0,5,0],
@@ -55,42 +72,36 @@ Supported `Type` values:
 
 ## Recommended AI instruction
 
-Use this when asking ChatGPT/dev bot to create an asset recipe:
-
 > Output ONLY valid JSON for the ONE TRIP Model Builder schema. Use stylized Roblox-friendly geometry, simple materials, strong silhouette, chunky proportions, bright/readable colors, and no realistic texture dependence. Keep the model optimized and use no more parts than necessary.
 
 ## Build with Rojo
-
-From the repository root:
 
 ```bash
 cd tools/OneTripModelBuilder
 rojo build -o OneTripModelBuilder.rbxm
 ```
 
-Or run:
+or:
 
 ```bash
 cd tools/OneTripModelBuilder
 rojo serve
 ```
 
-and sync it into a temporary Studio place.
-
 The project root contains `src/init.server.lua`, so Rojo maps the plugin entry Script with `Builder.lua` and `Examples.lua` as child ModuleScripts.
 
 ## Install in Roblox Studio
 
 1. Build `OneTripModelBuilder.rbxm` with Rojo.
-2. Insert the generated model/script into a temporary Studio place.
+2. Insert it into a temporary Studio place.
 3. Use **Save as Local Plugin** so Roblox runs it with the `plugin` global.
 4. Open the **ONE TRIP** toolbar and select **Model Builder**.
 
 ## Sine VFX workflow
 
-The model builder does **not** attempt to fake or replace Sine VFX.
+The Model Builder does **not** invent a Sine API.
 
-Instead, every generated asset receives standardized VFX anchors:
+Every generated asset receives:
 
 - `VFX_Core`
 - `VFX_Top`
@@ -98,26 +109,22 @@ Instead, every generated asset receives standardized VFX anchors:
 - `VFX_Right`
 - `VFX_Front`
 
-Use Sine VFX to author the polished effect layers on those anchors. This keeps the model generator deterministic while letting Sine handle professional particle/beam/mesh effect authoring.
+Repository inspection for the M6C checkpoint found no callable/documented Sine ModuleScript/API or reusable Sine asset library inside the project. Therefore current runtime status is:
 
-Recommended pipeline:
+**NOT PROGRAMMATICALLY ACCESSIBLE**
 
-1. Generate the final base model with ONE TRIP Model Builder.
-2. Apply rarity geometry/material changes.
-3. Use Sine VFX on the standardized anchors for Legendary/Mythic/Cosmic/Eternal effects.
-4. Save the approved effect as a reusable rarity preset/template.
-5. Keep Common/Uncommon nearly effect-free.
+The native M6C VFX service uses these same anchors, so a Sine-authored texture/mesh/effect can later replace a native layer without changing cargo IDs, physics, rarity data, or attachment conventions.
 
-Do not assume a programmable Sine API unless its installed version explicitly exposes one. The current plugin deliberately provides integration points without depending on undocumented Sine internals.
+Do not claim direct Sine integration unless the installed version exposes an actual supported automation surface.
 
 ## Current version
 
-MVP `0.1.0`.
+MVP `0.2.0` — M6C representative production checkpoint.
 
-Next likely additions:
+Likely next additions after visual approval:
 
 - edit/regenerate selected generated model
-- reusable component library (`Handle`, `Wheel`, `Screen`, `Trim`, etc.)
-- rarity geometry kits
+- reusable component library (`Handle`, `Wheel`, `Screen`, `Trim`, `Bottle`, etc.)
+- reusable rarity geometry kits
 - recipe export/import helpers
-- optional Sine VFX preset workflow once its supported automation surface is confirmed
+- Sine asset-assisted presets if the installed plugin exposes reusable assets or a documented API
