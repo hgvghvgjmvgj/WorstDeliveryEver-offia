@@ -69,10 +69,19 @@ local C_RINGS = frozen({
 	Secure = frozen({ Inner = 440, Outer = 500 }),
 })
 
+local D_SECTION_CENTERS = frozen({
+	Receiving = 242,
+	Appliances = 154,
+	Furniture = 66,
+	HeavyGoods = -22,
+	Industrial = -110,
+	Secure = -198,
+})
+
 local Config = {
-	-- M6A comparison mode. In Studio, Workspace attribute `M6LayoutMode` may
-	-- override this with A, B or C before Play starts.
-	DefaultMode = "C",
+	-- M6A comparison mode. A/B/C remain recoverable while M6A.1 tests D.
+	-- Workspace attribute `M6LayoutMode` may override this before Play starts.
+	DefaultMode = "D",
 	SectionOrder = SECTION_ORDER,
 	Sections = SECTION_META,
 
@@ -115,10 +124,37 @@ local Config = {
 		Rings = C_RINGS,
 		FallbackSpawnPosition = Vector3.new(0, 3, 0),
 	}),
+
+	OptionD = frozen({
+		Name = "SHARED WAREHOUSE RUNWAY",
+		RunwayWidth = 176,
+		RunwayFrontZ = 286,
+		RunwayBackZ = -242,
+		RunwayLength = 528,
+		SectionDepth = 88,
+		SectionCenters = D_SECTION_CENTERS,
+		FreightWidth = 38,
+		StoragePathWidth = 14,
+		CrossAisleWidth = 18,
+		WallHeight = 32,
+
+		HomeApronCenter = Vector3.new(0, 0, 390),
+		HomeApronSize = Vector3.new(380, 0.12, 220),
+		HomeReferenceZ = 300,
+		SharedDepartureZ = 300,
+		BaySideX = 145,
+		BayStartZ = 475,
+		BaySpacingZ = 38,
+		BayLookTarget = Vector3.new(0, 0, 280),
+		FallbackSpawnPosition = Vector3.new(0, 3, 310),
+
+		MarkersPerSection = 16,
+		SharedFocalMarkersPerSection = 4,
+	}),
 }
 
 function Config.ResolveMode(value: any): string
-	if value == "A" or value == "B" or value == "C" then
+	if value == "A" or value == "B" or value == "C" or value == "D" then
 		return value
 	end
 	return Config.DefaultMode
