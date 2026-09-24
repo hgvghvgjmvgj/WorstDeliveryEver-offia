@@ -1,11 +1,15 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
+local MacroLayoutConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("MacroLayoutConfig"))
 local Services = ServerScriptService:WaitForChild("Services")
 
 local RemoteService = require(Services:WaitForChild("RemoteService"))
-local WorldService = require(Services:WaitForChild("M6WorldService"))
+local ComparisonWorldService = require(Services:WaitForChild("M6WorldService"))
+local RunwayWorldService = require(Services:WaitForChild("M6RunwayWorldService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local BayService = require(Services:WaitForChild("BayService"))
@@ -24,7 +28,8 @@ local UnloadService = require(Services:WaitForChild("UnloadService"))
 RemoteService.Initialize()
 CollisionService.Start()
 
-local world = WorldService.Build()
+local requestedMode = MacroLayoutConfig.ResolveMode(Workspace:GetAttribute("M6LayoutMode"))
+local world = if requestedMode == "D" then RunwayWorldService.Build() else ComparisonWorldService.Build()
 WarehouseAccessService.Start(world)
 
 BayService.Start(world)
@@ -44,4 +49,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6A macro layout challenge loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6A.1 shared warehouse runway loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
