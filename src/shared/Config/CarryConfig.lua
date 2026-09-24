@@ -1,7 +1,7 @@
 --!strict
 
 return table.freeze({
-	BaseWalkSpeed = 16,
+	BaseWalkSpeed = 20,
 	MinimumLoadedWalkSpeed = 9.5,
 	GrabDistance = 10,
 	TechnicalMaxItems = 28,
@@ -10,9 +10,9 @@ return table.freeze({
 	Beginner = table.freeze({ Strength = 15, CarrySpace = 13, Control = 1.0 }),
 	Veteran = table.freeze({ Strength = 38, CarrySpace = 28, Control = 2.2 }),
 
-	-- Mobility upgrades are intentionally strongest while unloaded/lightly loaded.
-	-- Dangerous loads still suppress much of the bonus, but progressed players do
-	-- not collapse all the way back to starter traversal speed merely for carrying.
+	-- Speed upgrades remain useful while carrying. Heavy loads suppress some of
+	-- the bonus, while handling-band multipliers still make dangerous extraction
+	-- meaningfully slower than empty traversal.
 	Mobility = table.freeze({
 		SuppressionStartWeightRatio = 0.35,
 		FullSuppressionWeightRatio = 1.35,
@@ -36,9 +36,9 @@ return table.freeze({
 		StateUpdateHz = 10,
 	}),
 
-	-- M6A.2 high-speed rule: speed itself is not the punishment. Abrupt velocity
-	-- change is. HandlingRuntimeService turns these motion events into temporary
-	-- Sway-generation/recovery multipliers consumed by the existing carry engine.
+	-- High speed is not the punishment. Abrupt velocity change is. The runtime
+	-- motion layer amplifies acceleration, braking, sharp turns and reversals,
+	-- while smooth cruising settles back toward ordinary carry behavior.
 	SpeedHandling = table.freeze({
 		CruiseSettleSeconds = 0.65,
 		CruiseAccelerationTolerance = 7.0,
@@ -54,7 +54,7 @@ return table.freeze({
 		ReversalDegrees = 145.0,
 
 		SpeedAmplificationStart = 20.0,
-		SpeedAmplificationFull = 65.0,
+		SpeedAmplificationFull = 88.0,
 		MaximumEventSwayMultiplier = 1.85,
 		MinimumEventRecoveryMultiplier = 0.52,
 		ControlReductionExponent = 0.72,
