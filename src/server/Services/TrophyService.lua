@@ -33,10 +33,10 @@ local function addLabel(part: BasePart, text: string)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "TrophyLabel"
 	gui.Adornee = part
-	gui.Size = UDim2.fromOffset(150, 42)
-	gui.StudsOffset = Vector3.new(0, 2.8, 0)
+	gui.Size = UDim2.fromOffset(132, 36)
+	gui.StudsOffset = Vector3.new(0, 2.45, 0)
 	gui.AlwaysOnTop = true
-	gui.MaxDistance = 58
+	gui.MaxDistance = 52
 	gui.Parent = part
 	local label = Instance.new("TextLabel")
 	label.Name = "Text"
@@ -52,22 +52,22 @@ local function addLabel(part: BasePart, text: string)
 end
 
 local function addTrophyGeometry(model: Model, baseCFrame: CFrame, trophy)
-	local pedestal = makePart(model, "Pedestal", Vector3.new(3.4, 0.65, 3.4), baseCFrame, Color3.fromRGB(56, 60, 68), Enum.Material.Metal)
-	local displayCFrame = baseCFrame * CFrame.new(0, 1.55, 0)
+	local pedestal = makePart(model, "Pedestal", Vector3.new(2.7, 0.5, 2.7), baseCFrame, Color3.fromRGB(56,60,68), Enum.Material.Metal)
+	local displayCFrame = baseCFrame * CFrame.new(0, 1.30, 0)
 	local display: Part
 	if trophy.Shape == "Core" then
-		display = makePart(model, "Award", Vector3.new(1.8, 1.8, 1.8), displayCFrame, trophy.Color, Enum.Material.Neon)
+		display = makePart(model, "Award", Vector3.new(1.45,1.45,1.45), displayCFrame, trophy.Color, Enum.Material.Neon)
 		display.Shape = Enum.PartType.Ball
 	elseif trophy.Shape == "Safe" or trophy.Shape == "Case" or trophy.Shape == "Appliance" then
-		display = makePart(model, "Award", Vector3.new(2.25, 2.55, 1.8), displayCFrame, trophy.Color, Enum.Material.Metal)
-		local accent = makePart(model, "Accent", Vector3.new(1.25, 1.25, 0.18), displayCFrame * CFrame.new(0, 0, -1.0), trophy.Color:Lerp(Color3.new(1,1,1), 0.25), Enum.Material.Neon)
+		display = makePart(model, "Award", Vector3.new(1.8,2.0,1.45), displayCFrame, trophy.Color, Enum.Material.Metal)
+		local accent = makePart(model, "Accent", Vector3.new(1.0,1.0,0.14), displayCFrame * CFrame.new(0,0,-0.8), trophy.Color:Lerp(Color3.new(1,1,1),0.25), Enum.Material.Neon)
 		accent.Transparency = 0.15
 	elseif trophy.Shape == "Chair" then
-		display = makePart(model, "Award", Vector3.new(2.2, 1.0, 2.0), displayCFrame * CFrame.new(0, -0.3, 0), trophy.Color, Enum.Material.Metal)
-		makePart(model, "Back", Vector3.new(2.2, 2.0, 0.5), displayCFrame * CFrame.new(0, 0.65, 0.75), trophy.Color, Enum.Material.Metal)
+		display = makePart(model, "Award", Vector3.new(1.8,0.8,1.6), displayCFrame * CFrame.new(0,-0.25,0), trophy.Color, Enum.Material.Metal)
+		makePart(model, "Back", Vector3.new(1.8,1.6,0.4), displayCFrame * CFrame.new(0,0.55,0.60), trophy.Color, Enum.Material.Metal)
 	else
-		display = makePart(model, "Award", Vector3.new(2.8, 0.75, 1.8), displayCFrame * CFrame.new(0, -0.2, 0), trophy.Color, Enum.Material.Metal)
-		makePart(model, "Handle", Vector3.new(0.35, 2.3, 0.35), displayCFrame * CFrame.new(1.1, 0.65, 0.55) * CFrame.Angles(0, 0, math.rad(-25)), trophy.Color, Enum.Material.Metal)
+		display = makePart(model, "Award", Vector3.new(2.2,0.6,1.4), displayCFrame * CFrame.new(0,-0.15,0), trophy.Color, Enum.Material.Metal)
+		makePart(model, "Handle", Vector3.new(0.28,1.8,0.28), displayCFrame * CFrame.new(0.85,0.5,0.4) * CFrame.Angles(0,0,math.rad(-25)), trophy.Color, Enum.Material.Metal)
 	end
 	addLabel(pedestal, trophy.Name)
 end
@@ -103,8 +103,15 @@ function TrophyService.RefreshPlayer(player: Player)
 				model:SetAttribute("SectionId", sectionId)
 				model:SetAttribute("OwnerUserId", player.UserId)
 				model.Parent = folder
-				local x = -15 + (index - 1) * 6
-				local baseCFrame = pad.CFrame * CFrame.new(x, pad.Size.Y * 0.5 + 0.36, 13.0)
+
+				-- Fifteen trophies no longer fit in the old six-wide floor row. Use a
+				-- compact 5×3 vertical prototype showcase at the rear edge of the bay;
+				-- it consumes no Stock slots and can be art-directed properly in M6.
+				local column = (index - 1) % 5
+				local row = math.floor((index - 1) / 5)
+				local x = -12 + column * 6
+				local y = pad.Size.Y * 0.5 + 0.30 + row * 3.7
+				local baseCFrame = pad.CFrame * CFrame.new(x, y, 15.5)
 				addTrophyGeometry(model, baseCFrame, trophy)
 			end
 		end
@@ -112,9 +119,7 @@ function TrophyService.RefreshPlayer(player: Player)
 end
 
 function TrophyService.Start()
-	PlayerDataService.OnLoaded(function(player)
-		task.defer(TrophyService.RefreshPlayer, player)
-	end)
+	PlayerDataService.OnLoaded(function(player) task.defer(TrophyService.RefreshPlayer, player) end)
 	Players.PlayerRemoving:Connect(function(player)
 		local bay = cachedBays[player]
 		if bay and bay.Parent then clearShowcase(bay) end
