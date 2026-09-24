@@ -3,7 +3,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local RemoteNames = require(ReplicatedStorage:WaitForChild("Net"):WaitForChild("RemoteNames"))
 
@@ -47,11 +46,26 @@ local function makeText(parent: Instance, value: string, size: UDim2, textSize: 
 end
 
 local function clearTarget()
-	if objectiveBillboard then objectiveBillboard:Destroy() objectiveBillboard = nil end
-	if objectiveHighlight then objectiveHighlight:Destroy() objectiveHighlight = nil end
-	if beam then beam:Destroy() beam = nil end
-	if rootAttachment then rootAttachment:Destroy() rootAttachment = nil end
-	if targetAttachment then targetAttachment:Destroy() targetAttachment = nil end
+	if objectiveBillboard then
+		objectiveBillboard:Destroy()
+		objectiveBillboard = nil
+	end
+	if objectiveHighlight then
+		objectiveHighlight:Destroy()
+		objectiveHighlight = nil
+	end
+	if beam then
+		beam:Destroy()
+		beam = nil
+	end
+	if rootAttachment then
+		rootAttachment:Destroy()
+		rootAttachment = nil
+	end
+	if targetAttachment then
+		targetAttachment:Destroy()
+		targetAttachment = nil
+	end
 	targetPart = nil
 end
 
@@ -125,7 +139,9 @@ local function ownBay(): Model?
 	local bays = root and root:FindFirstChild("Bays")
 	if not bays then return nil end
 	for _, bay in bays:GetChildren() do
-		if bay:IsA("Model") and tonumber(bay:GetAttribute("OwnerUserId")) == player.UserId then return bay end
+		if bay:IsA("Model") and tonumber(bay:GetAttribute("OwnerUserId")) == player.UserId then
+			return bay
+		end
 	end
 	return nil
 end
@@ -185,7 +201,10 @@ local function nearestReceivingItem(): BasePart?
 	for _, item in items:GetChildren() do
 		if item:IsA("BasePart") and item:GetAttribute("Available") == true and item:GetAttribute("SectorName") == "Receiving" then
 			local distance = (playerRoot.Position - item.Position).Magnitude
-			if distance < bestDistance then bestDistance = distance best = item end
+			if distance < bestDistance then
+				bestDistance = distance
+				best = item
+			end
 		end
 	end
 	return best
@@ -221,8 +240,9 @@ local function setStep(nextStep: string)
 		message("FIRST TRIP COMPLETE!", "SELL = cash now    •    KEEP = Stock income")
 	elseif nextStep == "UPGRADES" then
 		setTarget(nil)
-		message("UPGRADE YOUR RIG TO CARRY MORE AND GO DEEPER.", "Strength • Carry Space • Control • Speed")
-		local gui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("OneTripProgressionUI")
+		message("UPGRADE YOUR RIG TO CARRY MORE AND GO DEEPER.", "Strength • Carry Space • Control • Speed\nCheck UPGRADES, then close it when ready.")
+		local playerGui = player:FindFirstChild("PlayerGui")
+		local gui = playerGui and playerGui:FindFirstChild("OneTripProgressionUI")
 		local panel = gui and gui:FindFirstChild("ProgressionPanel")
 		if panel and panel:IsA("GuiObject") then panel.Visible = true end
 		local folder = ReplicatedStorage:FindFirstChild(RemoteNames.Folder)
@@ -255,8 +275,15 @@ local function updateTutorial()
 	if not running then return end
 	local count = if latestCarry then tonumber(latestCarry.itemCount) or 0 else 0
 	if step == "BAY" then
-		if os.clock() - stepStartedAt >= 1.4 then setStep("RECEIVING") end
+		local bay = ownBay()
+		if not bay then return end
+		if not targetPart then
+			local pad = bay:FindFirstChild("BayPad")
+			if pad and pad:IsA("BasePart") then setTarget(pad) end
+		end
+		if targetPart and os.clock() - stepStartedAt >= 1.4 then setStep("RECEIVING") end
 	elseif step == "RECEIVING" then
+		if not targetPart then setTarget(receivingAnchor()) end
 		if isInReceiving() then setStep("GRAB_ONE") end
 	elseif step == "GRAB_ONE" then
 		if not targetPart or not targetPart.Parent then setTarget(nearestReceivingItem()) end
@@ -265,7 +292,10 @@ local function updateTutorial()
 		if not targetPart or not targetPart.Parent then setTarget(nearestReceivingItem()) end
 		if count >= 2 then setStep("MOVEMENT") end
 	elseif step == "MOVEMENT" then
-		if count <= 0 then setStep("GRAB_ONE") return end
+		if count <= 0 then
+			setStep("GRAB_ONE")
+			return
+		end
 		local sway = if latestCarry then tonumber(latestCarry.currentSway) or 0 else 0
 		local danger = if latestCarry then tostring(latestCarry.dangerState or "Stable") else "Stable"
 		if (sway >= 0.18 or danger == "Dangerous" or danger == "Near Collapse") and os.clock() - stepStartedAt >= 1.0 then
@@ -273,7 +303,15 @@ local function updateTutorial()
 		end
 		if os.clock() - stepStartedAt >= 4.5 then setStep("RETURN") end
 	elseif step == "RETURN" then
-		if count <= 0 and not reviewSeen then setStep("GRAB_ONE") return end
+		if not targetPart then
+			local bay = ownBay()
+			local unload = bay and bay:FindFirstChild("UnloadZone")
+			if unload and unload:IsA("BasePart") then setTarget(unload) end
+		end
+		if count <= 0 and not reviewSeen then
+			setStep("GRAB_ONE")
+			return
+		end
 		local reviewId = latestEconomy and latestEconomy.reviewId
 		if typeof(reviewId) == "string" and reviewId ~= "" then
 			reviewSeen = true
@@ -284,11 +322,8 @@ local function updateTutorial()
 		if reviewSeen and (typeof(reviewId) ~= "string" or reviewId == "") then setStep("UPGRADES") end
 	elseif step == "UPGRADES" then
 		if os.clock() - stepStartedAt >= 3.0 and not progressionPanelVisible() then setStep("FIRST_LOCK") end
-		if os.clock() - stepStartedAt >= 12.0 then
-			-- Never trap onboarding behind an open prototype menu.
-			setStep("FIRST_LOCK")
-		end
 	elseif step == "FIRST_LOCK" then
+		if not targetPart then setTarget(firstGateAnchor()) end
 		if os.clock() - stepStartedAt >= 6.0 then complete() end
 	end
 end
