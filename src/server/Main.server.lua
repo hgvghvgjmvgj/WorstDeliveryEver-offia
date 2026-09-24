@@ -17,9 +17,6 @@ local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageServi
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
 local M6CCargoArtService = require(Services:WaitForChild("M6CCargoArtService"))
 local M6CItemIdentityService = require(Services:WaitForChild("M6CItemIdentityService"))
-local M6C1ModelCorrectionService = require(Services:WaitForChild("M6C1ModelCorrectionService"))
-local M6C1PrestigeService = require(Services:WaitForChild("M6C1PrestigeService"))
-local M6C1EnergyAuraService = require(Services:WaitForChild("M6C1EnergyAuraService"))
 local M6CProductionBatchService = require(Services:WaitForChild("M6CProductionBatchService"))
 local M6CProfessionalVFXService = require(Services:WaitForChild("M6CProfessionalVFXService"))
 local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
@@ -85,15 +82,15 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
--- Existing M6C layers remain as fallback coverage for the rest of the catalog.
--- The representative production batch then replaces those visual layers for its
--- 11 BaseItemIds and supplies the authoritative proof models + professional VFX.
+-- M6C checkpoint visual authority:
+-- 1) generic M6C base/identity remains fallback for non-batch catalog items;
+-- 2) the 11-item representative production service replaces those layers;
+-- 3) professional VFX is the only active rarity aura system for the batch.
+-- Rejected M6C.1 ModelCorrection/Prestige/EnergyAura services intentionally do
+-- not start, preventing deferred callbacks from rebuilding the old visuals.
 LootPresentationService.Start(world)
 M6CCargoArtService.Start(world)
 M6CItemIdentityService.Start(world)
-M6C1ModelCorrectionService.Start(world)
-M6C1PrestigeService.Start(world)
-M6C1EnergyAuraService.Start(world)
 M6CProductionBatchService.Start(world)
 M6CProfessionalVFXService.Start(world)
 M6CRarityGalleryService.Start(world)
