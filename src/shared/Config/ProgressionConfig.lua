@@ -14,8 +14,14 @@ return table.freeze({
 			Attribute = "CarryStrength",
 			Description = "Carry heavier loads before Weight becomes dangerous.",
 			Levels = table.freeze({
-				level(15, 0), level(17, 500), level(19.5, 1_200), level(22.5, 2_800),
-				level(26, 6_500), level(30, 15_000), level(34.5, 35_000), level(40, 80_000),
+				level(15, 0),
+				level(17, 1_200),
+				level(19.5, 8_000),
+				level(22.5, 40_000),
+				level(26, 180_000),
+				level(30, 700_000),
+				level(34.5, 1_600_000),
+				level(40, 3_500_000),
 			}),
 		}),
 
@@ -25,8 +31,14 @@ return table.freeze({
 			Attribute = "CarrySpace",
 			Description = "Support more Bulk and larger awkward piles.",
 			Levels = table.freeze({
-				level(13, 0), level(15, 450), level(17.5, 1_100), level(20.5, 2_600),
-				level(24, 6_000), level(28, 14_000), level(33, 33_000), level(39, 76_000),
+				level(13, 0),
+				level(15, 1_100),
+				level(17.5, 7_000),
+				level(20.5, 35_000),
+				level(24, 160_000),
+				level(28, 650_000),
+				level(33, 1_500_000),
+				level(39, 3_200_000),
 			}),
 		}),
 
@@ -36,14 +48,19 @@ return table.freeze({
 			Attribute = "CarryControl",
 			Description = "Handle unstable stacks with better control and recovery, especially while moving quickly.",
 			Levels = table.freeze({
-				level(1.00, 0), level(1.10, 800), level(1.22, 1_800), level(1.35, 4_000),
-				level(1.50, 9_000), level(1.67, 21_000), level(1.85, 48_000), level(2.05, 110_000),
+				level(1.00, 0),
+				level(1.10, 2_200),
+				level(1.22, 15_000),
+				level(1.35, 75_000),
+				level(1.50, 310_000),
+				level(1.67, 1_150_000),
+				level(1.85, 2_400_000),
+				level(2.05, 5_000_000),
 			}),
 		}),
 
-		-- M6A.3 test curve. Mobility remains the persisted/internal stat; player
-		-- facing language is SPEED. Costs stay unchanged until runtime proves the
-		-- long-map curve and economy together.
+		-- M6A.3 economy test curve. Speed solves the long warehouse, but each step
+		-- must compete with Rig progress instead of being an automatic cheap max.
 		Mobility = table.freeze({
 			DisplayName = "SPEED",
 			ProfileField = "MobilityLevel",
@@ -51,23 +68,29 @@ return table.freeze({
 			Description = "Run through mastered sections much faster; heavy/dangerous loads suppress part of the bonus.",
 			Levels = table.freeze({
 				level(20.0, 0),
-				level(28.0, 700),
-				level(38.0, 1_600),
-				level(49.0, 3_800),
-				level(61.0, 9_000),
-				level(74.0, 22_000),
-				level(88.0, 55_000),
+				level(28.0, 2_500),
+				level(38.0, 12_000),
+				level(49.0, 60_000),
+				level(61.0, 250_000),
+				level(74.0, 1_000_000),
+				level(88.0, 4_000_000),
 			}),
 		}),
 
+		-- Stock capacity is a permanent economic investment. Prices are aligned to
+		-- the same progression bands as Rig/Speed so Stock remains a real choice.
 		StockSlots = table.freeze({
 			DisplayName = "STOCK SLOTS",
 			ProfileField = "StockSlotLevel",
 			Attribute = "StockSlotCapacity",
 			Description = "Keep more delivered objects generating passive income.",
 			Levels = table.freeze({
-				level(3, 0), level(4, 5_000), level(5, 15_000), level(6, 45_000),
-				level(8, 120_000), level(10, 350_000),
+				level(3, 0),
+				level(4, 12_000),
+				level(5, 45_000),
+				level(6, 160_000),
+				level(8, 650_000),
+				level(10, 2_400_000),
 			}),
 		}),
 	}),
