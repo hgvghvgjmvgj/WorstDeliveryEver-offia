@@ -70,12 +70,12 @@ local C_RINGS = frozen({
 })
 
 local D_SECTION_CENTERS = frozen({
-	Receiving = 242,
-	Appliances = 154,
-	Furniture = 66,
-	HeavyGoods = -22,
-	Industrial = -110,
-	Secure = -198,
+	Receiving = 212,
+	Appliances = 124,
+	Furniture = 36,
+	HeavyGoods = -52,
+	Industrial = -140,
+	Secure = -228,
 })
 
 local Config = {
@@ -128,8 +128,8 @@ local Config = {
 	OptionD = frozen({
 		Name = "SHARED WAREHOUSE RUNWAY",
 		RunwayWidth = 176,
-		RunwayFrontZ = 286,
-		RunwayBackZ = -242,
+		RunwayFrontZ = 256,
+		RunwayBackZ = -272,
 		RunwayLength = 528,
 		SectionDepth = 88,
 		SectionCenters = D_SECTION_CENTERS,
@@ -138,15 +138,15 @@ local Config = {
 		CrossAisleWidth = 18,
 		WallHeight = 32,
 
-		HomeApronCenter = Vector3.new(0, 0, 390),
-		HomeApronSize = Vector3.new(380, 0.12, 220),
-		HomeReferenceZ = 300,
-		SharedDepartureZ = 300,
-		BaySideX = 145,
-		BayStartZ = 475,
-		BaySpacingZ = 38,
-		BayLookTarget = Vector3.new(0, 0, 280),
-		FallbackSpawnPosition = Vector3.new(0, 3, 310),
+		HomeApronCenter = Vector3.new(0, 0, 325),
+		HomeApronSize = Vector3.new(380, 0.12, 150),
+		HomeReferenceZ = 265,
+		SharedDepartureZ = 266,
+		BayOuterX = 130,
+		BayInnerX = 78,
+		BayRowsZ = frozen({ 360, 320, 280 }),
+		BayLookTarget = Vector3.new(0, 0, 250),
+		FallbackSpawnPosition = Vector3.new(0, 3, 270),
 
 		MarkersPerSection = 16,
 		SharedFocalMarkersPerSection = 4,
