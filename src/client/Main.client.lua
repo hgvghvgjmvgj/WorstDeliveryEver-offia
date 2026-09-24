@@ -15,6 +15,7 @@ local TutorialController = require(Controllers:WaitForChild("TutorialController"
 local CollectionController = require(Controllers:WaitForChild("CollectionController"))
 local EconomyTelemetryController = require(Controllers:WaitForChild("EconomyTelemetryController"))
 local MobileResponsiveController = require(Controllers:WaitForChild("MobileResponsiveController"))
+local M6CVFXCullingController = require(Controllers:WaitForChild("M6CVFXCullingController"))
 
 PrototypeUIController.Start()
 EconomyController.Start()
@@ -29,5 +30,6 @@ FeelFeedbackController.Start()
 BayController.Start()
 TutorialController.Start()
 MobileResponsiveController.Start()
+M6CVFXCullingController.Start()
 
-print("[ONE TRIP] M6B 1-3 proof + compact mobile HUD client loaded")
+print("[ONE TRIP] M6C production batch + compact mobile HUD + VFX culling client loaded")
