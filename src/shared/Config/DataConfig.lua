@@ -2,12 +2,10 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Intentionally keep the existing M5B.1/M5C test namespace through M6A.2.
-	-- The 15-section Collection expansion is additive: the six persistent section
-	-- IDs and item IDs remain valid, while nine new section tables sanitize in as
-	-- empty. This lets the old-save regression test exercise real migration rather
-	-- than hiding compatibility behind another DataStore reset.
-	DataStoreName = "OneTripPlayerData_M5B_1HandlingTest_v1",
+	-- Fresh M6A.2 test namespace. This resets current test progress without
+	-- deleting the older M5B.1/M5C profile data, so we can still restore the
+	-- previous namespace later if migration/regression testing is needed.
+	DataStoreName = "OneTripPlayerData_M6A_2RunwayTest_v1",
 	KeyPrefix = "player_",
 
 	AutosaveSeconds = 60,
