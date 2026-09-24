@@ -2,10 +2,10 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Fresh M6A.2 test namespace. This resets current test progress without
-	-- deleting the older M5B.1/M5C profile data, so we can still restore the
-	-- previous namespace later if migration/regression testing is needed.
-	DataStoreName = "OneTripPlayerData_M6A_2RunwayTest_v1",
+	-- Fresh M6A.3 economy-test namespace. The prior M6A.2 runway-test data stays
+	-- intact, but this balance pass must be measured from zero rather than with a
+	-- rich developer profile or previously purchased upgrades.
+	DataStoreName = "OneTripPlayerData_M6A_3EconomyTest_v1",
 	KeyPrefix = "player_",
 
 	AutosaveSeconds = 60,
