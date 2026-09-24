@@ -2,9 +2,11 @@
 
 return table.freeze({
 	SchemaVersion = 1,
-	-- Keep the M5B.1 namespace for M5C so real pre-Collection profiles exercise
-	-- additive migration/backfill instead of being hidden behind another reset.
-	-- Collection is optional/sanitized data, so no breaking schema bump is needed.
+	-- Intentionally keep the existing M5B.1/M5C test namespace through M6A.2.
+	-- The 15-section Collection expansion is additive: the six persistent section
+	-- IDs and item IDs remain valid, while nine new section tables sanitize in as
+	-- empty. This lets the old-save regression test exercise real migration rather
+	-- than hiding compatibility behind another DataStore reset.
 	DataStoreName = "OneTripPlayerData_M5B_1HandlingTest_v1",
 	KeyPrefix = "player_",
 
@@ -15,8 +17,6 @@ return table.freeze({
 	SessionLockTimeoutSeconds = 180,
 	BindToCloseTimeoutSeconds = 25,
 
-	-- M5B produces much larger passive values. Until the wider M5 progression
-	-- economy exists, cap offline accrual to five minutes of live Stock output.
 	OfflineEarningsCapSeconds = 5 * 60,
 	MaximumTrustedElapsedSeconds = 30 * 24 * 60 * 60,
 
