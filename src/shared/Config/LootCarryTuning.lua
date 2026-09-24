@@ -1,26 +1,29 @@
 --!strict
 
--- M5B carry-difficulty tuning for the expanded loot catalog.
---
--- This does NOT change the carry mechanic. It translates each authored base
--- object's Weight/Bulk into the intended section difficulty while preserving
--- the object's relative identity. Rarity variants of the same base object keep
--- identical carry stats; rare-only hero objects receive a modest extra burden.
+-- Physical section tuning stays separate from rarity. A Common and Eternal
+-- version of the same base object keep identical Weight/Bulk; deeper sections
+-- become harder because their object families are physically more demanding.
 local Tuning = {
 	Section = table.freeze({
 		Receiving = table.freeze({ WeightScale = 1.00, BulkScale = 1.00 }),
+		HomeBasics = table.freeze({ WeightScale = 1.00, BulkScale = 1.05 }),
 		Appliances = table.freeze({ WeightScale = 1.05, BulkScale = 1.05 }),
 		Furniture = table.freeze({ WeightScale = 1.05, BulkScale = 1.25 }),
+		Electronics = table.freeze({ WeightScale = 1.10, BulkScale = 1.10 }),
+		Recreation = table.freeze({ WeightScale = 1.15, BulkScale = 1.15 }),
+		GarageAuto = table.freeze({ WeightScale = 1.20, BulkScale = 1.10 }),
+		Construction = table.freeze({ WeightScale = 1.25, BulkScale = 1.15 }),
 		HeavyGoods = table.freeze({ WeightScale = 1.25, BulkScale = 1.10 }),
 		Industrial = table.freeze({ WeightScale = 1.40, BulkScale = 1.20 }),
+		PremiumInteriors = table.freeze({ WeightScale = 1.25, BulkScale = 1.30 }),
+		LuxuryGoods = table.freeze({ WeightScale = 1.30, BulkScale = 1.35 }),
+		ArtCollectibles = table.freeze({ WeightScale = 1.30, BulkScale = 1.40 }),
 		Secure = table.freeze({ WeightScale = 1.50, BulkScale = 1.30 }),
+		RestrictedPrototype = table.freeze({ WeightScale = 1.55, BulkScale = 1.35 }),
 	}),
 
 	HeroWeightScale = 1.10,
 	HeroBulkScale = 1.10,
-
-	-- Half-point granularity keeps debug numbers understandable while still
-	-- giving enough resolution for the existing pressure ratios.
 	Granularity = 0.5,
 }
 
