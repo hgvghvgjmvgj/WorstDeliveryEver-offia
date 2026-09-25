@@ -28,12 +28,15 @@ return table.freeze({
 		}),
 		ArcadeCabinet = table.freeze({
 			CargoId = "ArcadeCabinet",
-			AssetId = 105044479380665,
+			-- Blank multi-part arcade cabinet selected specifically so the import
+			-- pipeline can paint separate shell, marquee, control, screen and button
+			-- geometry. The previous textured single-shell proof asset could only be
+			-- tinted as one color after texture sanitization.
+			AssetId = 284785778,
 			SectionId = "Recreation",
 			TargetBounds = Vector3.new(4.8, 8.4, 4.6),
-			PreserveNaturalColor = false,
-			RemoveAllExternalTextures = true,
-			NeutralShellColor = Color3.fromRGB(221, 225, 230),
+			PreserveNaturalColor = true,
+			RemoveAllExternalTextures = false,
 			ReviewOrder = 3,
 		}),
 	}),
