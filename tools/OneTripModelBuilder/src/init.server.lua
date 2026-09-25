@@ -2,6 +2,8 @@
 
 local HttpService = game:GetService("HttpService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Builder = require(script:WaitForChild("Builder"))
 local Examples = require(script:WaitForChild("Examples"))
@@ -11,13 +13,13 @@ local toolbar = plugin:CreateToolbar("ONE TRIP")
 local openButton = toolbar:CreateButton("Model Builder","Open the ONE TRIP cargo production tools","rbxassetid://4458901886")
 openButton.ClickableWhenViewportHidden = true
 
-local widgetInfo = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right,false,false,480,760,400,520)
-local widget = plugin:CreateDockWidgetPluginGui("OneTripModelBuilder_v03",widgetInfo)
-widget.Title = "ONE TRIP — Cargo Production"
+local widgetInfo = DockWidgetPluginGuiInfo.new(Enum.InitialDockState.Right,false,false,500,820,420,560)
+local widget = plugin:CreateDockWidgetPluginGui("OneTripModelBuilder_v04",widgetInfo)
+widget.Title = "ONE TRIP — Cargo Production v0.4"
 
 local root = Instance.new("ScrollingFrame")
 root.Size = UDim2.fromScale(1,1)
-root.CanvasSize = UDim2.fromOffset(0,940)
+root.CanvasSize = UDim2.fromOffset(0,1160)
 root.ScrollBarThickness = 6
 root.BackgroundColor3 = Color3.fromRGB(24,27,32)
 root.BorderSizePixel = 0
@@ -65,15 +67,32 @@ local function button(text: string, widthScale: number, color: Color3?): TextBut
 	return b
 end
 
+local function withRecording(name: string, callback: () -> any): (boolean, any)
+	local recording = nil
+	pcall(function() recording = ChangeHistoryService:TryBeginRecording(name) end)
+	local ok, result = pcall(callback)
+	if recording then
+		pcall(function()
+			ChangeHistoryService:FinishRecording(
+				recording,
+				if ok then Enum.FinishRecordingOperation.Commit else Enum.FinishRecordingOperation.Cancel
+			)
+		end)
+	else
+		pcall(function() ChangeHistoryService:SetWaypoint(name) end)
+	end
+	return ok,result
+end
+
 local title = label("ONE TRIP CARGO PRODUCTION",30,true)
 title.LayoutOrder = 1
-local subtitle = label("M6C.1 proof: Creator Store import + existing JSON model recipes. Imported production assets are sanitized and stored in ServerStorage/OneTripImportedAssets.",52,false)
+local subtitle = label("M6C production: Creator Store imports + full 11-model representative batch. The approved Freddy arcade keeps its original source appearance.",54,false)
 subtitle.LayoutOrder = 2
 
-local importTitle = label("CREATOR STORE IMPORT PROOF",24,true)
+local importTitle = label("CREATOR STORE IMPORT",24,true)
 importTitle.LayoutOrder = 3
 
-local importHelp = label("Approved IDs: Couch 10710790394 • Refrigerator 482124502 • ArcadeCabinet 105044479380665. Imported assets are treated as untrusted visual input.",48,false)
+local importHelp = label("Approved IDs: Couch 10710790394 • Refrigerator 482124502 • ArcadeCabinet 105044479380665. Scripts/remotes are stripped; approved visual textures are preserved.",52,false)
 importHelp.LayoutOrder = 4
 
 local selectedCargo = Instance.new("TextBox")
@@ -117,14 +136,16 @@ importLayout2.Padding = UDim.new(0,8)
 importLayout2.Parent = importRow2
 local rebuildButton = button("REBUILD SELECTED",0.5,Color3.fromRGB(121,77,47))
 rebuildButton.Parent = importRow2
-local reviewButton = button("OPEN REVIEW GALLERY",0.5,Color3.fromRGB(89,65,126))
+local reviewButton = button("OPEN IMPORT GALLERY",0.5,Color3.fromRGB(89,65,126))
 reviewButton.Parent = importRow2
 
 local importStatus = label("Ready to import. If Roblox rejects a public third-party asset, enable 'Allow Loading Third Party Assets' and retry.",76,false)
 importStatus.LayoutOrder = 8
 
 local function formatResult(result: any): string
-	if not result.Success then return ("FAILED %s: %s"):format(tostring(result.CargoId or "asset"),tostring(result.Error or "unknown error")) end
+	if not result.Success then
+		return ("FAILED %s: %s"):format(tostring(result.CargoId or "asset"),tostring(result.Error or "unknown error"))
+	end
 	local b = result.Bounds
 	local boundsText = if typeof(b) == "Vector3" then ("%.1f×%.1f×%.1f"):format(b.X,b.Y,b.Z) else "?"
 	local warningText = if result.Warnings and #result.Warnings > 0 then " | WARN " .. table.concat(result.Warnings,"; ") else ""
@@ -137,54 +158,202 @@ local function setImportStatus(text: string, good: boolean?)
 	importStatus.TextColor3 = if good == true then Color3.fromRGB(102,220,148) elseif good == false then Color3.fromRGB(244,112,112) else Color3.fromRGB(171,177,188)
 end
 
-local function withRecording(name: string, callback: () -> any): (boolean, any)
-	local recording = nil
-	pcall(function() recording = ChangeHistoryService:TryBeginRecording(name) end)
-	local ok, result = pcall(callback)
-	if recording then
-		pcall(function() ChangeHistoryService:FinishRecording(recording,if ok then Enum.FinishRecordingOperation.Commit else Enum.FinishRecordingOperation.Cancel) end)
-	else
-		pcall(function() ChangeHistoryService:SetWaypoint(name) end)
-	end
-	return ok,result
-end
-
 importSelectedButton.MouseButton1Click:Connect(function()
 	local cargoId = string.gsub(selectedCargo.Text,"%s+","")
 	setImportStatus("Importing " .. cargoId .. "...",nil)
-	local ok,result = withRecording("ONE TRIP Import " .. cargoId,function() return CreatorStoreImporter.Import(cargoId,false) end)
-	if ok then setImportStatus(formatResult(result),result.Success) else setImportStatus(tostring(result),false) end
+	local ok,result = withRecording("ONE TRIP Import " .. cargoId,function()
+		return CreatorStoreImporter.Import(cargoId,false)
+	end)
+	if ok then
+		setImportStatus(formatResult(result),result.Success)
+	else
+		setImportStatus(tostring(result),false)
+	end
 end)
 
 rebuildButton.MouseButton1Click:Connect(function()
 	local cargoId = string.gsub(selectedCargo.Text,"%s+","")
 	setImportStatus("Rebuilding " .. cargoId .. "...",nil)
-	local ok,result = withRecording("ONE TRIP Rebuild " .. cargoId,function() return CreatorStoreImporter.Import(cargoId,true) end)
-	if ok then setImportStatus(formatResult(result),result.Success) else setImportStatus(tostring(result),false) end
+	local ok,result = withRecording("ONE TRIP Rebuild " .. cargoId,function()
+		return CreatorStoreImporter.Import(cargoId,true)
+	end)
+	if ok then
+		setImportStatus(formatResult(result),result.Success)
+	else
+		setImportStatus(tostring(result),false)
+	end
 end)
 
 importAllButton.MouseButton1Click:Connect(function()
-	setImportStatus("Importing the three approved proof assets...",nil)
-	local ok,results = withRecording("ONE TRIP Import Approved Assets",function() return CreatorStoreImporter.ImportApproved(false) end)
-	if not ok then setImportStatus(tostring(results),false) return end
+	setImportStatus("Importing the three approved Creator Store assets...",nil)
+	local ok,results = withRecording("ONE TRIP Import Approved Assets",function()
+		return CreatorStoreImporter.ImportApproved(false)
+	end)
+	if not ok then
+		setImportStatus(tostring(results),false)
+		return
+	end
 	local lines = {}
 	local allGood = true
 	for _, result in results do
 		table.insert(lines,formatResult(result))
-		if result.Success ~= true then allGood = false end
+		if result.Success ~= true then
+			allGood = false
+		end
 	end
 	setImportStatus(table.concat(lines,"\n"),allGood)
 end)
 
 reviewButton.MouseButton1Click:Connect(function()
-	local ok,result = withRecording("ONE TRIP Open Imported Review Gallery",function() return CreatorStoreImporter.OpenReviewGallery() end)
-	if ok then setImportStatus("Opened Workspace/OneTripImportedAssetReview. Review Couch → Refrigerator → Arcade Cabinet at intended game scale.",true) else setImportStatus(tostring(result),false) end
+	local ok,result = withRecording("ONE TRIP Open Imported Review Gallery",function()
+		return CreatorStoreImporter.OpenReviewGallery()
+	end)
+	if ok then
+		setImportStatus("Opened Workspace/OneTripImportedAssetReview. Review Couch → Refrigerator → original Freddy arcade.",true)
+	else
+		setImportStatus(tostring(result),false)
+	end
 end)
 
+-- FULL REPRESENTATIVE BATCH --------------------------------------------------
+local batchTitle = label("FULL M6C REPRESENTATIVE BATCH",24,true)
+batchTitle.LayoutOrder = 9
+local batchHelp = label("Builds the configured 11-item checkpoint in a review grid. ArcadeCabinet uses the imported original Freddy asset; the other ten use M6CProductionBatchConfig recipes.",44,false)
+batchHelp.LayoutOrder = 10
+
+local batchRow = Instance.new("Frame")
+batchRow.LayoutOrder = 11
+batchRow.Size = UDim2.new(1,0,0,38)
+batchRow.BackgroundTransparency = 1
+batchRow.Parent = root
+local buildBatchButton = button("BUILD FULL 11-MODEL BATCH",1.0,Color3.fromRGB(116,73,147))
+buildBatchButton.Parent = batchRow
+
+local batchStatus = label("Representative batch ready.",46,false)
+batchStatus.LayoutOrder = 12
+
+local function vecToArray(value: Vector3): {number}
+	return {value.X,value.Y,value.Z}
+end
+
+local function colorToArray(value: Color3): {number}
+	return {
+		math.round(value.R * 255),
+		math.round(value.G * 255),
+		math.round(value.B * 255),
+	}
+end
+
+local function convertBatchPart(spec: any): any
+	return {
+		Name = spec.Name,
+		Type = spec.Type,
+		Size = vecToArray(spec.Size),
+		Position = vecToArray(spec.Position),
+		Rotation = vecToArray(spec.Rotation or Vector3.zero),
+		Color = colorToArray(spec.Color),
+		Material = spec.Material.Name,
+		Transparency = spec.Transparency or 0,
+		CanCollide = false,
+	}
+end
+
+local function requireBatchConfig(): any
+	local configFolder = ReplicatedStorage:FindFirstChild("Config")
+	assert(configFolder, "ReplicatedStorage.Config is missing. Sync/open the ONE TRIP game place first.")
+	local batchModule = configFolder:FindFirstChild("M6CProductionBatchConfig")
+	assert(batchModule and batchModule:IsA("ModuleScript"), "M6CProductionBatchConfig is missing from ReplicatedStorage.Config.")
+	return require(batchModule)
+end
+
+local function buildRepresentativeBatch(): Folder
+	local batch = requireBatchConfig()
+	local old = workspace:FindFirstChild("OneTripRepresentativeBatchReview")
+	if old then old:Destroy() end
+
+	local gallery = Instance.new("Folder")
+	gallery.Name = "OneTripRepresentativeBatchReview"
+	gallery:SetAttribute("M6CBatchVersion","REPRESENTATIVE-11-V1")
+	gallery.Parent = workspace
+
+	-- Always refresh the approved arcade so the full batch uses the original
+	-- textured Freddy asset rather than the procedural placeholder recipe.
+	local arcadeResult = CreatorStoreImporter.Import("ArcadeCabinet",true)
+	assert(arcadeResult.Success == true, tostring(arcadeResult.Error or "Arcade import failed"))
+
+	local importedFolder = ServerStorage:FindFirstChild("OneTripImportedAssets")
+	local arcadeTemplate = importedFolder and importedFolder:FindFirstChild("ArcadeCabinet")
+	assert(arcadeTemplate and arcadeTemplate:IsA("Model"), "Imported ArcadeCabinet template is missing.")
+
+	local built = {}
+	local columns = 4
+	local spacingX = 18
+	local spacingZ = 18
+
+	for index, itemId in ipairs(batch.Order) do
+		local column = (index - 1) % columns
+		local row = math.floor((index - 1) / columns)
+		local position = Vector3.new(column * spacingX, 5, row * spacingZ)
+
+		if itemId == "ArcadeCabinet" then
+			local clone = arcadeTemplate:Clone()
+			clone.Name = "M6C_ArcadeCabinet"
+			clone:SetAttribute("M6CRepresentativeBatch",true)
+			clone:SetAttribute("BatchSlot",index)
+			clone.Parent = gallery
+			clone:PivotTo(CFrame.new(position))
+			table.insert(built,clone)
+		else
+			local source = batch.Recipes[itemId]
+			assert(source, "Missing M6C recipe for " .. tostring(itemId))
+			local parts = {}
+			for _, spec in ipairs(source.Parts) do
+				table.insert(parts,convertBatchPart(spec))
+			end
+
+			local recipe = {
+				Name = "M6C_" .. itemId,
+				CargoId = itemId,
+				SectionId = source.SectionId,
+				Rarity = "Common",
+				Origin = vecToArray(position),
+				BuildAtSelection = false,
+				Parts = parts,
+				Attributes = {
+					M6CRepresentativeBatch = true,
+					BatchSlot = index,
+					ModelSource = tostring(source.ModelSource or "MODEL_BUILDER"),
+				},
+			}
+
+			local model = Builder.Build(recipe)
+			model.Parent = gallery
+			table.insert(built,model)
+		end
+	end
+
+	Selection:Set(built)
+	return gallery
+end
+
+buildBatchButton.MouseButton1Click:Connect(function()
+	batchStatus.Text = "Building full 11-model representative batch..."
+	batchStatus.TextColor3 = Color3.fromRGB(171,177,188)
+	local ok,result = withRecording("ONE TRIP Build Representative Batch",buildRepresentativeBatch)
+	if ok then
+		batchStatus.Text = "Built Workspace/OneTripRepresentativeBatchReview with all 11 checkpoint models."
+		batchStatus.TextColor3 = Color3.fromRGB(102,220,148)
+	else
+		batchStatus.Text = "Batch build failed: " .. tostring(result)
+		batchStatus.TextColor3 = Color3.fromRGB(244,112,112)
+	end
+end)
+
+-- SINGLE JSON MODEL BUILDER -------------------------------------------------
 local recipeTitle = label("JSON MODEL BUILDER",24,true)
-recipeTitle.LayoutOrder = 9
+recipeTitle.LayoutOrder = 13
 local recipeBox = Instance.new("TextBox")
-recipeBox.LayoutOrder = 10
+recipeBox.LayoutOrder = 14
 recipeBox.Size = UDim2.new(1,0,0,330)
 recipeBox.BackgroundColor3 = Color3.fromRGB(14,16,20)
 recipeBox.BorderSizePixel = 0
@@ -203,7 +372,7 @@ recipeCorner.CornerRadius = UDim.new(0,6)
 recipeCorner.Parent = recipeBox
 
 local exampleRow = Instance.new("Frame")
-exampleRow.LayoutOrder = 11
+exampleRow.LayoutOrder = 15
 exampleRow.Size = UDim2.new(1,0,0,32)
 exampleRow.BackgroundTransparency = 1
 exampleRow.Parent = root
@@ -225,7 +394,7 @@ pcButton.MouseButton1Click:Connect(function() recipeBox.Text = Examples.PCJSON()
 trunkButton.MouseButton1Click:Connect(function() recipeBox.Text = Examples.TrunkJSON() end)
 
 local actionRow = Instance.new("Frame")
-actionRow.LayoutOrder = 12
+actionRow.LayoutOrder = 16
 actionRow.Size = UDim2.new(1,0,0,38)
 actionRow.BackgroundTransparency = 1
 actionRow.Parent = root
@@ -238,7 +407,7 @@ validateButton.Parent = actionRow
 local buildButton = button("BUILD MODEL",0.6,Color3.fromRGB(43,112,73))
 buildButton.Parent = actionRow
 local recipeStatus = label("Recipe builder ready.",26,false)
-recipeStatus.LayoutOrder = 13
+recipeStatus.LayoutOrder = 17
 
 local function decodeRecipe(): (any?,string?)
 	local ok,decoded = pcall(function() return HttpService:JSONDecode(recipeBox.Text) end)
@@ -260,7 +429,11 @@ buildButton.MouseButton1Click:Connect(function()
 	local valid,message = Builder.Validate(recipe)
 	if not valid then recipeStatus.Text = message return end
 	local ok,result = withRecording("ONE TRIP Build Model",function() return Builder.Build(recipe) end)
-	if ok then recipeStatus.Text = "Built " .. result.Name .. " and selected it in Workspace." else recipeStatus.Text = "Build failed: " .. tostring(result) end
+	if ok then
+		recipeStatus.Text = "Built " .. result.Name .. " and selected it in Workspace."
+	else
+		recipeStatus.Text = "Build failed: " .. tostring(result)
+	end
 end)
 
 openButton.Click:Connect(function() widget.Enabled = not widget.Enabled end)
