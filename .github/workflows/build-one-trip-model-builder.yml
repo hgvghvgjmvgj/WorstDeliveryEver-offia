@@ -1,0 +1,43 @@
+name: Build ONE TRIP Model Builder
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/OneTripModelBuilder/src/**'
+      - 'tools/OneTripModelBuilder/default.project.json'
+      - '.github/workflows/build-one-trip-model-builder.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rojo 7.7.0
+        run: |
+          curl -L -o /tmp/rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.7.0/rojo-7.7.0-linux-x86_64.zip
+          unzip -q /tmp/rojo.zip -d /tmp/rojo
+          chmod +x /tmp/rojo/rojo
+          echo '/tmp/rojo' >> "$GITHUB_PATH"
+
+      - name: Build plugin
+        working-directory: tools/OneTripModelBuilder
+        run: rojo build -o OneTripModelBuilder.rbxm
+
+      - name: Commit rebuilt plugin binary
+        run: |
+          if git diff --quiet -- tools/OneTripModelBuilder/OneTripModelBuilder.rbxm; then
+            echo 'Plugin binary is already up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/OneTripModelBuilder/OneTripModelBuilder.rbxm
+          git commit -m 'Rebuild OneTripModelBuilder plugin binary'
+          git push
