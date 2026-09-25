@@ -15,10 +15,7 @@ local M6A3IdentityService = require(Services:WaitForChild("M6A3IdentityService")
 local M6BStorageService = require(Services:WaitForChild("M6BStorageService"))
 local M6BDeepStorageService = require(Services:WaitForChild("M6BDeepStorageService"))
 local M6BRestockPresentationService = require(Services:WaitForChild("M6BRestockPresentationService"))
-local M6CProductionBatchService = require(Services:WaitForChild("M6CProductionBatchService"))
-local M6CProfessionalVFXService = require(Services:WaitForChild("M6CProfessionalVFXService"))
-local M6CProductionCleanupService = require(Services:WaitForChild("M6CProductionCleanupService"))
-local M6CRarityGalleryService = require(Services:WaitForChild("M6CRarityGalleryService"))
+local ImportedCargoPresentationService = require(Services:WaitForChild("ImportedCargoPresentationService"))
 local WarehouseAccessService = require(Services:WaitForChild("WarehouseAccessService"))
 local CollisionService = require(Services:WaitForChild("CollisionService"))
 local ClearanceService = require(Services:WaitForChild("ClearanceService"))
@@ -81,16 +78,12 @@ world:SetAttribute("M5BHeroLootCount", heroCount)
 world:SetAttribute("M6A2CoreBaseLootCount", coreCount)
 world:SetAttribute("M6A2HeroLootCount", heroCount)
 
--- M6C production checkpoint intentionally proves only the required 11-item
--- representative batch. Generic M6C/M6C.1 art layers are disabled here so no
--- deferred legacy renderer can re-layer rejected geometry/aura over the proof.
--- Non-batch cargo remains on the existing LootPresentation fallback until the
--- representative batch is visually approved and mass production is authorized.
+-- M6C.1 Creator Store proof deliberately disables the rejected mass procedural
+-- cargo/rarity-art layers. LootPresentation remains the safe fallback for all
+-- cargo; only Couch, Refrigerator, and ArcadeCabinet are replaced when a
+-- sanitized local template exists in ServerStorage/OneTripImportedAssets.
 LootPresentationService.Start(world)
-M6CProductionBatchService.Start(world)
-M6CProfessionalVFXService.Start(world)
-M6CProductionCleanupService.Start(world)
-M6CRarityGalleryService.Start(world)
+ImportedCargoPresentationService.Start(world)
 
 if requestedMode == "D" then ClearanceService.Start(world, ItemService) end
 CarryService.Start(ItemService)
@@ -105,4 +98,4 @@ CollectionService.Start()
 
 UnloadService.Start(world, CarryService, EconomyService, CollectionService)
 
-print(("[ONE TRIP] M6C production 11-item checkpoint + layered VFX loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
+print(("[ONE TRIP] M6C.1 Creator Store three-model proof loaded - mode %s"):format(tostring(world:GetAttribute("M6A_Mode") or "?")))
