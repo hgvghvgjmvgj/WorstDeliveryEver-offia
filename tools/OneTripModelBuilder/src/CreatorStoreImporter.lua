@@ -11,6 +11,7 @@ local Importer = {}
 
 local STORAGE_FOLDER = "OneTripImportedAssets"
 local REVIEW_FOLDER = "OneTripImportedAssetReview"
+local IMPORT_PIPELINE_VERSION = "M6C.1-CREATOR-STORE-NATURAL-V3"
 
 local function approvedAssets(): {[string]: any}
 	local configFolder = ReplicatedStorage:FindFirstChild("Config")
@@ -206,7 +207,7 @@ local function addStandardFormat(model: Model, definition: any, visual: Model)
 	model:SetAttribute("OneTripImportedAsset", true)
 	model:SetAttribute("Sanitized", true)
 	model:SetAttribute("NaturalAppearancePreserved", definition.RemoveAllExternalTextures ~= true)
-	model:SetAttribute("ImportPipelineVersion", "M6C.1-CREATOR-STORE-NATURAL-V2")
+	model:SetAttribute("ImportPipelineVersion", IMPORT_PIPELINE_VERSION)
 end
 
 local function loadAsset(assetId: number): Instance
@@ -285,7 +286,7 @@ function Importer.Import(cargoId: string, overwrite: boolean?): any
 	}
 end
 
-function Importer.ImportApproved(overwrite: boolean?): {any}
+function Importer.ImportApproved(_overwrite: boolean?): {any}
 	local definitions = approvedAssets()
 	local ordered = {}
 	for cargoId, definition in definitions do
@@ -300,7 +301,9 @@ function Importer.ImportApproved(overwrite: boolean?): {any}
 
 	local results = {}
 	for _, entry in ordered do
-		local ok, result = pcall(Importer.Import, entry.CargoId, overwrite)
+		-- Approved assets are production-source templates. Refresh them instead of
+		-- silently keeping an older sanitized copy from a previous visual policy.
+		local ok, result = pcall(Importer.Import, entry.CargoId, true)
 		if ok then
 			table.insert(results, result)
 		else
