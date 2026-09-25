@@ -9,6 +9,7 @@ local ItemConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild
 local Service = {}
 local watched: {[BasePart]: RBXScriptConnection} = {}
 local warnedMissing: {[string]: boolean} = {}
+local warnedStale: {[string]: boolean} = {}
 
 local function itemId(root: BasePart): string?
 	local attr = root:GetAttribute("ItemId")
@@ -31,6 +32,7 @@ local function clearImported(root: BasePart)
 	if existing then existing:Destroy() end
 	root:SetAttribute("ImportedCreatorStoreActive",false)
 	root:SetAttribute("ImportedCreatorStoreAssetId",nil)
+	root:SetAttribute("ImportedCreatorStoreTemplateVersion",nil)
 end
 
 local function clearProceduralArt(root: BasePart)
@@ -106,11 +108,14 @@ local function applyTemplate(root: BasePart, template: Model, definition: any)
 	end
 	hitbox:Destroy()
 
+	local templateVersion = template:GetAttribute("ImportPipelineVersion")
+
 	-- The authoritative gameplay part remains unchanged for Weight/Bulk/stacking;
 	-- it is only hidden while the sanitized visual template is displayed.
 	root.Transparency = 1
 	root:SetAttribute("ImportedCreatorStoreActive",true)
 	root:SetAttribute("ImportedCreatorStoreAssetId",definition.AssetId)
+	root:SetAttribute("ImportedCreatorStoreTemplateVersion",templateVersion)
 	root:SetAttribute("ImportedCreatorStoreCommonProof",true)
 end
 
@@ -131,15 +136,37 @@ local function refresh(root: BasePart)
 		clearImported(root)
 		root.Transparency = 0
 		if not warnedMissing[baseId] then
-			warn(("[ONE TRIP] sanitized Creator Store template missing for %s. Open ONE TRIP Model Builder and import asset %s. Using safe procedural fallback.")
+			warn(("[ONE TRIP] sanitized Creator Store template missing for %s. Open ONE TRIP Model Builder and refresh asset %s. Using safe procedural fallback.")
 				:format(baseId,tostring(definition.AssetId)))
 			warnedMissing[baseId] = true
 		end
 		return
 	end
 
+	local requiredVersion = ImportedAssetManifest.ImportPipelineVersion
+	local templateVersion = template:GetAttribute("ImportPipelineVersion")
+	if typeof(requiredVersion) == "string" and templateVersion ~= requiredVersion then
+		clearImported(root)
+		root.Transparency = 0
+		if not warnedStale[baseId] then
+			warn(("[ONE TRIP] imported template for %s is stale (%s, expected %s). Refresh approved assets in ONE TRIP Model Builder before using it. Stale visual was rejected.")
+				:format(baseId,tostring(templateVersion),requiredVersion))
+			warnedStale[baseId] = true
+		end
+		return
+	end
+
 	local currentAsset = root:GetAttribute("ImportedCreatorStoreAssetId")
-	if root:GetAttribute("ImportedCreatorStoreActive") == true and currentAsset == definition.AssetId then return end
+	local currentVersion = root:GetAttribute("ImportedCreatorStoreTemplateVersion")
+	if root:GetAttribute("ImportedCreatorStoreActive") == true
+		and currentAsset == definition.AssetId
+		and currentVersion == templateVersion
+	then
+		return
+	end
+
+	warnedMissing[baseId] = nil
+	warnedStale[baseId] = nil
 	applyTemplate(root,template,definition)
 end
 
