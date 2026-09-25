@@ -156,50 +156,82 @@ local function normalizeVisual(visual: Model, targetBounds: Vector3)
 end
 
 local function neutralizeArcade(visual: Model)
-	-- Keep the useful Creator Store geometry intact. The previous proof pass added
-	-- a replacement screen/control deck in front of the cabinet, which made the
-	-- monitor look detached and changed the silhouette. M6C.1 should only sanitize
-	-- and restyle this asset; it should not remodel it.
-	local body = Color3.fromRGB(132, 143, 158)
-	local bodyDark = Color3.fromRGB(88, 99, 116)
-	local trim = Color3.fromRGB(43, 50, 61)
-	local screen = Color3.fromRGB(13, 19, 28)
-	local control = Color3.fromRGB(63, 73, 89)
-	local accent = Color3.fromRGB(77, 154, 214)
+	-- Strong custom paint pass for the sanitized arcade. The source model uses
+	-- generic mesh names, so names alone are not reliable enough to style it.
+	-- Use both semantic names and each part's position inside the cabinet bounds.
+	local body = Color3.fromRGB(31, 39, 55)
+	local bodySecondary = Color3.fromRGB(49, 61, 82)
+	local lowerBody = Color3.fromRGB(23, 29, 41)
+	local trim = Color3.fromRGB(9, 13, 20)
+	local screen = Color3.fromRGB(4, 8, 14)
+	local control = Color3.fromRGB(60, 73, 96)
+	local accentBlue = Color3.fromRGB(44, 151, 229)
+	local accentCyan = Color3.fromRGB(65, 218, 214)
+	local accentYellow = Color3.fromRGB(244, 194, 71)
+	local accentPink = Color3.fromRGB(231, 83, 137)
+
+	local boundsCf, boundsSize = visual:GetBoundingBox()
+	local halfX = math.max(boundsSize.X * 0.5, 0.01)
+	local halfY = math.max(boundsSize.Y * 0.5, 0.01)
+	local halfZ = math.max(boundsSize.Z * 0.5, 0.01)
 
 	for _, descendant in visual:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local lower = string.lower(descendant.Name)
+			local localPos = boundsCf:PointToObjectSpace(descendant.Position)
+			local y01 = math.clamp((localPos.Y + halfY) / (halfY * 2), 0, 1)
+			local x01 = math.clamp((localPos.X + halfX) / (halfX * 2), 0, 1)
+			local frontness = math.clamp((-localPos.Z + halfZ) / (halfZ * 2), 0, 1)
+			local thinDepth = descendant.Size.Z <= boundsSize.Z * 0.24
+			local smallControl = descendant.Size.Magnitude <= boundsSize.Magnitude * 0.20
 
-			if string.find(lower, "screen", 1, true)
+			local namedScreen = string.find(lower, "screen", 1, true)
 				or string.find(lower, "display", 1, true)
 				or string.find(lower, "monitor", 1, true)
-			then
-				descendant.Color = screen
-				descendant.Material = Enum.Material.Glass
-				descendant.Reflectance = 0.04
-			elseif string.find(lower, "bezel", 1, true)
+			local namedTrim = string.find(lower, "bezel", 1, true)
 				or string.find(lower, "frame", 1, true)
 				or string.find(lower, "trim", 1, true)
 				or string.find(lower, "border", 1, true)
-			then
-				descendant.Color = trim
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif string.find(lower, "button", 1, true)
-				or string.find(lower, "joystick", 1, true)
-			then
-				descendant.Color = accent
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif string.find(lower, "control", 1, true)
+			local namedControl = string.find(lower, "control", 1, true)
 				or string.find(lower, "panel", 1, true)
 				or string.find(lower, "console", 1, true)
-			then
+			local namedButton = string.find(lower, "button", 1, true)
+				or string.find(lower, "joystick", 1, true)
+
+			local spatialScreen = y01 >= 0.52 and y01 <= 0.78 and frontness >= 0.70 and thinDepth
+			local spatialControls = y01 >= 0.30 and y01 <= 0.52 and frontness >= 0.62
+			local spatialMarquee = y01 >= 0.80 and frontness >= 0.45
+			local spatialLowerFront = y01 <= 0.30 and frontness >= 0.55
+			local spatialSide = math.abs(localPos.X) >= halfX * 0.58
+
+			if namedScreen or spatialScreen then
+				descendant.Color = screen
+				descendant.Material = Enum.Material.Glass
+				descendant.Reflectance = 0.06
+			elseif namedButton or (spatialControls and smallControl) then
+				-- Give tiny control pieces real arcade color instead of washing them out.
+				if x01 < 0.38 then
+					descendant.Color = accentCyan
+				elseif x01 < 0.58 then
+					descendant.Color = accentYellow
+				else
+					descendant.Color = accentPink
+				end
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif namedTrim then
+				descendant.Color = trim
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif namedControl or spatialControls then
 				descendant.Color = control
 				descendant.Material = Enum.Material.SmoothPlastic
-			elseif string.find(lower, "base", 1, true)
-				or string.find(lower, "back", 1, true)
-			then
-				descendant.Color = bodyDark
+			elseif spatialMarquee then
+				descendant.Color = accentBlue
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif spatialLowerFront then
+				descendant.Color = lowerBody
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif spatialSide then
+				descendant.Color = bodySecondary
 				descendant.Material = Enum.Material.SmoothPlastic
 			else
 				descendant.Color = body
