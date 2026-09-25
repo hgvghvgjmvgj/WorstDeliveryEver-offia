@@ -28,15 +28,14 @@ return table.freeze({
 		}),
 		ArcadeCabinet = table.freeze({
 			CargoId = "ArcadeCabinet",
-			-- Blank multi-part arcade cabinet selected specifically so the import
-			-- pipeline can paint separate shell, marquee, control, screen and button
-			-- geometry. The previous textured single-shell proof asset could only be
-			-- tinted as one color after texture sanitization.
-			AssetId = 284785778,
+			-- User-approved original Freddy/FNAF arcade proof asset. Preserve its
+			-- natural appearance; no texture stripping and no generated repaint.
+			AssetId = 105044479380665,
 			SectionId = "Recreation",
 			TargetBounds = Vector3.new(4.8, 8.4, 4.6),
 			PreserveNaturalColor = true,
 			RemoveAllExternalTextures = false,
+			ApplyOneTripArcadePaint = false,
 			ReviewOrder = 3,
 		}),
 	}),
