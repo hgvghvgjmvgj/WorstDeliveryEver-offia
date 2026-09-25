@@ -25,8 +25,35 @@ local function approvedAssets(): {[string]: any}
 	return LocalApproved
 end
 
+local function visualSources(): {[string]: any}
+	local configFolder = ReplicatedStorage:FindFirstChild("Config")
+	local manifestModule = configFolder and configFolder:FindFirstChild("ImportedAssetManifest")
+	if manifestModule and manifestModule:IsA("ModuleScript") then
+		local ok, manifest = pcall(require, manifestModule)
+		if ok and type(manifest) == "table" and type(manifest.ItemVisualSources) == "table" then
+			return manifest.ItemVisualSources
+		end
+	end
+	return {}
+end
+
 function Importer.GetApprovedAssets(): {[string]: any}
 	return approvedAssets()
+end
+
+function Importer.GetVisualSources(): {[string]: any}
+	return visualSources()
+end
+
+-- Definition lookup for a single explicit import. Approved assets always win;
+-- Candidate assets can be imported individually for visual review, but are
+-- never touched by IMPORT APPROVED ASSETS and never applied at runtime.
+local function definitionFor(cargoId: string): any?
+	local approved = approvedAssets()[cargoId]
+	if approved then return approved end
+	local source = visualSources()[cargoId]
+	if source and source.SourceType == "CreatorStore" then return source end
+	return nil
 end
 
 local function ensureStorage(): Folder
@@ -208,6 +235,7 @@ local function addStandardFormat(model: Model, definition: any, visual: Model)
 	model:SetAttribute("Sanitized", true)
 	model:SetAttribute("NaturalAppearancePreserved", definition.RemoveAllExternalTextures ~= true)
 	model:SetAttribute("ImportPipelineVersion", IMPORT_PIPELINE_VERSION)
+	model:SetAttribute("ImportStatus", definition.Status or "Approved")
 end
 
 local function loadAsset(assetId: number): Instance
@@ -224,9 +252,8 @@ local function loadAsset(assetId: number): Instance
 end
 
 function Importer.Import(cargoId: string, overwrite: boolean?): any
-	local definitions = approvedAssets()
-	local definition = definitions[cargoId]
-	assert(definition, "CargoId is not in the approved Creator Store manifest: " .. tostring(cargoId))
+	local definition = definitionFor(cargoId)
+	assert(definition, "CargoId is not in the visual-source manifest: " .. tostring(cargoId))
 
 	local storage = ensureStorage()
 	local existing = storage:FindFirstChild(cargoId)
@@ -317,12 +344,13 @@ function Importer.ImportApproved(_overwrite: boolean?): {any}
 	return results
 end
 
-local function addLabel(model: Model, cargoId: string, assetId: number)
+local function addLabel(model: Model, cargoId: string, assetId: number, status: string?)
 	local hitbox = model:FindFirstChild("CarryHitbox")
 	if not hitbox or not hitbox:IsA("BasePart") then
 		return
 	end
 
+	local isCandidate = status == "Candidate"
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "ReviewLabel"
 	gui.Adornee = hitbox
@@ -333,13 +361,15 @@ local function addLabel(model: Model, cargoId: string, assetId: number)
 
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundColor3 = Color3.fromRGB(26, 29, 35)
+	label.BackgroundColor3 = if isCandidate then Color3.fromRGB(66, 50, 24) else Color3.fromRGB(26, 29, 35)
 	label.BackgroundTransparency = 0.08
 	label.BorderSizePixel = 0
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 14
-	label.TextColor3 = Color3.fromRGB(245, 247, 250)
-	label.Text = cargoId .. "\nASSET " .. tostring(assetId)
+	label.TextColor3 = if isCandidate then Color3.fromRGB(255, 205, 120) else Color3.fromRGB(245, 247, 250)
+	label.Text = if isCandidate
+		then ("CANDIDATE %s\nASSET %d"):format(cargoId, assetId)
+		else cargoId .. "\nASSET " .. tostring(assetId)
 	label.Parent = gui
 end
 
@@ -354,9 +384,64 @@ function Importer.OpenReviewGallery(): Folder
 	gallery.Name = REVIEW_FOLDER
 	gallery.Parent = workspace
 
+	-- Review everything currently in storage. Approved templates first (review
+	-- order), then candidates/review builds alphabetically.
+	local approved = approvedAssets()
+	local approvedOrder: {{CargoId: string, Template: Model, Status: string?, Order: number}} = {}
+	for cargoId, definition in approved do
+		local template = storage:FindFirstChild(cargoId)
+		if template and template:IsA("Model") then
+			table.insert(approvedOrder, {
+				CargoId = cargoId,
+				Template = template,
+				Status = template:GetAttribute("ImportStatus") or "Approved",
+				Order = definition.ReviewOrder or 99,
+			})
+		end
+	end
+	table.sort(approvedOrder, function(a, b)
+		return a.Order < b.Order
+	end)
+
+	local ordered: {{CargoId: string, Template: Model, Status: string?}} = {}
+	local seen: {[string]: boolean} = {}
+	for _, entry in approvedOrder do
+		table.insert(ordered, {
+			CargoId = entry.CargoId,
+			Template = entry.Template,
+			Status = entry.Status,
+		})
+		seen[entry.CargoId] = true
+	end
+	local extra = {}
+	for _, template in storage:GetChildren() do
+		if template:IsA("Model") and not seen[template.Name] then
+			table.insert(extra, template.Name)
+		end
+	end
+	table.sort(extra)
+	for _, name in extra do
+		local template = storage:FindFirstChild(name)
+		if template and template:IsA("Model") then
+			table.insert(ordered, {
+				CargoId = name,
+				Template = template,
+				Status = template:GetAttribute("ImportStatus"),
+			})
+		end
+	end
+
+	local count = #ordered
+	local columns = 6
+	local spacingX = 16
+	local spacingZ = 22
+	local rows = math.max(1, math.ceil(count / columns))
+	local width = math.max(52, columns * spacingX + 8)
+	local depth = math.max(22, rows * spacingZ + 8)
+
 	local floor = Instance.new("Part")
 	floor.Name = "NeutralReviewFloor"
-	floor.Size = Vector3.new(52, 0.4, 22)
+	floor.Size = Vector3.new(width, 0.4, depth)
 	floor.CFrame = CFrame.new(0, -0.2, 0)
 	floor.Anchored = true
 	floor.Color = Color3.fromRGB(98, 102, 110)
@@ -365,44 +450,36 @@ function Importer.OpenReviewGallery(): Folder
 
 	local back = Instance.new("Part")
 	back.Name = "NeutralReviewBackdrop"
-	back.Size = Vector3.new(52, 16, 0.5)
-	back.CFrame = CFrame.new(0, 8, 8)
+	back.Size = Vector3.new(width, 16, 0.5)
+	back.CFrame = CFrame.new(0, 8, depth * 0.5)
 	back.Anchored = true
 	back.Color = Color3.fromRGB(48, 52, 60)
 	back.Material = Enum.Material.SmoothPlastic
 	back.Parent = gallery
 
-	local definitions = approvedAssets()
-	local ordered = {}
-	for cargoId, definition in definitions do
-		table.insert(ordered, {
-			CargoId = cargoId,
-			Definition = definition,
-		})
-	end
-	table.sort(ordered, function(a, b)
-		return (a.Definition.ReviewOrder or 99) < (b.Definition.ReviewOrder or 99)
-	end)
-
-	local xPositions = {-16, 0, 16}
 	local reviewModels = {}
 	for index, entry in ordered do
-		local template = storage:FindFirstChild(entry.CargoId)
-		if template and template:IsA("Model") then
-			local clone = template:Clone()
-			clone.Name = "Review_" .. entry.CargoId
-			clone.Parent = gallery
-			clone:PivotTo(CFrame.new(xPositions[index] or 0, 0, 0))
-			addLabel(clone, entry.CargoId, entry.Definition.AssetId)
-			table.insert(reviewModels, clone)
-		end
+		local column = (index - 1) % columns
+		local row = math.floor((index - 1) / columns)
+		local position = Vector3.new(
+			(column - (columns - 1) * 0.5) * spacingX,
+			0,
+			(row - (rows - 1) * 0.5) * spacingZ
+		)
+		local clone = entry.Template:Clone()
+		clone.Name = "Review_" .. entry.CargoId
+		clone.Parent = gallery
+		clone:PivotTo(CFrame.new(position))
+		addLabel(clone, entry.CargoId, clone:GetAttribute("SourceAssetId") or 0, entry.Status)
+		table.insert(reviewModels, clone)
 	end
 
-	for _, x in {-13, 0, 13} do
+	local lightSpacing = math.min(spacingX * 3, width * 0.4)
+	for x = -math.floor((columns - 1) / 2), math.ceil((columns - 1) / 2) do
 		local anchor = Instance.new("Part")
 		anchor.Name = "ReviewLightAnchor"
 		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
-		anchor.CFrame = CFrame.new(x, 10, -3)
+		anchor.CFrame = CFrame.new(x * lightSpacing, 10, -3)
 		anchor.Transparency = 1
 		anchor.Anchored = true
 		anchor.CanCollide = false

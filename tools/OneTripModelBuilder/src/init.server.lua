@@ -86,13 +86,13 @@ end
 
 local title = label("ONE TRIP CARGO PRODUCTION",30,true)
 title.LayoutOrder = 1
-local subtitle = label("M6C production: Creator Store imports + full 11-model representative batch. The approved Freddy arcade keeps its original source appearance.",54,false)
+local subtitle = label("M6C production: Creator Store imports + full-catalog visual-source manifest. The approved Freddy arcade keeps its original source appearance.",54,false)
 subtitle.LayoutOrder = 2
 
 local importTitle = label("CREATOR STORE IMPORT",24,true)
 importTitle.LayoutOrder = 3
 
-local importHelp = label("Approved IDs: Couch 10710790394 • Refrigerator 482124502 • ArcadeCabinet 105044479380665. Scripts/remotes are stripped; approved visual textures are preserved.",52,false)
+local importHelp = label("Approved: Couch 10710790394 • Refrigerator 482124502 • ArcadeCabinet 105044479380665. Candidate assets (manifest Status=Candidate) can be typed below and imported individually for visual review only — they never load at runtime until promoted to Approved. Scripts/remotes are stripped; textures preserved.",78,false)
 importHelp.LayoutOrder = 4
 
 local selectedCargo = Instance.new("TextBox")
@@ -185,7 +185,7 @@ rebuildButton.MouseButton1Click:Connect(function()
 end)
 
 importAllButton.MouseButton1Click:Connect(function()
-	setImportStatus("Importing the three approved Creator Store assets...",nil)
+	setImportStatus("Refreshing all approved Creator Store templates (overwrite enabled)...",nil)
 	local ok,results = withRecording("ONE TRIP Import Approved Assets",function()
 		return CreatorStoreImporter.ImportApproved(false)
 	end)
