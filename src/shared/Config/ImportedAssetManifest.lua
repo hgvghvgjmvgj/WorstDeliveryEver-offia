@@ -7,6 +7,7 @@
 return table.freeze({
 	StorageFolderName = "OneTripImportedAssets",
 	ReviewGalleryAttribute = "M6CImportedReviewGallery",
+	ImportPipelineVersion = "M6C.1-CREATOR-STORE-NATURAL-V3",
 	Assets = table.freeze({
 		Couch = table.freeze({
 			CargoId = "Couch",
