@@ -25,15 +25,14 @@ return table.freeze({
 	}),
 	ArcadeCabinet = table.freeze({
 		CargoId = "ArcadeCabinet",
-		-- Blank multi-part arcade cabinet. The previous proof asset was largely a
-		-- single textured shell, so stripping its branded texture left one mesh
-		-- that Roblox could only tint one color. This asset gives the paint pass
-		-- actual separate geometry to style.
-		AssetId = 284785778,
+		-- User-approved original Freddy/FNAF arcade proof asset. Preserve the
+		-- source appearance exactly; do not strip textures or apply ONE TRIP paint.
+		AssetId = 105044479380665,
 		SectionId = "Recreation",
 		TargetBounds = Vector3.new(4.8, 8.4, 4.6),
 		PreserveNaturalColor = true,
 		RemoveAllExternalTextures = false,
+		ApplyOneTripArcadePaint = false,
 		ReviewOrder = 3,
 	}),
 })
