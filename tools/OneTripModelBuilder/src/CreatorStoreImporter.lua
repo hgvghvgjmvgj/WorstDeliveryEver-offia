@@ -155,84 +155,150 @@ local function normalizeVisual(visual: Model, targetBounds: Vector3)
 	return boundsSize, uniformScale
 end
 
+local function newPaintPart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = cf
+	part.Color = color
+	part.Material = material or Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.CastShadow = true
+	part.Parent = parent
+	return part
+end
+
 local function neutralizeArcade(visual: Model)
-	-- Preserve useful source color information instead of flattening every mesh
-	-- into one dark tone. The original arcade already distinguishes the black
-	-- screen/trim and colorful controls; only the washed-out neutral shell needs
-	-- a ONE TRIP livery.
-	local body = Color3.fromRGB(82, 118, 171)
-	local sideTeal = Color3.fromRGB(72, 176, 171)
-	local lowerPurple = Color3.fromRGB(101, 78, 148)
-	local trim = Color3.fromRGB(38, 43, 56)
-	local screen = Color3.fromRGB(10, 15, 24)
-	local controlOrange = Color3.fromRGB(225, 111, 63)
-	local marqueeGold = Color3.fromRGB(246, 193, 72)
+	-- Some Creator Store arcade cabinets expose most of the shell as one MeshPart.
+	-- A MeshPart only supports one Color3, so tinting the source cannot create a
+	-- true multi-color cabinet. Use a neutral shell and deterministic, separate,
+	-- nearly-flush paint geometry so the result ALWAYS reads as several colors.
+	local shell = Color3.fromRGB(52, 58, 72)
+	local shellSecondary = Color3.fromRGB(68, 76, 94)
+	local screenColor = Color3.fromRGB(8, 12, 19)
+	local gold = Color3.fromRGB(244, 190, 64)
+	local orange = Color3.fromRGB(229, 104, 55)
+	local purple = Color3.fromRGB(124, 82, 178)
+	local teal = Color3.fromRGB(54, 190, 181)
+	local cyan = Color3.fromRGB(60, 220, 219)
+	local yellow = Color3.fromRGB(250, 211, 68)
+	local pink = Color3.fromRGB(241, 91, 150)
+	local red = Color3.fromRGB(234, 78, 72)
 
-	local boundsCf, boundsSize = visual:GetBoundingBox()
-	local halfX = math.max(boundsSize.X * 0.5, 0.01)
-	local halfY = math.max(boundsSize.Y * 0.5, 0.01)
-	local halfZ = math.max(boundsSize.Z * 0.5, 0.01)
-
+	-- First make the imported shell deliberately neutral. Keep tiny control pieces
+	-- slightly lighter, but do not rely on them for the multi-color look.
+	local _, prePaintSize = visual:GetBoundingBox()
 	for _, descendant in visual:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local lower = string.lower(descendant.Name)
-			local localPos = boundsCf:PointToObjectSpace(descendant.Position)
-			local y01 = math.clamp((localPos.Y + halfY) / (halfY * 2), 0, 1)
-			local frontness = math.clamp((-localPos.Z + halfZ) / (halfZ * 2), 0, 1)
-			local thinDepth = descendant.Size.Z <= boundsSize.Z * 0.24
-
-			local hue, saturation, value = descendant.Color:ToHSV()
-			local originalDark = value <= 0.30
-			local originalColorful = saturation >= 0.28 and value >= 0.35
-
 			local namedScreen = string.find(lower, "screen", 1, true)
 				or string.find(lower, "display", 1, true)
 				or string.find(lower, "monitor", 1, true)
-			local namedTrim = string.find(lower, "bezel", 1, true)
-				or string.find(lower, "frame", 1, true)
-				or string.find(lower, "trim", 1, true)
-				or string.find(lower, "border", 1, true)
-			local namedControl = string.find(lower, "control", 1, true)
-				or string.find(lower, "panel", 1, true)
-				or string.find(lower, "console", 1, true)
-			local namedButton = string.find(lower, "button", 1, true)
+			local namedControl = string.find(lower, "button", 1, true)
 				or string.find(lower, "joystick", 1, true)
+				or string.find(lower, "control", 1, true)
 
-			local spatialScreen = y01 >= 0.52 and y01 <= 0.78 and frontness >= 0.70 and thinDepth
-			local spatialControls = y01 >= 0.30 and y01 <= 0.52 and frontness >= 0.58
-			local spatialMarquee = y01 >= 0.80 and frontness >= 0.42
-			local spatialLowerFront = y01 <= 0.30 and frontness >= 0.48
-			local spatialSide = math.abs(localPos.X) >= halfX * 0.58
-
-			if namedScreen or spatialScreen then
-				descendant.Color = screen
+			if namedScreen then
+				descendant.Color = screenColor
 				descendant.Material = Enum.Material.Glass
-				descendant.Reflectance = 0.04
-			elseif namedButton or originalColorful then
-				-- Keep/boost the original cyan, yellow, pink, red, etc. controls.
-				descendant.Color = Color3.fromHSV(hue, math.max(saturation, 0.62), math.max(value, 0.78))
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif namedTrim or originalDark then
-				descendant.Color = trim
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif namedControl or spatialControls then
-				descendant.Color = controlOrange
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif spatialMarquee then
-				descendant.Color = marqueeGold
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif spatialLowerFront then
-				descendant.Color = lowerPurple
-				descendant.Material = Enum.Material.SmoothPlastic
-			elseif spatialSide then
-				descendant.Color = sideTeal
+			elseif namedControl or descendant.Size.Magnitude <= prePaintSize.Magnitude * 0.08 then
+				descendant.Color = shellSecondary
 				descendant.Material = Enum.Material.SmoothPlastic
 			else
-				descendant.Color = body
+				descendant.Color = shell
 				descendant.Material = Enum.Material.SmoothPlastic
 			end
 		end
 	end
+
+	local boundsCf, boundsSize = visual:GetBoundingBox()
+	local halfX = boundsSize.X * 0.5
+	local halfY = boundsSize.Y * 0.5
+	local halfZ = boundsSize.Z * 0.5
+	local paint = Instance.new("Model")
+	paint.Name = "OneTripArcadePaint"
+	paint:SetAttribute("ArcadePaintVersion", "MULTICOLOR-PANELS-V1")
+	paint.Parent = visual
+
+	-- Front is -Z for the approved arcade assets. These panels are intentionally
+	-- thin and only 0.02-0.05 studs off the shell, so they read as paint/trim rather
+	-- than the old detached replacement screen.
+	local frontPlane = -halfZ - 0.035
+	local insetFront = -halfZ * 0.78
+
+	-- Gold marquee/header.
+	newPaintPart(
+		paint,
+		"GoldMarquee",
+		Vector3.new(boundsSize.X * 0.78, boundsSize.Y * 0.105, 0.07),
+		boundsCf * CFrame.new(0, halfY * 0.76, insetFront),
+		gold,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- Dark screen, kept thin and recessed relative to the front-most control deck.
+	local screen = newPaintPart(
+		paint,
+		"InsetScreen",
+		Vector3.new(boundsSize.X * 0.66, boundsSize.Y * 0.25, 0.055),
+		boundsCf * CFrame.new(0, halfY * 0.34, -halfZ * 0.72),
+		screenColor,
+		Enum.Material.Glass
+	)
+	screen.Reflectance = 0.04
+
+	-- Orange control-deck fascia directly below the screen.
+	newPaintPart(
+		paint,
+		"OrangeControlFascia",
+		Vector3.new(boundsSize.X * 0.90, boundsSize.Y * 0.095, 0.075),
+		boundsCf * CFrame.new(0, -halfY * 0.02, frontPlane),
+		orange,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- Purple lower-front insert so the cabinet cannot read as one solid shell.
+	newPaintPart(
+		paint,
+		"PurpleLowerFront",
+		Vector3.new(boundsSize.X * 0.66, boundsSize.Y * 0.29, 0.065),
+		boundsCf * CFrame.new(0, -halfY * 0.50, -halfZ * 0.82),
+		purple,
+		Enum.Material.SmoothPlastic
+	)
+
+	-- Teal vertical rails frame the front silhouette.
+	for _, xSign in {-1, 1} do
+		newPaintPart(
+			paint,
+			if xSign < 0 then "TealRailLeft" else "TealRailRight",
+			Vector3.new(math.max(0.09, boundsSize.X * 0.035), boundsSize.Y * 0.68, 0.075),
+			boundsCf * CFrame.new(halfX * 0.91 * xSign, -halfY * 0.03, -halfZ * 0.70),
+			teal,
+			Enum.Material.SmoothPlastic
+		)
+	end
+
+	-- Four unmistakably different button colors. Spheres avoid orientation issues.
+	local buttonColors = {cyan, yellow, pink, red}
+	local buttonXs = {-0.28, -0.09, 0.10, 0.29}
+	for index, xScale in buttonXs do
+		local button = newPaintPart(
+			paint,
+			"ColorButton" .. tostring(index),
+			Vector3.new(boundsSize.X * 0.065, boundsSize.X * 0.065, boundsSize.X * 0.065),
+			boundsCf * CFrame.new(boundsSize.X * xScale, -halfY * 0.005, frontPlane - 0.055),
+			buttonColors[index],
+			Enum.Material.Neon
+		)
+		button.Shape = Enum.PartType.Ball
+		button.CastShadow = false
+	end
+
+	visual:SetAttribute("ArcadePaintVersion", "MULTICOLOR-PANELS-V1")
 end
 
 local function addStandardFormat(model: Model, definition: any, visual: Model)
@@ -271,7 +337,11 @@ local function addStandardFormat(model: Model, definition: any, visual: Model)
 	model:SetAttribute("SourceAssetId",definition.AssetId)
 	model:SetAttribute("OneTripImportedAsset",true)
 	model:SetAttribute("Sanitized",true)
-	model:SetAttribute("ImportPipelineVersion","M6C.1-CREATOR-STORE-PROOF")
+	model:SetAttribute("ImportPipelineVersion","M6C.1-ARCADE-MULTICOLOR-PANELS-V1")
+	local arcadePaintVersion = visual:GetAttribute("ArcadePaintVersion")
+	if arcadePaintVersion then
+		model:SetAttribute("ArcadePaintVersion", arcadePaintVersion)
+	end
 end
 
 local function loadAsset(assetId: number): Instance
@@ -310,14 +380,14 @@ function Importer.Import(cargoId: string, overwrite: boolean?): any
 	raw:Destroy()
 
 	assert(partCount(visual) > 0, "Imported asset contains no usable BaseParts after sanitization.")
-	local finalBounds, scale = normalizeVisual(visual,definition.TargetBounds)
+	local _, scale = normalizeVisual(visual,definition.TargetBounds)
 	if cargoId == "ArcadeCabinet" then neutralizeArcade(visual) end
 	addStandardFormat(production,definition,visual)
 
 	if existing then existing:Destroy() end
 	production.Parent = storage
 
-	local finalCf, finalSize = visual:GetBoundingBox()
+	local _, finalSize = visual:GetBoundingBox()
 	local finalParts = partCount(visual)
 	production:SetAttribute("ImportedPartCount",finalParts)
 	production:SetAttribute("ImportedUniformScale",scale)
