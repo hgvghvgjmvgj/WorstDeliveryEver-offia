@@ -25,12 +25,15 @@ return table.freeze({
 	}),
 	ArcadeCabinet = table.freeze({
 		CargoId = "ArcadeCabinet",
-		AssetId = 105044479380665,
+		-- Blank multi-part arcade cabinet. The previous proof asset was largely a
+		-- single textured shell, so stripping its branded texture left one mesh
+		-- that Roblox could only tint one color. This asset gives the paint pass
+		-- actual separate geometry to style.
+		AssetId = 284785778,
 		SectionId = "Recreation",
 		TargetBounds = Vector3.new(4.8, 8.4, 4.6),
-		PreserveNaturalColor = false,
-		RemoveAllExternalTextures = true,
-		NeutralShellColor = Color3.fromRGB(221, 225, 230),
+		PreserveNaturalColor = true,
+		RemoveAllExternalTextures = false,
 		ReviewOrder = 3,
 	}),
 })
