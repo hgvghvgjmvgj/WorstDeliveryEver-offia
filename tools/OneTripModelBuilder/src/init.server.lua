@@ -211,10 +211,14 @@ local exampleLayout = Instance.new("UIListLayout")
 exampleLayout.FillDirection = Enum.FillDirection.Horizontal
 exampleLayout.Padding = UDim.new(0,6)
 exampleLayout.Parent = exampleRow
-local fridgeButton = button("FRIDGE",0.25) fridgeButton.Parent = exampleRow
-local couchButton = button("COUCH",0.25) couchButton.Parent = exampleRow
-local pcButton = button("PC",0.25) pcButton.Parent = exampleRow
-local trunkButton = button("FRAGRANCE",0.25) trunkButton.Parent = exampleRow
+local fridgeButton = button("FRIDGE",0.25)
+fridgeButton.Parent = exampleRow
+local couchButton = button("COUCH",0.25)
+couchButton.Parent = exampleRow
+local pcButton = button("PC",0.25)
+pcButton.Parent = exampleRow
+local trunkButton = button("FRAGRANCE",0.25)
+trunkButton.Parent = exampleRow
 fridgeButton.MouseButton1Click:Connect(function() recipeBox.Text = Examples.FridgeJSON() end)
 couchButton.MouseButton1Click:Connect(function() recipeBox.Text = Examples.CouchJSON() end)
 pcButton.MouseButton1Click:Connect(function() recipeBox.Text = Examples.PCJSON() end)
@@ -229,8 +233,10 @@ local actionLayout = Instance.new("UIListLayout")
 actionLayout.FillDirection = Enum.FillDirection.Horizontal
 actionLayout.Padding = UDim.new(0,8)
 actionLayout.Parent = actionRow
-local validateButton = button("VALIDATE",0.4,Color3.fromRGB(57,80,112)) validateButton.Parent = actionRow
-local buildButton = button("BUILD MODEL",0.6,Color3.fromRGB(43,112,73)) buildButton.Parent = actionRow
+local validateButton = button("VALIDATE",0.4,Color3.fromRGB(57,80,112))
+validateButton.Parent = actionRow
+local buildButton = button("BUILD MODEL",0.6,Color3.fromRGB(43,112,73))
+buildButton.Parent = actionRow
 local recipeStatus = label("Recipe builder ready.",26,false)
 recipeStatus.LayoutOrder = 13
 
