@@ -156,64 +156,56 @@ local function normalizeVisual(visual: Model, targetBounds: Vector3)
 end
 
 local function neutralizeArcade(visual: Model)
-	local neutral = Color3.fromRGB(221,225,230)
-	local dark = Color3.fromRGB(27,31,38)
-	local accent = Color3.fromRGB(67,151,224)
+	-- Keep the useful Creator Store geometry intact. The previous proof pass added
+	-- a replacement screen/control deck in front of the cabinet, which made the
+	-- monitor look detached and changed the silhouette. M6C.1 should only sanitize
+	-- and restyle this asset; it should not remodel it.
+	local body = Color3.fromRGB(132, 143, 158)
+	local bodyDark = Color3.fromRGB(88, 99, 116)
+	local trim = Color3.fromRGB(43, 50, 61)
+	local screen = Color3.fromRGB(13, 19, 28)
+	local control = Color3.fromRGB(63, 73, 89)
+	local accent = Color3.fromRGB(77, 154, 214)
+
 	for _, descendant in visual:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local lower = string.lower(descendant.Name)
-			if string.find(lower,"screen",1,true) or string.find(lower,"display",1,true) or string.find(lower,"monitor",1,true) then
-				descendant.Color = dark
+
+			if string.find(lower, "screen", 1, true)
+				or string.find(lower, "display", 1, true)
+				or string.find(lower, "monitor", 1, true)
+			then
+				descendant.Color = screen
 				descendant.Material = Enum.Material.Glass
-			elseif string.find(lower,"button",1,true) or string.find(lower,"joystick",1,true) or string.find(lower,"control",1,true) then
+				descendant.Reflectance = 0.04
+			elseif string.find(lower, "bezel", 1, true)
+				or string.find(lower, "frame", 1, true)
+				or string.find(lower, "trim", 1, true)
+				or string.find(lower, "border", 1, true)
+			then
+				descendant.Color = trim
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif string.find(lower, "button", 1, true)
+				or string.find(lower, "joystick", 1, true)
+			then
 				descendant.Color = accent
 				descendant.Material = Enum.Material.SmoothPlastic
+			elseif string.find(lower, "control", 1, true)
+				or string.find(lower, "panel", 1, true)
+				or string.find(lower, "console", 1, true)
+			then
+				descendant.Color = control
+				descendant.Material = Enum.Material.SmoothPlastic
+			elseif string.find(lower, "base", 1, true)
+				or string.find(lower, "back", 1, true)
+			then
+				descendant.Color = bodyDark
+				descendant.Material = Enum.Material.SmoothPlastic
 			else
-				descendant.Color = neutral
+				descendant.Color = body
 				descendant.Material = Enum.Material.SmoothPlastic
 			end
 		end
-	end
-
-	local _, size = visual:GetBoundingBox()
-	local screen = Instance.new("Part")
-	screen.Name = "OneTripScreen"
-	screen.Size = Vector3.new(math.max(1.4,size.X*0.62), math.max(1.2,size.Y*0.28), 0.12)
-	screen.CFrame = CFrame.new(0, size.Y*0.58, -size.Z*0.50 - 0.07)
-	screen.Color = Color3.fromRGB(19,24,31)
-	screen.Material = Enum.Material.Glass
-	screen.Transparency = 0.04
-	screen.Anchored = true
-	screen.CanCollide = false
-	screen.CanTouch = false
-	screen.CanQuery = false
-	screen.Parent = visual
-
-	local control = Instance.new("Part")
-	control.Name = "OneTripControlPanel"
-	control.Size = Vector3.new(math.max(1.6,size.X*0.72), 0.22, math.max(0.55,size.Z*0.34))
-	control.CFrame = CFrame.new(0, size.Y*0.35, -size.Z*0.46)
-	control.Color = Color3.fromRGB(54,62,74)
-	control.Material = Enum.Material.SmoothPlastic
-	control.Anchored = true
-	control.CanCollide = false
-	control.CanTouch = false
-	control.CanQuery = false
-	control.Parent = visual
-
-	for index, x in {-0.42,0,0.42} do
-		local button = Instance.new("Part")
-		button.Name = "OneTripButton" .. tostring(index)
-		button.Shape = Enum.PartType.Cylinder
-		button.Size = Vector3.new(0.12,0.28,0.28)
-		button.CFrame = control.CFrame * CFrame.new(x,0.16,-0.06) * CFrame.Angles(0,0,math.rad(90))
-		button.Color = ({Color3.fromRGB(224,80,83),Color3.fromRGB(237,190,72),Color3.fromRGB(72,188,130)})[index]
-		button.Material = Enum.Material.SmoothPlastic
-		button.Anchored = true
-		button.CanCollide = false
-		button.CanTouch = false
-		button.CanQuery = false
-		button.Parent = visual
 	end
 end
 
